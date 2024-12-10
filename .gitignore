@@ -16,3 +16,6 @@ local.properties
 
 # Project exclude paths
 /lib/build/
+/.idea/
+/.kotlin/
+/app/release/
