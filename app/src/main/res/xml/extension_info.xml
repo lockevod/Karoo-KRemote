@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExtensionInfo
+    displayName="@string/extension_name"
+    icon="@drawable/ic_icon"
+    id="kremote"
+    scansDevices="true">
+    <!-- DataType ... -->
+</ExtensionInfo>
