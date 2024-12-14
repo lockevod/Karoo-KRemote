@@ -11,7 +11,8 @@ KRemote allows to use a Japanase Remote with Karoo.
 - Karoo (tested on last Karoo ) with version 1.524.2003 or later
 
 ## Installation
-- It's necessary to sideload this app to karoo.
+- It's necessary to sideload this app to karoo (adb or you can use the new Karoo sideload method with this link and companion app):
+  https://github.com/lockevod/Karoo_KRemote_Extension/releases/download/latest/kremote.apk
 - Press any button in the Remote to connect, you only need to open this app the first time.
 - Kremote auto-starts when Karoo starts, then push a button in GRemote and wait until the Remote flashing green several times.
 

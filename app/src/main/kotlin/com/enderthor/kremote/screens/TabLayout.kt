@@ -1,6 +1,7 @@
 package com.enderthor.kremote.screens
 
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,10 +53,15 @@ fun TabLayout(
 @Composable
 fun Help() {
     Column(
-        modifier = Modifier.fillMaxSize().padding(1.dp),
+        modifier = Modifier.fillMaxSize().padding(1.dp).background(color = androidx.compose.ui.graphics.Color(0xFFE0E0E0)),
     ) {
-        Text(text = "Karoo System: ")
-        Text(text = "Ride State: ")
+        Text(text = "App autostarts every time, you only need to push de GRemote button and wait until the Remote flashing green several times.\n" +
+                "\n" +
+                "Apps is configured by default:\n" +
+                "\n" +
+                "Left Button =>> Back Button (several actions, depends on the current Karoo screen.. back, zoom level etc).\n" +
+                "Right Button ==> Next screen or item.\n" +
+                "Upper Button ==> Right bottom button.\n")
     }
 }
 

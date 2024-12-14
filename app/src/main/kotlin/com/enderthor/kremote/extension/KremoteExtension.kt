@@ -34,6 +34,7 @@ class KremoteExtension : KarooExtension("kremote", "1.0") {
     override fun onCreate() {
         super.onCreate()
         karooSystem = KarooSystemService(applicationContext)
+        karooSystem.connect()
         Timber.d("oncreate")
         remote_key()
 
