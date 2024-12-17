@@ -37,6 +37,7 @@ fun Context.streamSettings(): Flow<RemoteSettings> {
     }.distinctUntilChanged()
 }
 
+
 fun KarooSystemService.streamRideState(): Flow<RideState> {
     return callbackFlow {
         val listenerId = addConsumer { rideState: RideState ->

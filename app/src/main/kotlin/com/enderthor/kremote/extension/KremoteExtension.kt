@@ -22,9 +22,9 @@ import com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult
 import com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc.IDeviceStateChangeReceiver
 import com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc.IPluginAccessResultReceiver
 import com.enderthor.kremote.data.RemoteSettings
-
-import io.hammerhead.karooext.models.RideState
 import io.hammerhead.karooext.models.ShowMapPage
+import io.hammerhead.karooext.models.RideState
+
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,7 +42,6 @@ data class combinedSettings(val settings: RemoteSettings, val active: Boolean)
 class KremoteExtension : KarooExtension("kremote", "1.0") {
 
     lateinit var karooSystem: KarooSystemService
-    private val context: Context = applicationContext
 
 
     override fun onCreate() {
@@ -121,16 +120,14 @@ class KremoteExtension : KarooExtension("kremote", "1.0") {
         commandNumber: GenericCommandNumber?
     ): CommandStatus {
        // Timber.d("Button pressed : %s", commandNumber)
-        //val actionthread = Thread(Runnable {
         CoroutineScope(Dispatchers.IO).launch {
             //Timber.d("Thread Started N:%s", Thread.currentThread().getName())
-            //check buttons options
 
-            context
+            applicationContext
                 .streamSettings()
                 .combine(karooSystem.streamRideState()) { settings, rideState ->
                     val active = if (settings.onlyWhileRiding){
-                        rideState is RideState.Recording
+                        rideState is (RideState.Paused) || rideState is (RideState.Recording)
                     } else {
                         true
                     }
@@ -143,34 +140,32 @@ class KremoteExtension : KarooExtension("kremote", "1.0") {
                         if (active) {
                             if (action is PerformHardwareAction) {
                                 karooSystem.dispatch(action)
-                            } else if (action is String && action == "Map") {
-                                karooSystem.dispatch(ShowMapPage())
+                            } else if (action == "Map") {
+                                Timber.d("IN Map sendaction")
+                                karooSystem.dispatch(ShowMapPage(true))
+                                //karooSystem.dispatch(MarkLap)
                             }
                         }
                     }
 
                     if (commandNumber == GenericCommandNumber.MENU_DOWN) {
-                        Timber.d("IN ANTPLUS RIGHT")
+                        Timber.d("IN ANTPLUS RIGHT " + settings.remoteright.action)
 
-                        // karooSystem.dispatch(PerformHardwareAction.TopRightPress)
                         sendkaction(settings.remoteright.action)
                     }
                     if (commandNumber == GenericCommandNumber.LAP) {
-                        Timber.d("IN ANTPLUS BACK")
+                        Timber.d("IN ANTPLUS BACK " + settings.remoteleft.action)
 
-                        //karooSystem.dispatch(PerformHardwareAction.BottomLeftPress)
                         sendkaction(settings.remoteleft.action)
                     }
                     if (commandNumber == GenericCommandNumber.UNRECOGNIZED) {
-                        Timber.d("IN ANTPLUS  MAP")
+                        Timber.d("IN ANTPLUS  MAP " + settings.remoteup.action)
 
-                        //karooSystem.dispatch(PerformHardwareAction.BottomRightPress)
                         sendkaction(settings.remoteup.action)
                     }
                 }
 
         }
-       // )actionthread.start()
         return CommandStatus.PASS
     }
 
