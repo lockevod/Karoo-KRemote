@@ -41,7 +41,6 @@ You can change the default configuration in the app and select different actions
 
 ## Know Bugs
 - Sometimes app isn't working fine. You've to stop the app and re-start again (you can do this from karoo menu).
-- You cannot change default buttons, but I'm working on it.
 
 ## Credits
 
