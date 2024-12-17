@@ -25,6 +25,8 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 2. Share with Hammerhead companion app
 3. Install the app using the Hammerhead companion app.
 
+**It's mandatory to reset the Karoo after the installation (shutdown and start again).**
+
 ## Instructions
 
 - Press any button in the Remote to connect, you only need to open this app the first time. 
@@ -33,14 +35,15 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 ## Configuration
 Apps is configured by default:
 
-- Left Button =>> Back Button (several actions, depends on the current Karoo screen.. back, zoom level etc).
+- Left Button =>> Left screen or item.
 - Right Button ==> Next screen or item. 
-- Upper Button ==> Right bottom button.
+- Upper Button ==> Back Button (several actions, depends on the current Karoo screen.. back, zoom level etc).
 
-You can change the default configuration in the app and select different actions for each button. There is an option to use the remote in all screens or only when you're riding (show map only when riding)
+You can change the default configuration in the app and select different actions for each button. There is an option to use the remote in all screens or only when you're riding (show map only when riding, default option)
 
 ## Know Bugs
 - Sometimes app isn't working fine. You've to stop the app and re-start again (you can do this from karoo menu).
+- We cannot use ShowMap (I'm talking with Hammerhead to solve this issue).
 
 ## Credits
 

@@ -21,16 +21,15 @@ fun Main(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        TabLayout(
-        )
+        TabLayout()
     }
 }
 
 @SuppressLint("SetTextI18n")
-@dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent { Main() }
     }
 }
+

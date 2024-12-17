@@ -15,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -47,7 +49,6 @@ import com.enderthor.kremote.data.RemoteSettings
 import com.enderthor.kremote.extension.saveSettings
 import com.enderthor.kremote.extension.streamSettings
 
-
 import kotlinx.coroutines.launch
 
 
@@ -55,7 +56,7 @@ import kotlinx.coroutines.launch
 fun TabLayout(
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf( "Help")
+    val tabs = listOf( "Conf","Help")
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
@@ -83,13 +84,12 @@ fun Help() {
     Column(
         modifier = Modifier.fillMaxSize().padding(1.dp).background(color = Color(0xFFE0E0E0)),
     ) {
-        Text(text = "App autostarts every time, you only need to push de GRemote button and wait until the Remote flashing green several times.\n" +
-                "\n" +
-                "Apps is configured by default:\n" +
-                "\n" +
-                "Left Button =>> Back Button (several actions, depends on the current Karoo screen.. back, zoom level etc).\n" +
-                "Right Button ==> Next screen or item.\n" +
-                "Upper Button ==> Right bottom button.\n")
+        Text(text = "Apps is configured by default:\n\n" +
+                "- Left Button => Left screen or item.\n" +
+                "- Right Button => Next screen or item.\n" +
+                "- Upper Button => Back Button (several actions, depends on the current Karoo screen.. back, zoom level etc).\n\n" +
+                "You can change the default configuration in the app and select different actions for each button.\n There is an option to use the remote in all screens or only when you're riding."
+        )
     }
 }
 
@@ -100,10 +100,12 @@ fun Config() {
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var bottomup by remember { mutableStateOf(KarooKey.TOPLEFT) }
-    var bottomleft by remember { mutableStateOf(KarooKey.BOTTOMLEFT) }
-    var bottomright by remember { mutableStateOf(KarooKey.BOTTOMRIGHT) }
+    var bottomup by remember { mutableStateOf(KarooKey.BOTTOMLEFT) }
+    var bottomleft by remember { mutableStateOf(KarooKey.TOPLEFT) }
+    var bottomright by remember { mutableStateOf(KarooKey.TOPRIGHT) }
     var onlyWhileRiding by remember { mutableStateOf(false) }
+
+    var savedDialogVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
 
@@ -118,7 +120,7 @@ fun Config() {
     Column(modifier = Modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)) {
-        TopAppBar(title = { Text("KRemote Configuration") })
+        TopAppBar(title = { Text("KRemote") })
         Column(modifier = Modifier
             .padding(5.dp)
             .verticalScroll(rememberScrollState())
@@ -131,16 +133,16 @@ fun Config() {
                     mutableStateOf(dropdownOptions.find { option -> option.id == bottomup.action }!!)
                 }
                 KarooKeyDropdown(
-                    remotekey = "Bottom Up",
-                    options = dropdownOptions,
-                    selectedOption = dropdownInitialSelection
+                    remotekey = "Bottom Up", options = dropdownOptions, selectedOption = dropdownInitialSelection
                 ) { selectedOption ->
                     bottomup =
                         KarooKey.entries.find { unit -> unit.action == selectedOption.id }!!
                 }
             }
 
+
             apply {
+
                 val dropdownOptions = KarooKey.entries.toList()
                     .map { unit -> DropdownOption(unit.action, unit.label) }
                 val dropdownInitialSelection by remember(bottomleft) {
@@ -189,15 +191,25 @@ fun Config() {
                 )
 
                 coroutineScope.launch {
+                    savedDialogVisible = true
                     saveSettings(ctx, newSettings)
                 }
             }) {
                 Icon(Icons.Default.Done, contentDescription = "Save")
                 Spacer(modifier = Modifier.width(5.dp))
                 Text("Save")
+                Spacer(modifier = Modifier.width(5.dp))
             }
         }
 
+    }
+    if (savedDialogVisible){
+        AlertDialog(onDismissRequest = { savedDialogVisible = false },
+            confirmButton = { Button(onClick = {
+                savedDialogVisible = false
+            }) { Text("OK") } },
+            text = { Text("Settings saved successfully.") }
+        )
     }
 
 }
