@@ -1,0 +1,11 @@
+{
+  "label": "KRemote",
+  "packageName": "com.enderthor.kremote",
+  "latestApkUrl": "https://github.com/lockevod/Karoo-KRemote/releases/releases/latest/download/kremote.apk",
+  "iconUrl": "https://github.com/lockevod/Karoo-KRemote/releases/latest/download/kremote.png",
+  "latestVersion": "1.0",
+  "latestVersionCode": 1231,
+  "developer": "Enderthor",
+  "description": "This extension for Karoo allows to use a remote to change screens remotely.",
+  "releaseNotes": "First release."
+}

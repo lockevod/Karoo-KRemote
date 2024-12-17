@@ -1,6 +1,10 @@
 package com.enderthor.kremote.extension
 
 
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
 import io.hammerhead.karooext.models.TurnScreenOn
@@ -17,28 +21,40 @@ import com.dsi.ant.plugins.antplus.pcc.defines.DeviceState
 import com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult
 import com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc.IDeviceStateChangeReceiver
 import com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc.IPluginAccessResultReceiver
+import com.enderthor.kremote.data.RemoteSettings
 
+import io.hammerhead.karooext.models.RideState
+import io.hammerhead.karooext.models.ShowMapPage
+
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 
 import timber.log.Timber
 import java.util.EnumSet
 
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+data class combinedSettings(val settings: RemoteSettings, val active: Boolean)
 
 class KremoteExtension : KarooExtension("kremote", "1.0") {
 
     lateinit var karooSystem: KarooSystemService
+    private val context: Context = applicationContext
 
-
-    /// Datafields
 
     override fun onCreate() {
         super.onCreate()
         karooSystem = KarooSystemService(applicationContext)
-        karooSystem.connect()
+        karooSystem.connect(){ connected ->
+            Timber.i( "Karoo system service connected: $connected")
+        }
         Timber.d("oncreate")
         remote_key()
-
     }
+
 
     //ANT Remote Code
     private var remotePcc: AntPlusGenericControllableDevicePcc? = null
@@ -96,7 +112,7 @@ class KremoteExtension : KarooExtension("kremote", "1.0") {
         if (remHandle != null) remHandle.close()
     }
 
-    private fun onNewGenericCommand(
+    fun onNewGenericCommand(
         estTimestamp: Long,
         eventFlags: EnumSet<EventFlag?>?,
         serialNumber: Int,
@@ -105,27 +121,56 @@ class KremoteExtension : KarooExtension("kremote", "1.0") {
         commandNumber: GenericCommandNumber?
     ): CommandStatus {
        // Timber.d("Button pressed : %s", commandNumber)
-        val actionthread = Thread(Runnable {
-            Timber.d("Thread Started N:%s", Thread.currentThread().getName())
-            if (true) {
-                if (commandNumber == GenericCommandNumber.MENU_DOWN) {
-                    Timber.d("IN ANTPLUS RIGHT")
-                    karooSystem.dispatch(TurnScreenOn)
-                    karooSystem.dispatch(PerformHardwareAction.TopRightPress)
+        //val actionthread = Thread(Runnable {
+        CoroutineScope(Dispatchers.IO).launch {
+            //Timber.d("Thread Started N:%s", Thread.currentThread().getName())
+            //check buttons options
+
+            context
+                .streamSettings()
+                .combine(karooSystem.streamRideState()) { settings, rideState ->
+                    val active = if (settings.onlyWhileRiding){
+                        rideState is RideState.Recording
+                    } else {
+                        true
+                    }
+                    combinedSettings(settings,active)
                 }
-                if (commandNumber == GenericCommandNumber.LAP) {
-                    Timber.d("IN ANTPLUS BACK")
-                    karooSystem.dispatch(TurnScreenOn)
-                    karooSystem.dispatch(PerformHardwareAction.BottomLeftPress)
+                .collectLatest { (settings,active) ->
+
+                    fun sendkaction(action: Any) {
+                        karooSystem.dispatch(TurnScreenOn)
+                        if (active) {
+                            if (action is PerformHardwareAction) {
+                                karooSystem.dispatch(action)
+                            } else if (action is String && action == "Map") {
+                                karooSystem.dispatch(ShowMapPage())
+                            }
+                        }
+                    }
+
+                    if (commandNumber == GenericCommandNumber.MENU_DOWN) {
+                        Timber.d("IN ANTPLUS RIGHT")
+
+                        // karooSystem.dispatch(PerformHardwareAction.TopRightPress)
+                        sendkaction(settings.remoteright.action)
+                    }
+                    if (commandNumber == GenericCommandNumber.LAP) {
+                        Timber.d("IN ANTPLUS BACK")
+
+                        //karooSystem.dispatch(PerformHardwareAction.BottomLeftPress)
+                        sendkaction(settings.remoteleft.action)
+                    }
+                    if (commandNumber == GenericCommandNumber.UNRECOGNIZED) {
+                        Timber.d("IN ANTPLUS  MAP")
+
+                        //karooSystem.dispatch(PerformHardwareAction.BottomRightPress)
+                        sendkaction(settings.remoteup.action)
+                    }
                 }
-                if (commandNumber == GenericCommandNumber.UNRECOGNIZED) {
-                    Timber.d("IN ANTPLUS  MAP")
-                    karooSystem.dispatch(TurnScreenOn)
-                    karooSystem.dispatch(PerformHardwareAction.BottomRightPress)
-                }
-            }
-        })
-        actionthread.start()
+
+        }
+       // )actionthread.start()
         return CommandStatus.PASS
     }
 
