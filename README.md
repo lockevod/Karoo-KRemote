@@ -21,7 +21,7 @@ You can sideload the app using the following steps for Karoo 2
 
 If you've Karoo 3 and v > 1.527 you can sideload the app using the following steps:
 
-1. Link with apk (releases link) from your mobile ( https://github.com/lockevod/Karoo_KRemote_Extension/releases/download/latest/kremote.apk)
+1. Link with apk (releases link) from your mobile ( https://github.com/lockevod/Karoo-KRemote/releases/latest/download/kremote.apk )
 2. Share with Hammerhead companion app
 3. Install the app using the Hammerhead companion app.
 
