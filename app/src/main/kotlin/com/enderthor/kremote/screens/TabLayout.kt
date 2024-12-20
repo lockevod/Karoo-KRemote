@@ -128,9 +128,9 @@ fun Config() {
 
             apply {
                 val dropdownOptions = KarooKey.entries.toList()
-                    .map { unit -> DropdownOption(unit.action, unit.label) }
+                    .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
                 val dropdownInitialSelection by remember(bottomup) {
-                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomup.action }!!)
+                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomup.action.toString() }!!)
                 }
                 KarooKeyDropdown(
                     remotekey = "Bottom Up", options = dropdownOptions, selectedOption = dropdownInitialSelection
@@ -144,9 +144,9 @@ fun Config() {
             apply {
 
                 val dropdownOptions = KarooKey.entries.toList()
-                    .map { unit -> DropdownOption(unit.action, unit.label) }
+                    .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
                 val dropdownInitialSelection by remember(bottomleft) {
-                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomleft.action }!!)
+                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomleft.action.toString() }!!)
                 }
                 KarooKeyDropdown(
                     remotekey = "Bottom Left",
@@ -160,9 +160,9 @@ fun Config() {
 
             apply {
                 val dropdownOptions = KarooKey.entries.toList()
-                    .map { unit -> DropdownOption(unit.action, unit.label) }
+                    .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
                 val dropdownInitialSelection by remember(bottomright) {
-                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomright.action }!!)
+                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomright.action.toString() }!!)
                 }
                 KarooKeyDropdown(
                     remotekey = "Bottom Right",

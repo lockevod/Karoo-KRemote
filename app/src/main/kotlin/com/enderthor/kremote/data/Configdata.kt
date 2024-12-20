@@ -6,13 +6,13 @@ import kotlinx.serialization.json.Json
 
 import io.hammerhead.karooext.models.PerformHardwareAction
 
-enum class KarooKey(val action: String, val label: String) {
-    BOTTOMLEFT(PerformHardwareAction.BottomLeftPress.toString(), "Back"),
-    BOTTOMRIGHT(PerformHardwareAction.BottomRightPress.toString(), "Accept / Navegate In"),
-    TOPLEFT(PerformHardwareAction.TopLeftPress.toString(), "Page Left"),
-    TOPRIGHT(PerformHardwareAction.TopRightPress.toString(), "Page Right"),
-    CONTROLCENTER(PerformHardwareAction.ControlCenterComboPress.toString(), "Control Center"),
-    DRAWER(PerformHardwareAction.DrawerActionComboPress.toString(), "Combo Left/Right"),
+enum class KarooKey(val action: Any, val label: String) {
+    BOTTOMLEFT(PerformHardwareAction.BottomLeftPress, "Back"),
+    BOTTOMRIGHT(PerformHardwareAction.BottomRightPress, "Accept / Navegate In"),
+    TOPLEFT(PerformHardwareAction.TopLeftPress, "Page Left"),
+    TOPRIGHT(PerformHardwareAction.TopRightPress, "Page Right"),
+    CONTROLCENTER(PerformHardwareAction.ControlCenterComboPress, "Control Center"),
+    DRAWER(PerformHardwareAction.DrawerActionComboPress, "Combo Left/Right"),
     //MAP("Map", "Show Map")
 
 }
