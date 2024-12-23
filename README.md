@@ -29,8 +29,10 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 
 ## Instructions
 
-- Press any button in the Remote to connect, you only need to open this app the first time. 
+- Press any button in the Remote to connect, you only need to open this app the first time.
+- I recommend to restart your karoo (off-on) and restart the remote. If you're using a GRemote you need to push two buttons at the same time (in your G Remote) until light flashes.
 - Kremote auto-starts when Karoo starts, then push a button in GRemote and wait until the Remote flashing green several times.
+- Kremote works (if only when riding option is enabled) only when you've started a ride (or ride is in pause). Please if you want kremote works in all screens, uncheck this option.
 
 ## Configuration
 Apps is configured by default:
@@ -39,7 +41,7 @@ Apps is configured by default:
 - Right Button ==> Next screen or item. 
 - Upper Button ==> Back Button (several actions, depends on the current Karoo screen.. back, zoom level etc).
 
-You can change the default configuration in the app and select different actions for each button. There is an option to use the remote in all screens or only when you're riding (show map only when riding, default option)
+You can change the default configuration in the app and select different actions for each button. There is an option to use the remote in all screens or only when you're riding (only when riding, pause or start, default option)
 
 ## Know Bugs
 - Sometimes app isn't working fine. You've to stop the app and re-start again (you can do this from karoo menu).
