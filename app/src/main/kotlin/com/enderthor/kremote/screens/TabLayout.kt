@@ -136,7 +136,7 @@ fun Config() {
                     remotekey = "Bottom Up", options = dropdownOptions, selectedOption = dropdownInitialSelection
                 ) { selectedOption ->
                     bottomup =
-                        KarooKey.entries.find { unit -> unit.action == selectedOption.id }!!
+                        KarooKey.entries.find { unit -> unit.action.toString() == selectedOption.id }!!
                 }
             }
 
@@ -154,7 +154,7 @@ fun Config() {
                     selectedOption = dropdownInitialSelection
                 ) { selectedOption ->
                     bottomleft =
-                        KarooKey.entries.find { unit -> unit.action == selectedOption.id }!!
+                        KarooKey.entries.find { unit -> unit.action.toString() == selectedOption.id }!!
                 }
             }
 
@@ -170,7 +170,7 @@ fun Config() {
                     selectedOption = dropdownInitialSelection
                 ) { selectedOption ->
                     bottomright =
-                        KarooKey.entries.find { unit -> unit.action == selectedOption.id }!!
+                        KarooKey.entries.find { unit -> unit.action.toString() == selectedOption.id }!!
                 }
             }
 

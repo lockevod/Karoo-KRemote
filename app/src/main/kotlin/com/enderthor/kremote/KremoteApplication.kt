@@ -8,7 +8,8 @@ class KremoteApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Timber.plant(Timber.DebugTree())
+        //Timber.plant(Timber.DebugTree())
+
         Timber.d("Starting KRemote App")
     }
 }
