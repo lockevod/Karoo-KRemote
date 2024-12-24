@@ -6,7 +6,7 @@ import kotlinx.serialization.json.Json
 
 import io.hammerhead.karooext.models.PerformHardwareAction
 
-enum class KarooKey(val action: Any, val label: String) {
+enum class KarooKey(val action: PerformHardwareAction, val label: String) {
     BOTTOMLEFT(PerformHardwareAction.BottomLeftPress, "Back"),
     BOTTOMRIGHT(PerformHardwareAction.BottomRightPress, "Accept / Navegate In"),
     TOPLEFT(PerformHardwareAction.TopLeftPress, "Page Left"),
