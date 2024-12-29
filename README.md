@@ -37,7 +37,7 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 ## Configuration
 Apps is configured by default:
 
-- Left Button =>> Left screen or item.
+- Left Button ==> Left screen or item.
 - Right Button ==> Next screen or item. 
 - Upper Button ==> Back Button (several actions, depends on the current Karoo screen.. back, zoom level etc).
 
