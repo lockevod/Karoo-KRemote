@@ -41,7 +41,7 @@ Apps is configured by default:
 - Right Button ==> Next screen or item. 
 - Upper Button ==> Back Button (several actions, depends on the current Karoo screen.. back, zoom level etc).
 
-You can change the default configuration in the app and select different actions for each button. There is an option to use the remote in all screens or only when you're riding (only when riding, pause or start, default option)
+You can change the default configuration in the app and select different actions for each button. KRemote only works in Ride app and when ride is recording (forced until Hammerhead deploy Ride screen detection)
 
 ## Know Bugs
 - Sometimes app isn't working fine. You've to stop the app and re-start again (you can do this from karoo menu).
