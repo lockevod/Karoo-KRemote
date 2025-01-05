@@ -39,7 +39,7 @@ import java.util.EnumSet
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 data class combinedSettings(val settings: RemoteSettings, val active: Boolean)
 
-class KremoteExtension : KarooExtension("kremote", "1.2") {
+class KremoteExtension : KarooExtension("kremote", "1.3") {
 
     lateinit var karooSystem: KarooSystemService
 
