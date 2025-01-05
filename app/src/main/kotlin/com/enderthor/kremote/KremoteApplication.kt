@@ -18,7 +18,7 @@ class KremoteApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         //Timber.plant(Timber.DebugTree())
-        if (!Environment.isExternalStorageManager()) {
+        /*if (!Environment.isExternalStorageManager()) {
                 val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                 val uri = Uri.fromParts("package", this.packageName, null)
                 intent.data = uri
@@ -29,7 +29,7 @@ class KremoteApplication : Application() {
             val dir = File("//sdcard//")
             val logfile = File(dir, "powerlog.txt")
             Timber.plant(FileLoggingTree(logfile))
-
+*/
         Timber.d("Starting KRemote App")
     }
 }
