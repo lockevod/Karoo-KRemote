@@ -39,7 +39,7 @@ import java.util.EnumSet
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 data class combinedSettings(val settings: RemoteSettings, val active: Boolean)
 
-class KremoteExtension : KarooExtension("kremote", "1.0") {
+class KremoteExtension : KarooExtension("kremote", "1.2") {
 
     lateinit var karooSystem: KarooSystemService
 
@@ -47,7 +47,7 @@ class KremoteExtension : KarooExtension("kremote", "1.0") {
     override fun onCreate() {
         super.onCreate()
         karooSystem = KarooSystemService(applicationContext)
-        karooSystem.connect(){ connected ->
+        karooSystem.connect{ connected ->
             Timber.i( "Karoo system service connected: $connected")
         }
         Timber.d("oncreate")
@@ -92,7 +92,6 @@ class KremoteExtension : KarooExtension("kremote", "1.0") {
 
     private fun remote_key() {
         Timber.d("Remote Key STARTED")
-
         /* close_ant_handler(remoteReleaseHandle) */
         if (remoteReleaseHandle == null) {
             remoteReleaseHandle = AntPlusGenericControllableDevicePcc.requestAccess(
@@ -108,7 +107,7 @@ class KremoteExtension : KarooExtension("kremote", "1.0") {
 
     private fun close_ant_handler(remHandle: PccReleaseHandle<AntPlusGenericControllableDevicePcc?>?) {
         Timber.d("Close ant handler")
-        if (remHandle != null) remHandle.close()
+        remHandle?.close()
     }
 
     fun onNewGenericCommand(
@@ -119,58 +118,53 @@ class KremoteExtension : KarooExtension("kremote", "1.0") {
         sequenceNumber: Int,
         commandNumber: GenericCommandNumber?
     ): CommandStatus {
-       // Timber.d("Button pressed : %s", commandNumber)
+
         CoroutineScope(Dispatchers.IO).launch {
-            //Timber.d("Thread Started N:%s", Thread.currentThread().getName())
 
             applicationContext
-                .streamSettings()
-                .combine(karooSystem.streamRideState()) { settings, rideState ->
-                    val active = if (settings.onlyWhileRiding){
-                        rideState is (RideState.Paused) || rideState is (RideState.Recording)
-                    } else {
-                        true
-                    }
-                    combinedSettings(settings,active)
-                }
-                .collectLatest { (settings,active) ->
-
+            .streamSettings()
+            .combine(karooSystem.streamRideState()) { settings, rideState ->
+                //combinedSettings(settings, !settings.onlyWhileRiding  || rideState is RideState.Recording)
+                combinedSettings(settings, rideState is RideState.Recording)
+            }
+            .collectLatest { (settings, active) ->
+                if (active) {
                     fun sendkaction(action: Any) {
                         karooSystem.dispatch(TurnScreenOn)
-                        if (active) {
-                            if (action is PerformHardwareAction) {
-                                karooSystem.dispatch(action)
-                            } else if (action == "Map") {
+                        when (action) {
+                            is PerformHardwareAction -> karooSystem.dispatch(action)
+                            "Map" -> {
                                 Timber.d("IN Map sendaction")
                                 karooSystem.dispatch(ShowMapPage(true))
-                                //karooSystem.dispatch(MarkLap)
                             }
                         }
                     }
 
-                    if (commandNumber == GenericCommandNumber.MENU_DOWN) {
-                        Timber.d("IN ANTPLUS RIGHT " + settings.remoteright.action)
-
-                        sendkaction(settings.remoteright.action)
-                    }
-                    if (commandNumber == GenericCommandNumber.LAP) {
-                        Timber.d("IN ANTPLUS BACK " + settings.remoteleft.action)
-
-                        sendkaction(settings.remoteleft.action)
-                    }
-                    if (commandNumber == GenericCommandNumber.UNRECOGNIZED) {
-                        Timber.d("IN ANTPLUS  MAP " + settings.remoteup.action)
-
-                        sendkaction(settings.remoteup.action)
+                    when (commandNumber) {
+                        GenericCommandNumber.MENU_DOWN -> {
+                            Timber.d("IN ANTPLUS RIGHT ${settings.remoteright.action}")
+                            sendkaction(settings.remoteright.action)
+                        }
+                        GenericCommandNumber.LAP -> {
+                            Timber.d("IN ANTPLUS BACK ${settings.remoteleft.action}")
+                            sendkaction(settings.remoteleft.action)
+                        }
+                        GenericCommandNumber.UNRECOGNIZED -> {
+                            Timber.d("IN ANTPLUS MAP ${settings.remoteup.action}")
+                            sendkaction(settings.remoteup.action)
+                        }
+                        else -> {
+                            Timber.d("IN ANTPLUS UNHANDLED COMMAND")
+                        }
                     }
                 }
+                else Timber.d("IN ANTPLUS NOT ACTIVE PARAMETER")
+            }
 
         }
         return CommandStatus.PASS
     }
-
         /// end ANT Remote Code
-
 
     override fun onDestroy() {
         close_ant_handler(remoteReleaseHandle)

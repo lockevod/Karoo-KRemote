@@ -12,9 +12,7 @@ enum class KarooKey(val action: PerformHardwareAction, val label: String) {
     TOPLEFT(PerformHardwareAction.TopLeftPress, "Page Left"),
     TOPRIGHT(PerformHardwareAction.TopRightPress, "Page Right"),
     CONTROLCENTER(PerformHardwareAction.ControlCenterComboPress, "Control Center"),
-    DRAWER(PerformHardwareAction.DrawerActionComboPress, "Combo Left/Right"),
-    //MAP("Map", "Show Map")
-
+    DRAWER(PerformHardwareAction.DrawerActionComboPress, "Mapa/Zoom In"),
 }
 
 @Serializable

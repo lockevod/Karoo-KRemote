@@ -4,8 +4,8 @@
   "latestApkUrl": "https://github.com/lockevod/Karoo-KRemote/releases/latest/download/kremote.apk",
   "iconUrl": "https://github.com/lockevod/Karoo-KRemote/releases/latest/download/kremote.png",
   "latestVersion": "1.2",
-  "latestVersionCode": 202412211,
+  "latestVersionCode": 202501051,
   "developer": "Enderthor",
   "description": "This extension for Karoo allows to use a remote to change screens remotely.",
-  "releaseNotes": "Bug fixes."
+  "releaseNotes": "Remote is only available when Ride is running and recording and Bug fixes. "
 }

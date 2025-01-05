@@ -13,7 +13,7 @@ android {
         applicationId = "com.enderthor.kremote"
         minSdk = 26
         targetSdk = 34
-        versionCode = 202412211
+        versionCode = 202501051
         versionName = "1.2"
     }
 
