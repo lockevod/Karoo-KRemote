@@ -42,10 +42,11 @@ Apps is configured by default:
 - Upper Button ==> Back Button (several actions, depends on the current Karoo screen.. back, zoom level etc).
 
 You can change the default configuration in the app and select different actions for each button. KRemote only works in Ride app and when ride is recording (forced until Hammerhead deploy Ride screen detection)
+If you have karoo > 1.535 you can use showmap option also
 
 ## Know Bugs
 - Sometimes app isn't working fine. You've to stop the app and re-start again (you can do this from karoo menu).
-- We cannot use ShowMap (I'm talking with Hammerhead to solve this issue).
+
 
 ## Credits
 
