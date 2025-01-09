@@ -129,15 +129,18 @@ class KremoteExtension : KarooExtension("kremote", "1.3") {
             }
             .collectLatest { (settings, active) ->
                 if (active) {
-                    fun sendkaction(action: Any) {
+                    fun sendkaction(action: PerformHardwareAction) {
                         karooSystem.dispatch(TurnScreenOn)
-                        when (action) {
-                            is PerformHardwareAction -> karooSystem.dispatch(action)
+
+                        if( action == PerformHardwareAction.DrawerActionComboPress) karooSystem.dispatch(ShowMapPage(true))
+                        else karooSystem.dispatch(action)
+                        /*when (action) {
+                            is PerformHardwareAction -> {karooSystem.dispatch(action)
                             "Map" -> {
                                 Timber.d("IN Map sendaction")
                                 karooSystem.dispatch(ShowMapPage(true))
                             }
-                        }
+                        }*/
                     }
 
                     when (commandNumber) {
