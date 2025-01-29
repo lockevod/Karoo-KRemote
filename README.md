@@ -46,8 +46,8 @@ If you have karoo > 1.535 you can use showmap option also
 
 ## Know Bugs
 - Sometimes app isn't working fine. You've to stop the app and re-start again (you can do this from karoo menu).
-
-
+- Hammerhead doesn't provide a way to detect the current screen, so KRemote only worked when you're in Ride app and ride is recording. This produce some problems when you auto-pause your ride.
+KRemote will work in every screen now.
 ## Credits
 
 - Made possible by the generous usage terms of timklge (apache 2.0). He has a great development and I use part of his code to create this extension.
