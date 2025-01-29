@@ -21,15 +21,15 @@ import com.dsi.ant.plugins.antplus.pcc.defines.DeviceState
 import com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult
 import com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc.IDeviceStateChangeReceiver
 import com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc.IPluginAccessResultReceiver
-import com.enderthor.kremote.data.RemoteSettings
+//import com.enderthor.kremote.data.RemoteSettings
 import io.hammerhead.karooext.models.ShowMapPage
-import io.hammerhead.karooext.models.RideState
+//import io.hammerhead.karooext.models.RideState
 
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
+//import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 
@@ -37,9 +37,9 @@ import timber.log.Timber
 import java.util.EnumSet
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-data class combinedSettings(val settings: RemoteSettings, val active: Boolean)
+//data class combinedSettings(val settings: RemoteSettings, val active: Boolean)
 
-class KremoteExtension : KarooExtension("kremote", "1.3") {
+class KremoteExtension : KarooExtension("kremote", "1.5") {
 
     lateinit var karooSystem: KarooSystemService
 
@@ -123,12 +123,13 @@ class KremoteExtension : KarooExtension("kremote", "1.3") {
 
             applicationContext
             .streamSettings()
-            .combine(karooSystem.streamRideState()) { settings, rideState ->
+            /*.combine(karooSystem.streamRideState()) { settings, rideState ->
                 //combinedSettings(settings, !settings.onlyWhileRiding  || rideState is RideState.Recording)
                 combinedSettings(settings, rideState is RideState.Recording)
             }
             .collectLatest { (settings, active) ->
-                if (active) {
+                if (active) {*/
+                .collectLatest { settings ->
                     fun sendkaction(action: PerformHardwareAction) {
                         karooSystem.dispatch(TurnScreenOn)
 
@@ -161,8 +162,8 @@ class KremoteExtension : KarooExtension("kremote", "1.3") {
                         }
                     }
                 }
-                else Timber.d("IN ANTPLUS NOT ACTIVE PARAMETER")
-            }
+               // else Timber.d("IN ANTPLUS NOT ACTIVE PARAMETER")
+            //}
 
         }
         return CommandStatus.PASS
