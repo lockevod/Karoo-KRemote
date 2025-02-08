@@ -1,4 +1,3 @@
-// screens/SettingsScreen.kt
 package com.enderthor.kremote.screens
 
 import androidx.compose.foundation.layout.*

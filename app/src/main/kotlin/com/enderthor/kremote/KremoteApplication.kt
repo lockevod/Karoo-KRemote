@@ -2,6 +2,7 @@ package com.enderthor.kremote
 
 import android.app.Application
 import android.content.Intent
+import android.util.Log
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.service.ConnectionService
 import kotlinx.coroutines.CoroutineScope
@@ -9,6 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import timber.log.Timber.DebugTree
+import timber.log.Timber.Forest.plant
+import timber.log.Timber.Tree
 
 class KremoteApplication : Application() {
     private lateinit var repository: RemoteRepository
@@ -16,7 +20,40 @@ class KremoteApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Timber.plant(Timber.DebugTree())
+
+        val forceDebug = false
+
+        if (BuildConfig.DEBUG || forceDebug) {
+            plant(object : DebugTree() {
+                override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+                    Log.println(
+                        priority,
+                        tag,
+                        message + (if (t == null) "" else "\n" + t.message + "\n" + Log.getStackTraceString(
+                            t
+                        ))
+                    )
+                }
+            })
+        } else {
+            Timber.plant(object : Tree() {
+                override fun isLoggable(tag: String?, priority: Int): Boolean {
+                    return priority > Log.DEBUG
+                }
+
+                override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+                    Log.println(
+                        priority,
+                        tag,
+                        message + (if (t == null) "" else "\n" + t.message + "\n" + Log.getStackTraceString(
+                            t
+                        ))
+                    )
+                }
+            })
+        }
+        Timber.d("Starting KRemote App")
+
 
         repository = RemoteRepository(applicationContext)
 

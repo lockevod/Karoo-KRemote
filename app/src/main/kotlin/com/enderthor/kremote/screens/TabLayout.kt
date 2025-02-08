@@ -19,7 +19,7 @@ fun TabLayout(
     repository: RemoteRepository,
     permissionManager: PermissionManager
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Configuración", "Dispositivos", "Ajustes")
 
     val viewModel: DeviceViewModel = viewModel(
@@ -55,9 +55,10 @@ fun TabLayout(
                 scanning = scanning,
                 errorMessage = errorMessage,
                 onScanClick = { viewModel.startBluetoothScan() },
-                onDeviceClick = { viewModel.onDeviceSelected(it) },
-                onNewDeviceClick = { viewModel.onNewBluetoothDeviceSelected(it) },
+                onDeviceClick = { device -> viewModel.onDeviceSelected(device) },
+                onNewDeviceClick = { device -> viewModel.onNewBluetoothDeviceSelected(device) },
                 onErrorDismiss = { viewModel.clearError() },
+                onDeviceDelete = { device -> viewModel.removeDevice(device.id) },
                 bluetoothManager = bluetoothManager
             )
             2 -> SettingsScreen()

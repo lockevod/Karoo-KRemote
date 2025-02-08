@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import timber.log.Timber
 import java.util.UUID
 
 class DeviceViewModel(
@@ -124,32 +125,11 @@ class DeviceViewModel(
                     return@launch
                 }
 
-                if (connectToDevice(newDevice)) {
-                    repository.addDevice(newDevice)
-                    _errorMessage.value = "Dispositivo añadido correctamente"
-                } else {
-                    _errorMessage.value = "No se pudo conectar con el dispositivo"
-                }
+                repository.addDevice(newDevice)
+                _errorMessage.value = "Dispositivo añadido correctamente"
             } catch (e: Exception) {
                 _errorMessage.value = "Error al añadir el dispositivo: ${e.message}"
-            }
-        }
-    }
-
-    private suspend fun connectToDevice(device: RemoteDevice): Boolean {
-        return when (device.type) {
-            RemoteType.BLUETOOTH -> {
-                if (!bluetoothManager.isBluetoothEnabled()) {
-                    _errorMessage.value = "El Bluetooth debe estar activado"
-                    false
-                } else {
-                    bluetoothManager.connectToDevice(device)
-                    true
-                }
-            }
-            RemoteType.ANT -> {
-                antManager.connect()
-                true
+                Timber.e(e, "Error adding device")
             }
         }
     }
@@ -157,25 +137,10 @@ class DeviceViewModel(
     private fun activateDevice(device: RemoteDevice) {
         viewModelScope.launch {
             try {
-                // Desactivar el dispositivo actual si existe
-                _devices.value.find { it.isActive }?.let { activeDevice ->
-                    when (activeDevice.type) {
-                        RemoteType.BLUETOOTH -> bluetoothManager.disconnectDevice(activeDevice.id)
-                        RemoteType.ANT -> antManager.disconnect()
-                    }
-                }
-
-                // Activar el nuevo dispositivo
                 repository.setActiveDevice(device.id)
-
-                // Conectar el nuevo dispositivo
-                if (!connectToDevice(device)) {
-                    _errorMessage.value = "No se pudo conectar con el dispositivo"
-                    repository.setActiveDevice("") // Desactivar si falla la conexión
-                }
             } catch (e: Exception) {
                 _errorMessage.value = "Error al activar el dispositivo: ${e.message}"
-                repository.setActiveDevice("") // Desactivar en caso de error
+                Timber.e(e, "Error activating device")
             }
         }
     }
@@ -192,6 +157,7 @@ class DeviceViewModel(
                 repository.removeDevice(deviceId)
             } catch (e: Exception) {
                 _errorMessage.value = "Error al eliminar el dispositivo: ${e.message}"
+                Timber.e(e, "Error removing device")
             }
         }
     }
@@ -203,13 +169,5 @@ class DeviceViewModel(
     override fun onCleared() {
         super.onCleared()
         stopScan()
-        viewModelScope.launch {
-            _devices.value.forEach { device ->
-                when (device.type) {
-                    RemoteType.BLUETOOTH -> bluetoothManager.disconnectDevice(device.id)
-                    RemoteType.ANT -> antManager.disconnect()
-                }
-            }
-        }
     }
 }

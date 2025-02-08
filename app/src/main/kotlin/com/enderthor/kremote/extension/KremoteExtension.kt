@@ -7,6 +7,10 @@ import io.hammerhead.karooext.extension.KarooExtension
 import io.hammerhead.karooext.models.TurnScreenOn
 import io.hammerhead.karooext.models.PerformHardwareAction
 import io.hammerhead.karooext.models.ShowMapPage
+import io.hammerhead.karooext.models.RequestAnt
+import io.hammerhead.karooext.models.RequestBluetooth
+import io.hammerhead.karooext.models.ReleaseAnt
+import io.hammerhead.karooext.models.ReleaseBluetooth
 
 import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
 
@@ -19,6 +23,7 @@ import kotlinx.coroutines.cancel
 
 import timber.log.Timber
 
+import com.enderthor.kremote.BuildConfig
 import com.enderthor.kremote.bluetooth.BluetoothManager
 import com.enderthor.kremote.bluetooth.BluetoothService
 import com.enderthor.kremote.ant.AntManager
@@ -27,7 +32,7 @@ import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteType
 import com.enderthor.kremote.service.ConnectionService
 
-class KremoteExtension : KarooExtension("kremote", "1.5") {
+class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
 
     private lateinit var karooSystem: KarooSystemService
     private lateinit var bluetoothManager: BluetoothManager
@@ -135,23 +140,18 @@ class KremoteExtension : KarooExtension("kremote", "1.5") {
         }
     }
 
-    private fun disconnectDevices() {
-        Timber.d("Disconnecting all devices")
-        currentBluetoothService?.disconnect()
-        currentBluetoothService = null
-        antManager.disconnect()
-    }
-
     private fun connectActiveDevices(config: GlobalConfig) {
         config.devices.filter { it.isActive }.forEach { device ->
             try {
                 when (device.type) {
                     RemoteType.ANT -> {
                         Timber.d("Initializing ANT+ remote")
+                        karooSystem.dispatch(RequestAnt(extension))
                         antManager.connect()
                     }
                     RemoteType.BLUETOOTH -> {
                         Timber.d("Connecting Bluetooth device: ${device.name}")
+                        karooSystem.dispatch(RequestBluetooth(extension))
                         device.macAddress?.let { mac ->
                             connectBluetoothDevice(device.id, mac)
                         }
@@ -160,6 +160,23 @@ class KremoteExtension : KarooExtension("kremote", "1.5") {
             } catch (e: Exception) {
                 Timber.e(e, "Error connecting device: ${device.name}")
             }
+        }
+    }
+
+    private fun disconnectDevices() {
+        Timber.d("Disconnecting all devices")
+        try {
+            currentBluetoothService?.disconnect()
+            currentBluetoothService = null
+            antManager.disconnect()
+
+            // Liberar los servicios del sistema
+            if (isServiceConnected) {
+                karooSystem.dispatch(ReleaseBluetooth(extension))
+                karooSystem.dispatch(ReleaseAnt(extension))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error disconnecting devices")
         }
     }
 
@@ -267,7 +284,7 @@ class KremoteExtension : KarooExtension("kremote", "1.5") {
             }
             rideReceiver = null
 
-            disconnectDevices()
+            disconnectDevices() // Esto ya maneja la liberación de servicios
             karooSystem.disconnect()
             extensionScope?.cancel()
             extensionScope = null

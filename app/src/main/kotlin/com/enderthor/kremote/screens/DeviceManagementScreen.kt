@@ -1,4 +1,3 @@
-// screens/DeviceManagementScreen.kt
 package com.enderthor.kremote.screens
 
 import android.bluetooth.BluetoothDevice
@@ -6,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,8 +26,11 @@ fun DeviceManagementScreen(
     onDeviceClick: (RemoteDevice) -> Unit,
     onNewDeviceClick: (BluetoothDevice) -> Unit,
     onErrorDismiss: () -> Unit,
+    onDeviceDelete: (RemoteDevice) -> Unit,
     bluetoothManager: BluetoothManager
 ) {
+    var deviceToDelete by remember { mutableStateOf<RemoteDevice?>(null) }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -67,14 +71,38 @@ fun DeviceManagementScreen(
                 items(devices) { device ->
                     DeviceItem(
                         device = device,
-                        onClick = { onDeviceClick(device) }
+                        onClick = { onDeviceClick(device) },
+                        onDeleteClick = { deviceToDelete = device }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
 
-        // Mostrar mensaje de error si existe
+        // Diálogo de confirmación de borrado
+        deviceToDelete?.let { device ->
+            AlertDialog(
+                onDismissRequest = { deviceToDelete = null },
+                title = { Text("Confirmar borrado") },
+                text = { Text("¿Estás seguro de que quieres eliminar el dispositivo ${device.name}?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onDeviceDelete(device)
+                            deviceToDelete = null
+                        }
+                    ) {
+                        Text("Eliminar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { deviceToDelete = null }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+
         errorMessage?.let { error ->
             AlertDialog(
                 onDismissRequest = onErrorDismiss,
@@ -88,7 +116,6 @@ fun DeviceManagementScreen(
             )
         }
 
-        // Indicador de progreso durante el escaneo
         if (scanning) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center)
@@ -129,13 +156,13 @@ fun ScannedDevicesList(
 @Composable
 fun DeviceItem(
     device: RemoteDevice,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable(onClick = onClick)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -145,7 +172,11 @@ fun DeviceItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onClick)
+                ) {
                     Text(
                         text = device.name,
                         style = MaterialTheme.typography.titleMedium
@@ -164,11 +195,26 @@ fun DeviceItem(
                         )
                     }
                 }
-                if (device.isActive) {
-                    Badge(
-                        containerColor = MaterialTheme.colorScheme.primary
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (device.isActive) {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Text("Activo", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
+                    IconButton(
+                        onClick = onDeleteClick
                     ) {
-                        Text("Activo", color = MaterialTheme.colorScheme.onPrimary)
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar dispositivo",
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }

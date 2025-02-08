@@ -4,5 +4,4 @@
     icon="@drawable/ic_icon"
     id="kremote"
     scansDevices="true">
-    <!-- DataType ... -->
 </ExtensionInfo>
