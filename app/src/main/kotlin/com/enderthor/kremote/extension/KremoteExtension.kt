@@ -1,7 +1,9 @@
 package com.enderthor.kremote.extension
 
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.IntentFilter
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
@@ -21,9 +23,7 @@ import com.dsi.ant.plugins.antplus.pcc.defines.DeviceState
 import com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult
 import com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc.IDeviceStateChangeReceiver
 import com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc.IPluginAccessResultReceiver
-//import com.enderthor.kremote.data.RemoteSettings
 import io.hammerhead.karooext.models.ShowMapPage
-//import io.hammerhead.karooext.models.RideState
 
 
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.collectLatest
 //import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
+import com.enderthor.kremote.BuildConfig
 
 import timber.log.Timber
 import java.util.EnumSet
@@ -39,11 +40,13 @@ import java.util.EnumSet
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 //data class combinedSettings(val settings: RemoteSettings, val active: Boolean)
 
-class KremoteExtension : KarooExtension("kremote", "1.5") {
+class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
 
     lateinit var karooSystem: KarooSystemService
+    private lateinit var rideAppReceiver: RideAppReceiver
+    var onRideApp: Boolean = false
 
-
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate() {
         super.onCreate()
         karooSystem = KarooSystemService(applicationContext)
@@ -52,6 +55,14 @@ class KremoteExtension : KarooExtension("kremote", "1.5") {
         }
         Timber.d("oncreate")
         remote_key()
+
+        rideAppReceiver = RideAppReceiver(this)
+
+        val filter = IntentFilter().apply {
+            addAction("io.hammerhead.intent.action.RIDE_APP_OPENED")
+            addAction("io.hammerhead.hx.intent.action.RIDE_STOP")
+        }
+        registerReceiver(rideAppReceiver, filter)
     }
 
 
@@ -143,26 +154,28 @@ class KremoteExtension : KarooExtension("kremote", "1.5") {
                             }
                         }*/
                     }
-
-                    when (commandNumber) {
-                        GenericCommandNumber.MENU_DOWN -> {
-                            Timber.d("IN ANTPLUS RIGHT ${settings.remoteright.action}")
-                            sendkaction(settings.remoteright.action)
+                    if (onRideApp || !settings.onlyWhileRiding)
+                    {
+                        when (commandNumber) {
+                            GenericCommandNumber.MENU_DOWN -> {
+                                Timber.d("IN ANTPLUS RIGHT ${settings.remoteright.action}")
+                                sendkaction(settings.remoteright.action)
+                            }
+                            GenericCommandNumber.LAP -> {
+                                Timber.d("IN ANTPLUS BACK ${settings.remoteleft.action}")
+                                sendkaction(settings.remoteleft.action)
+                            }
+                            GenericCommandNumber.UNRECOGNIZED -> {
+                                Timber.d("IN ANTPLUS MAP ${settings.remoteup.action}")
+                                sendkaction(settings.remoteup.action)
+                            }
+                            else -> {
+                                Timber.d("IN ANTPLUS UNHANDLED COMMAND")
+                            }
                         }
-                        GenericCommandNumber.LAP -> {
-                            Timber.d("IN ANTPLUS BACK ${settings.remoteleft.action}")
-                            sendkaction(settings.remoteleft.action)
-                        }
-                        GenericCommandNumber.UNRECOGNIZED -> {
-                            Timber.d("IN ANTPLUS MAP ${settings.remoteup.action}")
-                            sendkaction(settings.remoteup.action)
-                        }
-                        else -> {
-                            Timber.d("IN ANTPLUS UNHANDLED COMMAND")
-                        }
-                    }
+                    }else Timber.d("On Ride not active")
                 }
-               // else Timber.d("IN ANTPLUS NOT ACTIVE PARAMETER")
+
             //}
 
         }
@@ -172,6 +185,7 @@ class KremoteExtension : KarooExtension("kremote", "1.5") {
 
     override fun onDestroy() {
         close_ant_handler(remoteReleaseHandle)
+        unregisterReceiver(rideAppReceiver)
         karooSystem.disconnect()
         super.onDestroy()
     }
