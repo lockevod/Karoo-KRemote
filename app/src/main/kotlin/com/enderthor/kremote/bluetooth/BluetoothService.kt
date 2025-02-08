@@ -193,7 +193,9 @@ class BluetoothService(
                     } else {
                         BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                     }
+                    @Suppress("DEPRECATION")
                     descriptor.value = value
+                    @Suppress("DEPRECATION")
                     gatt.writeDescriptor(descriptor)
                 }
             } ?: run {
