@@ -1,4 +1,3 @@
-// viewmodel/SettingsViewModel.kt
 package com.enderthor.kremote.viewmodel
 
 import androidx.lifecycle.ViewModel

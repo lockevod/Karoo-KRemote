@@ -1,4 +1,3 @@
-// data/RemoteRepository.kt
 package com.enderthor.kremote.data
 
 import android.content.Context
