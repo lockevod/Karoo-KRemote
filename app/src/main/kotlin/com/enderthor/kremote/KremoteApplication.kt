@@ -2,34 +2,42 @@ package com.enderthor.kremote
 
 import android.app.Application
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
-import android.os.Environment
-import androidx.annotation.RequiresApi
-import com.enderthor.kremote.utils.FileLoggingTree
+import com.enderthor.kremote.data.RemoteRepository
+import com.enderthor.kremote.service.ConnectionService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.io.File
-
 
 class KremoteApplication : Application() {
+    private lateinit var repository: RemoteRepository
+    private val applicationScope = CoroutineScope(Dispatchers.IO)
 
-    @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate() {
         super.onCreate()
-        //Timber.plant(Timber.DebugTree())
-        /*if (!Environment.isExternalStorageManager()) {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                val uri = Uri.fromParts("package", this.packageName, null)
-                intent.data = uri
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                startActivity(intent)
-            }
+        Timber.plant(Timber.DebugTree())
 
-            val dir = File("//sdcard//")
-            val logfile = File(dir, "powerlog.txt")
-            Timber.plant(FileLoggingTree(logfile))
-*/
-        Timber.d("Starting KRemote App")
+        repository = RemoteRepository(applicationContext)
+
+        applicationScope.launch {
+            try {
+                val config = repository.currentConfig.first()
+                if (config.globalSettings.autoConnectOnStart) {
+                    startConnectionService()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error initializing application")
+            }
+        }
+    }
+
+    private fun startConnectionService() {
+        try {
+            val serviceIntent = Intent(this, ConnectionService::class.java)
+            startService(serviceIntent)
+        } catch (e: Exception) {
+            Timber.e(e, "Error starting ConnectionService")
+        }
     }
 }
