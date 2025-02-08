@@ -15,8 +15,8 @@ android {
         applicationId = "com.enderthor.kremote"
         minSdk = 26
         targetSdk = 34
-        versionCode = 202501291
-        versionName = "1.5"
+        versionCode = 202502011
+        versionName = "1.6"
     }
 
     buildTypes {
@@ -40,6 +40,7 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+        buildConfig = true
     }
 }
 
