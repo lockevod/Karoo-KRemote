@@ -3,12 +3,8 @@ package com.enderthor.kremote.bluetooth
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
@@ -16,7 +12,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import com.enderthor.kremote.data.RemoteDevice
-import com.enderthor.kremote.data.RemoteType
 import com.enderthor.kremote.permissions.PermissionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -95,10 +90,10 @@ class BluetoothManager {
         override fun onScanFailed(errorCode: Int) {
             _isScanning.value = false
             val errorMessage = when (errorCode) {
-                ScanCallback.SCAN_FAILED_ALREADY_STARTED -> "Scan already started"
-                ScanCallback.SCAN_FAILED_APPLICATION_REGISTRATION_FAILED -> "Application registration failed"
-                ScanCallback.SCAN_FAILED_FEATURE_UNSUPPORTED -> "BLE scan not supported"
-                ScanCallback.SCAN_FAILED_INTERNAL_ERROR -> "Internal scan error"
+                SCAN_FAILED_ALREADY_STARTED -> "Scan already started"
+                SCAN_FAILED_APPLICATION_REGISTRATION_FAILED -> "Application registration failed"
+                SCAN_FAILED_FEATURE_UNSUPPORTED -> "BLE scan not supported"
+                SCAN_FAILED_INTERNAL_ERROR -> "Internal scan error"
                 else -> "Scan failed with error: $errorCode"
             }
             Timber.e(errorMessage)

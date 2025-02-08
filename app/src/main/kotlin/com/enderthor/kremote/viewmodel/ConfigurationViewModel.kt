@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.enderthor.kremote.data.KarooKey
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.RemoteRepository
-import com.enderthor.kremote.data.RemoteSettings
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
