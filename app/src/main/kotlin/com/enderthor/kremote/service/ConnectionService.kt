@@ -3,10 +3,7 @@ package com.enderthor.kremote.service
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
-import com.enderthor.kremote.bluetooth.BluetoothManager
-import com.enderthor.kremote.bluetooth.BluetoothService
 import com.enderthor.kremote.data.RemoteRepository
-import com.enderthor.kremote.data.RemoteType
 import com.enderthor.kremote.extension.KremoteExtension
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,8 +16,7 @@ import timber.log.Timber
 
 class ConnectionService : Service() {
     private lateinit var repository: RemoteRepository
-    private lateinit var bluetoothManager: BluetoothManager
-    private var currentBluetoothService: BluetoothService? = null
+
     private var reconnectJob: Job? = null
     private var antReconnectJob: Job? = null
     private var job: Job? = null
@@ -34,7 +30,6 @@ class ConnectionService : Service() {
         Timber.d("ConnectionService onCreate")
 
         repository = RemoteRepository(applicationContext)
-        bluetoothManager = BluetoothManager(applicationContext)
         startConnectionMonitoring()
     }
 
@@ -57,22 +52,12 @@ class ConnectionService : Service() {
                 repository.currentConfig.collect { config ->
                     val activeDevice = config.devices.find { it.isActive }
                     if (activeDevice != null && config.globalSettings.autoReconnect) {
-                        when (activeDevice.type) {
-                            RemoteType.BLUETOOTH -> {
-                                monitorBluetoothConnection(
-                                    activeDevice.macAddress,
-                                    config.globalSettings.reconnectAttempts,
-                                    config.globalSettings.reconnectDelayMs
-                                )
-                            }
-                            RemoteType.ANT -> {
-                                monitorAntConnection(
-                                    activeDevice.macAddress?.toInt(),
-                                    config.globalSettings.reconnectAttempts,
-                                    config.globalSettings.reconnectDelayMs
-                                )
-                            }
-                        }
+
+                        monitorAntConnection(
+                            activeDevice.macAddress?.toInt(),
+                            config.globalSettings.reconnectAttempts,
+                            config.globalSettings.reconnectDelayMs
+                        )
                     }
                 }
             } catch (e: Exception) {
@@ -81,48 +66,6 @@ class ConnectionService : Service() {
         }
     }
 
-    private fun monitorBluetoothConnection(
-        macAddress: String?,
-        maxAttempts: Int,
-        delayMs: Long
-    ) {
-        if (macAddress == null) {
-            Timber.w("No MAC address available for Bluetooth device")
-            return
-        }
-
-        reconnectJob?.cancel()
-        reconnectJob = serviceScope.launch {
-            var attempts = 0
-            while (attempts < maxAttempts) {
-                if (currentBluetoothService?.connectionState?.value == BluetoothService.ConnectionState.CONNECTED) {
-                    attempts = 0
-                } else {
-                    Timber.d("Attempting Bluetooth reconnection, attempt ${attempts + 1} of $maxAttempts")
-                    try {
-                        val btDevice = bluetoothManager.getBluetoothDeviceByAddress(macAddress)
-                        currentBluetoothService = bluetoothManager.createBluetoothService { /* No necesitamos manejar keypresses aquí */ }
-                        btDevice?.let { device ->
-                            currentBluetoothService?.connect(device)
-                            if (currentBluetoothService?.connectionState?.value == BluetoothService.ConnectionState.CONNECTED) {
-                                Timber.d("Bluetooth reconnection successful")
-                                attempts = 0
-                            } else {
-                                attempts++
-                            }
-                        } ?: run {
-                            attempts++
-                        }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error during Bluetooth reconnection attempt")
-                        attempts++
-                    }
-                }
-                delay(delayMs)
-            }
-            Timber.w("Max Bluetooth reconnection attempts reached")
-        }
-    }
 
     private fun monitorAntConnection(
         deviceNumber: Int?,
@@ -192,16 +135,11 @@ class ConnectionService : Service() {
             try {
                 val config = repository.currentConfig.first()
                 config.devices.filter { it.isActive }.forEach { device ->
-                    when (device.type) {
-                        RemoteType.ANT -> {
-                            device.macAddress?.let { mac ->
-                                kremoteExtension.connectAntDevice(mac.toInt())
-                            }
-                        }
-                        RemoteType.BLUETOOTH -> {
-                            // ... manejo de Bluetooth ...
-                        }
+
+                    device.macAddress?.let { mac ->
+                        kremoteExtension.connectAntDevice(mac.toInt())
                     }
+
                 }
             } catch (e: Exception) {
                 Timber.e(e, "[ConnectionService] Error iniciando conexiones")
@@ -219,7 +157,6 @@ class ConnectionService : Service() {
             reconnectJob?.cancel()
             antReconnectJob?.cancel()
             serviceScope.cancel()
-            currentBluetoothService?.disconnect()
         } catch (e: Exception) {
             Timber.e(e, "Error during service destruction")
         }
