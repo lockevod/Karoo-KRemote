@@ -1,70 +1,74 @@
 package com.enderthor.kremote.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.enderthor.kremote.data.KarooKey
+import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.viewmodel.ConfigurationViewModel
 
 @Composable
 fun ConfigurationScreen(
-    viewModel: ConfigurationViewModel = viewModel()
+    activeDevice: RemoteDevice?,
+    errorMessage: String?,
+    configViewModel: ConfigurationViewModel
 ) {
-    val activeDevice by viewModel.activeDevice.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
+
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         activeDevice?.let { device ->
             Text(
-                text = "Configuración de ${device.name}",
+                text = "Configuration ${device.name}",
                 style = MaterialTheme.typography.headlineSmall
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             KeyMappingSection(
-                title = "Botón Izquierdo",
+                title = "Left",
                 currentKey = device.keyMappings.remoteleft,
-                onKeySelected = { viewModel.updateKeyMapping(device.id, "left", it) }
+                onKeySelected = { configViewModel.updateKeyMapping(device.id, "left", it) }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             KeyMappingSection(
-                title = "Botón Derecho",
+                title = "Right",
                 currentKey = device.keyMappings.remoteright,
-                onKeySelected = { viewModel.updateKeyMapping(device.id, "right", it) }
+                onKeySelected = { configViewModel.updateKeyMapping(device.id, "right", it) }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             KeyMappingSection(
-                title = "Botón Superior",
+                title = "Up",
                 currentKey = device.keyMappings.remoteup,
-                onKeySelected = { viewModel.updateKeyMapping(device.id, "up", it) }
+                onKeySelected = { configViewModel.updateKeyMapping(device.id, "up", it) }
             )
         } ?: run {
             Text(
-                text = "No hay dispositivo activo",
+                text = "No active devices",
                 style = MaterialTheme.typography.bodyLarge
             )
         }
 
         errorMessage?.let { error ->
             AlertDialog(
-                onDismissRequest = { viewModel.clearError() },
+                onDismissRequest = { configViewModel.clearError() },
                 title = { Text("Error") },
                 text = { Text(error) },
                 confirmButton = {
-                    TextButton(onClick = { viewModel.clearError() }) {
-                        Text("Aceptar")
+                    TextButton(onClick = { configViewModel.clearError() }) {
+                        Text("Accept")
                     }
                 }
             )
@@ -79,7 +83,7 @@ fun KeyMappingSection(
     onKeySelected: (KarooKey) -> Unit
 ) {
     Column {
-        Text(text = title)
+        //Text(text = title)
         val options = KarooKey.entries.map {
             DropdownOption(it.name, it.label)
         }

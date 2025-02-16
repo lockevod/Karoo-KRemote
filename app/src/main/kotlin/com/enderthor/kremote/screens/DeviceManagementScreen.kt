@@ -1,6 +1,5 @@
 package com.enderthor.kremote.screens
 
-import android.bluetooth.BluetoothDevice
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,144 +11,156 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.enderthor.kremote.bluetooth.BluetoothManager
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.RemoteType
+import com.enderthor.kremote.ant.AntDeviceInfo
+
 
 @Composable
 fun DeviceManagementScreen(
     devices: List<RemoteDevice>,
-    availableDevices: List<BluetoothDevice>,
+    availableAntDevices: List<AntDeviceInfo>,
     scanning: Boolean,
     errorMessage: String?,
-    onScanClick: () -> Unit,
+    onScanClick: (RemoteType) -> Unit,
     onDeviceClick: (RemoteDevice) -> Unit,
-    onNewDeviceClick: (BluetoothDevice) -> Unit,
+    onNewAntDeviceClick: (AntDeviceInfo) -> Unit,
     onErrorDismiss: () -> Unit,
     onDeviceDelete: (RemoteDevice) -> Unit,
-    bluetoothManager: BluetoothManager
 ) {
     var deviceToDelete by remember { mutableStateOf<RemoteDevice?>(null) }
+    var selectedType by remember { mutableStateOf<RemoteType>(RemoteType.BLUETOOTH) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            Button(
-                onClick = onScanClick,
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Selector de tipo
+        item {
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !scanning
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Text(if (scanning) "Buscando..." else "Buscar nuevos dispositivos")
-            }
-
-            if (scanning && availableDevices.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Dispositivos encontrados",
-                    style = MaterialTheme.typography.headlineSmall
+                FilterChip(
+                    selected = selectedType == RemoteType.BLUETOOTH,
+                    onClick = { selectedType = RemoteType.BLUETOOTH },
+                    label = { Text("Bluetooth") }
                 )
-                ScannedDevicesList(
-                    devices = availableDevices,
-                    bluetoothManager = bluetoothManager,
-                    onDeviceClick = onNewDeviceClick
+                FilterChip(
+                    selected = selectedType == RemoteType.ANT,
+                    onClick = { selectedType = RemoteType.ANT },
+                    label = { Text("ANT+") }
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            Button(
+                onClick = { onScanClick(selectedType) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !scanning
+            ) {
+                Text(if (scanning) "Buscando..." else "Buscar ${if (selectedType == RemoteType.BLUETOOTH) "Bluetooth" else "ANT+"}")
+            }
+
+            if (scanning) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
+        // Dispositivos disponibles
+
+
+        if (availableAntDevices.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Dispositivos ANT+ disponibles",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
+            items(availableAntDevices) { device ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp)
+                        .clickable { onNewAntDeviceClick(device) }
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = device.name,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Dispositivo #${device.deviceNumber}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+        }
+
+        // Dispositivos emparejados
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Dispositivos vinculados",
+                text = "Dispositivos emparejados",
                 style = MaterialTheme.typography.headlineSmall
             )
-
             Spacer(modifier = Modifier.height(8.dp))
-
-            LazyColumn {
-                items(devices) { device ->
-                    DeviceItem(
-                        device = device,
-                        onClick = { onDeviceClick(device) },
-                        onDeleteClick = { deviceToDelete = device }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
         }
 
-        // Diálogo de confirmación de borrado
-        deviceToDelete?.let { device ->
-            AlertDialog(
-                onDismissRequest = { deviceToDelete = null },
-                title = { Text("Confirmar borrado") },
-                text = { Text("¿Estás seguro de que quieres eliminar el dispositivo ${device.name}?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            onDeviceDelete(device)
-                            deviceToDelete = null
-                        }
-                    ) {
-                        Text("Eliminar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { deviceToDelete = null }) {
-                        Text("Cancelar")
-                    }
-                }
+        val filteredDevices = devices.filter { it.type == selectedType }
+        items(filteredDevices) { device ->
+            DeviceItem(
+                device = device,
+                onClick = { onDeviceClick(device) },
+                onDeleteClick = { deviceToDelete = device }
             )
-        }
-
-        errorMessage?.let { error ->
-            AlertDialog(
-                onDismissRequest = onErrorDismiss,
-                title = { Text("Atención") },
-                text = { Text(error) },
-                confirmButton = {
-                    TextButton(onClick = onErrorDismiss) {
-                        Text("Aceptar")
-                    }
-                }
-            )
-        }
-
-        if (scanning) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center)
-            )
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
-}
 
-@Composable
-fun ScannedDevicesList(
-    devices: List<BluetoothDevice>,
-    bluetoothManager: BluetoothManager,
-    onDeviceClick: (BluetoothDevice) -> Unit
-) {
-    LazyColumn {
-        items(devices) { device ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(4.dp)
-                    .clickable { onDeviceClick(device) }
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = bluetoothManager.getDeviceName(device),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = bluetoothManager.getDeviceAddress(device),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+    // Diálogos
+    deviceToDelete?.let { device ->
+        AlertDialog(
+            onDismissRequest = { deviceToDelete = null },
+            title = { Text("Eliminar dispositivo") },
+            text = { Text("¿Estás seguro de que quieres eliminar ${device.name}?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeviceDelete(device)
+                        deviceToDelete = null
+                    }
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deviceToDelete = null }) {
+                    Text("Cancelar")
                 }
             }
-        }
+        )
+    }
+
+    errorMessage?.let { error ->
+        AlertDialog(
+            onDismissRequest = onErrorDismiss,
+            title = { Text("Error") },
+            text = { Text(error) },
+            confirmButton = {
+                TextButton(onClick = onErrorDismiss) {
+                    Text("Aceptar")
+                }
+            }
+        )
     }
 }
 
@@ -182,10 +193,7 @@ fun DeviceItem(
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        text = when(device.type) {
-                            RemoteType.BLUETOOTH -> "Bluetooth"
-                            RemoteType.ANT -> "ANT+"
-                        },
+                        text =  "ANT+",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     if (device.macAddress != null) {
@@ -204,7 +212,7 @@ fun DeviceItem(
                         Badge(
                             containerColor = MaterialTheme.colorScheme.primary
                         ) {
-                            Text("Activo", color = MaterialTheme.colorScheme.onPrimary)
+                            Text("Active", color = MaterialTheme.colorScheme.onPrimary)
                         }
                     }
                     IconButton(
@@ -212,7 +220,7 @@ fun DeviceItem(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar dispositivo",
+                            contentDescription = "Delete device",
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
@@ -221,3 +229,4 @@ fun DeviceItem(
         }
     }
 }
+

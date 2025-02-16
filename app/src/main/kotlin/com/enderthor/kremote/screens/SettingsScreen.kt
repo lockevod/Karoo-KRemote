@@ -6,14 +6,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.enderthor.kremote.data.GlobalSettings
 import com.enderthor.kremote.viewmodel.SettingsViewModel
 
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = viewModel()
+    settings: GlobalSettings,
+    settingsViewModel: SettingsViewModel
 ) {
-    val settings by viewModel.settings.collectAsState()
+
 
     Column(
         modifier = Modifier
@@ -21,7 +22,7 @@ fun SettingsScreen(
             .padding(16.dp)
     ) {
         Text(
-            text = "Configuración de conexión",
+            text = "Connection settings",
             style = MaterialTheme.typography.headlineSmall
         )
 
@@ -29,41 +30,41 @@ fun SettingsScreen(
 
         // Conexión automática al inicio
         SettingsSwitchItem(
-            title = "Conectar automáticamente al inicio",
+            title = "On Start connection",
             checked = settings.autoConnectOnStart,
-            onCheckedChange = { viewModel.updateAutoConnectOnStart(it) }
+            onCheckedChange = { settingsViewModel.updateAutoConnectOnStart(it) }
         )
 
         // Reconexión automática
         SettingsSwitchItem(
-            title = "Reconectar automáticamente",
+            title = "Autoreconnect",
             checked = settings.autoReconnect,
-            onCheckedChange = { viewModel.updateAutoReconnect(it) }
+            onCheckedChange = { settingsViewModel.updateAutoReconnect(it) }
         )
 
         if (settings.autoReconnect) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Intentos de reconexión
-            Text("Intentos de reconexión")
+            Text("Reconnection attempts")
             Slider(
                 value = settings.reconnectAttempts.toFloat(),
-                onValueChange = { viewModel.updateReconnectAttempts(it.toInt()) },
+                onValueChange = { settingsViewModel.updateReconnectAttempts(it.toInt()) },
                 valueRange = 1f..5f,
                 steps = 4
             )
-            Text("${settings.reconnectAttempts} intentos")
+            Text("${settings.reconnectAttempts} attempts")
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Delay entre intentos
-            Text("Tiempo entre intentos")
+            Text("Delay between attempts")
             Slider(
                 value = settings.reconnectDelayMs / 1000f,
-                onValueChange = { viewModel.updateReconnectDelay(it.toLong() * 1000) },
+                onValueChange = { settingsViewModel.updateReconnectDelay(it.toLong() * 1000) },
                 valueRange = 1f..30f
             )
-            Text("${settings.reconnectDelayMs / 1000} segundos")
+            Text("${settings.reconnectDelayMs / 1000} seconds")
         }
     }
 }

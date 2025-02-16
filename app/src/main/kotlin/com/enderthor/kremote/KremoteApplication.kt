@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.Intent
 import android.util.Log
 import com.enderthor.kremote.data.RemoteRepository
-import com.enderthor.kremote.service.ConnectionService
+import com.enderthor.kremote.receiver.ConnectionServiceReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -52,7 +52,7 @@ class KremoteApplication : Application() {
                 }
             })
         }
-        Timber.d("Starting KRemote App")
+        Timber.d("KREMOTE APP START")
 
 
         repository = RemoteRepository(applicationContext)
@@ -71,8 +71,9 @@ class KremoteApplication : Application() {
 
     private fun startConnectionService() {
         try {
-            val serviceIntent = Intent(this, ConnectionService::class.java)
-            startService(serviceIntent)
+            val intent = Intent("com.enderthor.kremote.START_CONNECTION_SERVICE")
+            intent.putExtra(ConnectionServiceReceiver.EXTRA_IS_EXTENSION, false)
+            sendBroadcast(intent)
         } catch (e: Exception) {
             Timber.e(e, "Error starting ConnectionService")
         }
