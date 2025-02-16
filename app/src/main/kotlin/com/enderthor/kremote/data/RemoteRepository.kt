@@ -7,8 +7,10 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
@@ -18,6 +20,9 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class RemoteRepository(private val context: Context) {
     private val settingsKey = stringPreferencesKey("remote_config")
+
+    private var antCallback: ((GenericCommandNumber) -> Unit)? = null
+
 
     val currentConfig: Flow<GlobalConfig> = context.dataStore.data
         .catch { exception ->
@@ -38,6 +43,7 @@ class RemoteRepository(private val context: Context) {
             }
         }
 
+
     fun getDevices(): Flow<List<RemoteDevice>> = currentConfig.map { it.devices }
 
     fun getGlobalSettings(): Flow<GlobalSettings> = currentConfig.map { it.globalSettings }
@@ -48,7 +54,38 @@ class RemoteRepository(private val context: Context) {
 
     // Función de utilidad para obtener la configuración actual
     private suspend fun getCurrentConfig(): GlobalConfig {
-        return currentConfig.firstOrNull() ?: GlobalConfig()
+        return try {
+            val preferences = context.dataStore.data.first()
+            val configString = preferences[settingsKey]
+            Timber.d("Config actual leída: $configString")
+            if (configString != null) {
+                Json.decodeFromString(configString)
+            } else {
+                GlobalConfig() // Usa el constructor por defecto
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error leyendo configuración")
+            throw e
+        }
+    }
+    suspend fun deactivateAllDevices() {
+        val config = currentConfig.firstOrNull() ?: GlobalConfig()
+        val updatedDevices = config.devices.map { device ->
+            if (device.isActive) device.copy(isActive = false) else device
+        }
+
+        context.dataStore.edit { preferences ->
+            preferences[settingsKey] = Json.encodeToString(
+                GlobalConfig.serializer(),
+                config.copy(devices = updatedDevices)
+            )
+        }
+    }
+
+
+    suspend fun getDeviceById(id: String): RemoteDevice? {
+        val config = currentConfig.firstOrNull() ?: GlobalConfig()
+        return config.devices.find { it.id == id }
     }
 
     suspend fun updateGlobalSettings(settings: GlobalSettings) {
@@ -69,20 +106,21 @@ class RemoteRepository(private val context: Context) {
     suspend fun addDevice(device: RemoteDevice) {
         try {
             context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
-                // Si es el primer dispositivo, lo marcamos como activo
-                val deviceToAdd = if (current.devices.isEmpty()) {
-                    device.copy(isActive = true)
-                } else {
-                    device
-                }
+                val currentConfig = getCurrentConfig()
+                Timber.d("Config actual antes de añadir: $currentConfig")
+
+                val updatedDevices = currentConfig.devices + device
+                val updatedConfig = currentConfig.copy(devices = updatedDevices)
+
                 preferences[settingsKey] = Json.encodeToString(
                     GlobalConfig.serializer(),
-                    current.copy(devices = current.devices + deviceToAdd)
+                    updatedConfig
                 )
+
+                Timber.d("Config actualizada después de añadir: $updatedConfig")
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error adding device")
+            Timber.e(e, "Error añadiendo dispositivo al DataStore")
             throw e
         }
     }

@@ -5,36 +5,54 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.enderthor.kremote.viewmodel.DeviceViewModel
-import com.enderthor.kremote.bluetooth.BluetoothManager
 import com.enderthor.kremote.ant.AntManager
 import com.enderthor.kremote.data.RemoteRepository
-import com.enderthor.kremote.permissions.PermissionManager
+
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModel
+import com.enderthor.kremote.viewmodel.ConfigurationViewModel
+import com.enderthor.kremote.viewmodel.SettingsViewModel
+import io.hammerhead.karooext.KarooSystemService
 
 @Composable
 fun TabLayout(
-    bluetoothManager: BluetoothManager,
     antManager: AntManager,
     repository: RemoteRepository,
-    permissionManager: PermissionManager
+    karooSystem: KarooSystemService
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Configuración", "Dispositivos", "Ajustes")
+    val tabs = listOf("Conf.", "Remotes", "General")
 
-    val viewModel: DeviceViewModel = viewModel(
+    val deviceViewModel: DeviceViewModel = viewModel(
         factory = DeviceViewModelFactory(
-            bluetoothManager = bluetoothManager,
             antManager = antManager,
             repository = repository,
-            permissionManager = permissionManager
+            karooSystem = karooSystem
         )
     )
 
-    val devices by viewModel.devices.collectAsState()
-    val availableDevices by viewModel.availableDevices.collectAsState()
-    val scanning by viewModel.scanning.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
+    val configViewModel: ConfigurationViewModel = viewModel(
+        factory = ConfigViewModelFactory(
+            repository = repository,
+        )
+    )
+
+    val settingsViewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModelFactory(
+            repository = repository,
+        )
+    )
+
+    val availableAntDevices by deviceViewModel.availableAntDevices.collectAsState()
+    val devices by deviceViewModel.devices.collectAsState()
+    val scanning by deviceViewModel.scanning.collectAsState()
+    val errorMessage_device by deviceViewModel.errorMessage.collectAsState()
+
+
+    val settings by settingsViewModel.settings.collectAsState()
+
+    val activeDevice by configViewModel.activeDevice.collectAsState()
+    val errorMessage_config by configViewModel.errorMessage.collectAsState()
 
     Column {
         TabRow(selectedTabIndex = selectedTab) {
@@ -48,38 +66,69 @@ fun TabLayout(
         }
 
         when (selectedTab) {
-            0 -> ConfigurationScreen()
+            0 -> ConfigurationScreen(
+                    activeDevice = activeDevice,
+                    errorMessage = errorMessage_config,
+                    configViewModel = configViewModel
+            )
             1 -> DeviceManagementScreen(
                 devices = devices,
-                availableDevices = availableDevices,
                 scanning = scanning,
-                errorMessage = errorMessage,
-                onScanClick = { viewModel.startBluetoothScan() },
-                onDeviceClick = { device -> viewModel.onDeviceSelected(device) },
-                onNewDeviceClick = { device -> viewModel.onNewBluetoothDeviceSelected(device) },
-                onErrorDismiss = { viewModel.clearError() },
-                onDeviceDelete = { device -> viewModel.removeDevice(device.id) },
-                bluetoothManager = bluetoothManager
+                errorMessage = errorMessage_device,
+                onScanClick = { type -> deviceViewModel.startDeviceScan(type) },
+                onDeviceClick = { device -> deviceViewModel.onDeviceSelected(device) },
+                availableAntDevices = availableAntDevices,
+                onNewAntDeviceClick = { device -> deviceViewModel.onNewAntDeviceSelected(device) },
+                onErrorDismiss = { deviceViewModel.clearError() },
+                onDeviceDelete = { device -> deviceViewModel.removeDevice(device.id) },
+
             )
-            2 -> SettingsScreen()
+            2 -> SettingsScreen(settings = settings,
+                settingsViewModel = settingsViewModel)
         }
     }
 }
 
 class DeviceViewModelFactory(
-    private val bluetoothManager: BluetoothManager,
     private val antManager: AntManager,
     private val repository: RemoteRepository,
-    private val permissionManager: PermissionManager
+    private val karooSystem: KarooSystemService
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DeviceViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
             return DeviceViewModel(
-                bluetoothManager = bluetoothManager,
                 antManager = antManager,
                 repository = repository,
-                permissionManager = permissionManager
+                karooSystem = karooSystem
+            ) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+class ConfigViewModelFactory(
+    private val repository: RemoteRepository,
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(ConfigurationViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return ConfigurationViewModel(
+                repository = repository,
+            ) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+class SettingsViewModelFactory(
+    private val repository: RemoteRepository,
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return SettingsViewModel(
+                repository = repository,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

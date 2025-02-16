@@ -22,8 +22,8 @@ class KarooRideReceiver(private val onRideStateChanged: (Boolean) -> Unit) : Bro
     }
 
     companion object {
-        private const val ACTION_RIDE_START = "io.hammerhead.action.RIDE_START"
-        private const val ACTION_RIDE_STOP = "io.hammerhead.action.RIDE_STOP"
+        private const val ACTION_RIDE_START = "io.hammerhead.intent.action.RIDE_APP_OPENED"
+        private const val ACTION_RIDE_STOP = "io.hammerhead.hx.intent.action.RIDE_STOP"
 
         fun getIntentFilter(): IntentFilter {
             return IntentFilter().apply {

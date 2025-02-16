@@ -15,11 +15,14 @@ enum class KarooKey(val action: PerformHardwareAction, val label: String) {
     DRAWER(PerformHardwareAction.DrawerActionComboPress, "Map/Zoom In"),
 }
 
+
 @Serializable
 enum class RemoteType {
     ANT,
     BLUETOOTH
 }
+
+const val EXTENSION_NAME = "kremote"
 
 @Serializable
 data class RemoteDevice(

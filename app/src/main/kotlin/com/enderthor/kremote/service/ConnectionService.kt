@@ -5,9 +5,9 @@ import android.content.Intent
 import android.os.IBinder
 import com.enderthor.kremote.bluetooth.BluetoothManager
 import com.enderthor.kremote.bluetooth.BluetoothService
-import com.enderthor.kremote.ant.AntManager
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteType
+import com.enderthor.kremote.extension.KremoteExtension
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -20,12 +20,14 @@ import timber.log.Timber
 class ConnectionService : Service() {
     private lateinit var repository: RemoteRepository
     private lateinit var bluetoothManager: BluetoothManager
-    private lateinit var antManager: AntManager
-    private var serviceScope: CoroutineScope? = null
-
     private var currentBluetoothService: BluetoothService? = null
     private var reconnectJob: Job? = null
     private var antReconnectJob: Job? = null
+    private var job: Job? = null
+    private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
+
+    // Obtener la instancia de AntManager desde KremoteExtension
+
 
     override fun onCreate() {
         super.onCreate()
@@ -33,14 +35,11 @@ class ConnectionService : Service() {
 
         repository = RemoteRepository(applicationContext)
         bluetoothManager = BluetoothManager(applicationContext)
-        antManager = AntManager(applicationContext) { /* No necesitamos manejar comandos aquí */ }
-        serviceScope = CoroutineScope(Dispatchers.IO + Job())
-
         startConnectionMonitoring()
     }
 
     private fun startConnectionMonitoring() {
-        serviceScope?.launch {
+        serviceScope.launch {
             try {
                 val config = repository.currentConfig.first()
                 if (config.globalSettings.autoReconnect) {
@@ -53,7 +52,7 @@ class ConnectionService : Service() {
     }
 
     private fun monitorConnections() {
-        serviceScope?.launch {
+        serviceScope.launch {
             try {
                 repository.currentConfig.collect { config ->
                     val activeDevice = config.devices.find { it.isActive }
@@ -68,6 +67,7 @@ class ConnectionService : Service() {
                             }
                             RemoteType.ANT -> {
                                 monitorAntConnection(
+                                    activeDevice.macAddress?.toInt(),
                                     config.globalSettings.reconnectAttempts,
                                     config.globalSettings.reconnectDelayMs
                                 )
@@ -92,7 +92,7 @@ class ConnectionService : Service() {
         }
 
         reconnectJob?.cancel()
-        reconnectJob = serviceScope?.launch {
+        reconnectJob = serviceScope.launch {
             var attempts = 0
             while (attempts < maxAttempts) {
                 if (currentBluetoothService?.connectionState?.value == BluetoothService.ConnectionState.CONNECTED) {
@@ -125,40 +125,89 @@ class ConnectionService : Service() {
     }
 
     private fun monitorAntConnection(
+        deviceNumber: Int?,
         maxAttempts: Int,
         delayMs: Long
     ) {
+        if (deviceNumber == null) {
+            Timber.w("No se encontró número de dispositivo ANT+")
+            return
+        }
+
         antReconnectJob?.cancel()
-        antReconnectJob = serviceScope?.launch {
+        antReconnectJob = serviceScope.launch {
             var attempts = 0
-            while (attempts < maxAttempts) {
-                if (antManager.isConnected) {
-                    attempts = 0
-                    delay(1000) // Check connection status every second
-                    continue
-                }
+            try {
+                while (attempts < maxAttempts) {
+                    val kremoteExtension = KremoteExtension.getInstance()
+                    if (kremoteExtension?.isAntConnected() == true) {
+                        attempts = 0
+                        delay(1000)
+                        continue
+                    }
 
-                Timber.d("Attempting ANT+ reconnection, attempt ${attempts + 1} of $maxAttempts")
-                try {
-                    antManager.disconnect() // Asegurarse de que no hay conexión anterior
-                    antManager.connect()
-                    // Esperar un poco para que la conexión se establezca
-                    delay(1000)
-                    // La conexión exitosa se manejará a través del callback en AntManager
-                    // que actualizará isConnected
-                } catch (e: Exception) {
-                    Timber.e(e, "Error during ANT+ reconnection attempt")
-                }
+                    Timber.d("Intento de reconexión ANT+ ${attempts + 1} de $maxAttempts para dispositivo #$deviceNumber")
+                    try {
+                        kremoteExtension?.connectAntDevice(deviceNumber)
 
-                attempts++
-                delay(delayMs)
+                        // Esperar a que la conexión se establezca
+                        var checkAttempts = 0
+                        while (kremoteExtension?.isAntConnected() != true && checkAttempts < 5) {
+                            delay(1000)
+                            checkAttempts++
+                        }
+
+                        if (kremoteExtension?.isAntConnected() == true) {
+                            Timber.d("Reconexión ANT+ exitosa para dispositivo #$deviceNumber")
+                            attempts = 0
+                        } else {
+                            Timber.d("Falló la reconexión ANT+ para dispositivo #$deviceNumber")
+                            attempts++
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error durante intento de reconexión ANT+")
+                        attempts++
+                    }
+
+                    delay(delayMs)
+                }
+                Timber.w("Se alcanzó el máximo de intentos de reconexión ANT+")
+            } catch (e: Exception) {
+                Timber.e(e, "Error en el monitor de conexión ANT+")
             }
-            Timber.w("Max ANT+ reconnection attempts reached")
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Timber.d("ConnectionService onStartCommand")
+        Timber.d("[ConnectionService] Servicio iniciado")
+
+        val kremoteExtension = KremoteExtension.getInstance()
+        if (kremoteExtension == null) {
+            Timber.e("[ConnectionService] KremoteExtension no está disponible")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        job = serviceScope.launch {
+            try {
+                val config = repository.currentConfig.first()
+                config.devices.filter { it.isActive }.forEach { device ->
+                    when (device.type) {
+                        RemoteType.ANT -> {
+                            device.macAddress?.let { mac ->
+                                kremoteExtension.connectAntDevice(mac.toInt())
+                            }
+                        }
+                        RemoteType.BLUETOOTH -> {
+                            // ... manejo de Bluetooth ...
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "[ConnectionService] Error iniciando conexiones")
+            }
+        }
+
         return START_STICKY
     }
 
@@ -169,13 +218,8 @@ class ConnectionService : Service() {
         try {
             reconnectJob?.cancel()
             antReconnectJob?.cancel()
-            try {
-                serviceScope?.cancel()
-            } catch (e: Exception) {
-                Timber.e(e, "Error canceling service scope")
-            }
+            serviceScope.cancel()
             currentBluetoothService?.disconnect()
-            antManager.disconnect()
         } catch (e: Exception) {
             Timber.e(e, "Error during service destruction")
         }

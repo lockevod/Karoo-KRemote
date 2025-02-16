@@ -21,22 +21,22 @@ class ConfigurationViewModel(
     init {
         viewModelScope.launch {
             try {
-                // Usar getActiveDevice() en lugar de acceder a currentConfig
-                repository.getActiveDevice().collect { device ->
-                    _activeDevice.value = device
+                repository.currentConfig.collect { config ->
+                    Timber.d("ConfigurationViewModel recibió nueva config: $config")
+                    _activeDevice.value = config.devices.find { it.isActive }
+                    Timber.d("Dispositivo activo actualizado: ${_activeDevice.value}")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error loading configuration")
-                _errorMessage.value = "Error al cargar la configuración: ${e.message}"
+                Timber.e(e, "Error cargando configuración")
+                _errorMessage.value = "Error cargando configuración: ${e.message}"
             }
         }
     }
-
     fun updateKeyMapping(deviceId: String, button: String, key: KarooKey) {
         viewModelScope.launch {
             try {
-                val device = _activeDevice.value ?: run {
-                    _errorMessage.value = "No hay dispositivo activo"
+                val device = repository.getDeviceById(deviceId) ?: run {
+                    _errorMessage.value = "Device not found"
                     return@launch
                 }
 
@@ -46,7 +46,7 @@ class ConfigurationViewModel(
                     "right" -> currentMappings.copy(remoteright = key)
                     "up" -> currentMappings.copy(remoteup = key)
                     else -> {
-                        _errorMessage.value = "Botón no reconocido: $button"
+                        _errorMessage.value = "Unknown button: $button"
                         return@launch
                     }
                 }
@@ -55,7 +55,7 @@ class ConfigurationViewModel(
                 Timber.d("Key mapping updated for device $deviceId: $button -> ${key.label}")
             } catch (e: Exception) {
                 Timber.e(e, "Error updating key mapping")
-                _errorMessage.value = "Error al actualizar la configuración: ${e.message}"
+                _errorMessage.value = "Error updating configuration: ${e.message}"
             }
         }
     }

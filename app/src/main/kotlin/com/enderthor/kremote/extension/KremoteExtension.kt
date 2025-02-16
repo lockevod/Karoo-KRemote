@@ -1,14 +1,15 @@
 package com.enderthor.kremote.extension
 
+import android.annotation.SuppressLint
 import android.content.Intent
-import androidx.core.content.ContextCompat
+
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
 import io.hammerhead.karooext.models.TurnScreenOn
 import io.hammerhead.karooext.models.PerformHardwareAction
 import io.hammerhead.karooext.models.ShowMapPage
 import io.hammerhead.karooext.models.RequestAnt
-import io.hammerhead.karooext.models.RequestBluetooth
+
 import io.hammerhead.karooext.models.ReleaseAnt
 import io.hammerhead.karooext.models.ReleaseBluetooth
 
@@ -24,30 +25,59 @@ import kotlinx.coroutines.cancel
 import timber.log.Timber
 
 import com.enderthor.kremote.BuildConfig
-import com.enderthor.kremote.bluetooth.BluetoothManager
-import com.enderthor.kremote.bluetooth.BluetoothService
 import com.enderthor.kremote.ant.AntManager
+import com.enderthor.kremote.data.EXTENSION_NAME
 import com.enderthor.kremote.data.GlobalConfig
 import com.enderthor.kremote.data.RemoteRepository
-import com.enderthor.kremote.data.RemoteType
-import com.enderthor.kremote.service.ConnectionService
 
-class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
+import com.enderthor.kremote.receiver.ConnectionServiceReceiver
+
+
+class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME) {
+
+    companion object {
+        @Volatile
+        private var instance: KremoteExtension? = null
+
+        fun getInstance(): KremoteExtension? = instance
+    }
+
+    init {
+        instance = this
+    }
+
+    private val extensionId = System.identityHashCode(this)
 
     private lateinit var karooSystem: KarooSystemService
-    private lateinit var bluetoothManager: BluetoothManager
     private lateinit var antManager: AntManager
     private lateinit var repository: RemoteRepository
-    private var rideReceiver: KarooRideReceiver? = null
 
-    private var currentBluetoothService: BluetoothService? = null
+    private var rideReceiver: KarooRideReceiver? = null
     private var isRiding = false
     private var isServiceConnected = false
     private var extensionScope: CoroutineScope? = null
 
+
+
+
+    private val antCallback: (GenericCommandNumber) -> Unit = { commandNumber ->
+        Timber.d("[KRemote] === INICIO Callback ANT ===")
+        Timber.d("[KRemote] Callback hash: ${System.identityHashCode(this)}")
+
+        extensionScope?.launch(Dispatchers.Main) {
+            try {
+                handleAntCommand(commandNumber)
+            } catch (e: Exception) {
+                Timber.e(e, "[KRemote] Error en callback ANT: ${e.message}")
+            }
+        } ?: Timber.e("[KRemote] extensionScope es null")
+
+        Timber.d("[KRemote] === FIN Callback ANT ===")
+    }
+
     override fun onCreate() {
         super.onCreate()
-        Timber.d("KremoteExtension onCreate")
+        Timber.d("KREMOTE EXTENSION onCreate")
 
         initializeComponents()
         extensionScope = CoroutineScope(Dispatchers.IO + Job())
@@ -55,11 +85,16 @@ class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
         initializeRideReceiver()
     }
 
+
+
     private fun initializeComponents() {
         repository = RemoteRepository(applicationContext)
-        bluetoothManager = BluetoothManager(applicationContext)
-        antManager = AntManager(applicationContext) { commandNumber ->
-            handleAntCommand(commandNumber)
+
+        Timber.d("[KRemote] === Inicialización de AntManager ===")
+        Timber.d("[KRemote] KremoteExtension hash: $extensionId")
+
+        antManager = AntManager(applicationContext, antCallback).also { manager ->
+            Timber.d("[KRemote] AntManager creado con callback hash: ${System.identityHashCode(antCallback)}")
         }
     }
 
@@ -69,12 +104,13 @@ class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
             Timber.i("Karoo system service connected: $connected")
             isServiceConnected = connected
             if (connected) {
-                initializeBluetoothAndSettings()
+                initializeSettings()
                 startConnectionService()
             }
         }
     }
 
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun initializeRideReceiver() {
         rideReceiver = KarooRideReceiver { isRideActive ->
             Timber.d("Ride state changed: active = $isRideActive")
@@ -84,15 +120,14 @@ class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
 
         rideReceiver?.let { receiver ->
             try {
-                ContextCompat.registerReceiver(
-                    applicationContext,
+                // Registrar sin la flag RECEIVER_NOT_EXPORTED
+                applicationContext.registerReceiver(
                     receiver,
-                    KarooRideReceiver.getIntentFilter(),
-                    ContextCompat.RECEIVER_NOT_EXPORTED
+                    KarooRideReceiver.getIntentFilter()
                 )
-                Timber.d("Ride receiver registered successfully")
+                Timber.d("Ride receiver registrado correctamente")
             } catch (e: Exception) {
-                Timber.e(e, "Error registering ride receiver")
+                Timber.e(e, "Error al registrar ride receiver")
             }
         }
     }
@@ -118,7 +153,7 @@ class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
         }
     }
 
-    private fun initializeBluetoothAndSettings() {
+    private fun initializeSettings() {
         extensionScope?.launch {
             try {
                 val config = repository.currentConfig.first()
@@ -133,29 +168,52 @@ class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
 
     private fun startConnectionService() {
         try {
-            val serviceIntent = Intent(applicationContext, ConnectionService::class.java)
-            applicationContext.startService(serviceIntent)
+            val intent = Intent("com.enderthor.kremote.START_CONNECTION_SERVICE")
+            intent.putExtra(ConnectionServiceReceiver.EXTRA_IS_EXTENSION, true)
+            sendBroadcast(intent)
         } catch (e: Exception) {
             Timber.e(e, "Error starting ConnectionService")
         }
     }
 
+    fun connectAntDevice(deviceNumber: Int) {
+        Timber.d("[KRemote] Conectando dispositivo ANT #$deviceNumber")
+        extensionScope?.launch {
+            try {
+                antManager.connect(deviceNumber)
+            } catch (e: Exception) {
+                Timber.e(e, "[KRemote] Error conectando dispositivo ANT: ${e.message}")
+            }
+        }
+    }
+
+    fun isAntConnected(): Boolean = antManager.isConnected
+
+
+    fun requestConnection(enable: Boolean) {
+
+        val request = RequestAnt(extension)
+        val release = ReleaseAnt(extension)
+
+        if (enable) {
+            karooSystem.dispatch(request)
+        } else {
+            karooSystem.dispatch(release)
+        }
+
+    }
+
+
     private fun connectActiveDevices(config: GlobalConfig) {
         config.devices.filter { it.isActive }.forEach { device ->
             try {
-                when (device.type) {
-                    RemoteType.ANT -> {
-                        Timber.d("Initializing ANT+ remote")
-                        karooSystem.dispatch(RequestAnt(extension))
-                        antManager.connect()
+                Timber.d("Initializing ANT+ remote")
+                karooSystem.dispatch(RequestAnt(extension))
+                device.macAddress?.let { mac ->
+                    extensionScope?.launch {
+                        antManager.connect(mac.toInt())
                     }
-                    RemoteType.BLUETOOTH -> {
-                        Timber.d("Connecting Bluetooth device: ${device.name}")
-                        karooSystem.dispatch(RequestBluetooth(extension))
-                        device.macAddress?.let { mac ->
-                            connectBluetoothDevice(device.id, mac)
-                        }
-                    }
+
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error connecting device: ${device.name}")
@@ -166,8 +224,7 @@ class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
     private fun disconnectDevices() {
         Timber.d("Disconnecting all devices")
         try {
-            currentBluetoothService?.disconnect()
-            currentBluetoothService = null
+
             antManager.disconnect()
 
             // Liberar los servicios del sistema
@@ -180,100 +237,86 @@ class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
         }
     }
 
-    private fun connectBluetoothDevice(deviceId: String, macAddress: String) {
-        try {
-            val btDevice = bluetoothManager.getBluetoothDeviceByAddress(macAddress)
-            currentBluetoothService = bluetoothManager.createBluetoothService { keyCode ->
-                handleBluetoothKeyPress(keyCode)
-            }
-            btDevice?.let { device ->
-                currentBluetoothService?.connect(device)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error connecting Bluetooth device: $macAddress")
-        }
-    }
 
     private fun handleAntCommand(commandNumber: GenericCommandNumber) {
-        extensionScope?.launch {
-            try {
-                if (!isRiding) {
-                    Timber.d("Ignoring command: not riding")
-                    return@launch
-                }
+        Timber.d("[KRemote] handleAntCommand INICIO: $commandNumber")
+        Timber.d("[KRemote] Estado actual - isServiceConnected: $isServiceConnected, isRiding: $isRiding")
 
-                val device = repository.getActiveDevice().first()
-                when (commandNumber) {
-                    GenericCommandNumber.MENU_DOWN -> {
-                        Timber.d("ANT+ Right button: ${device?.keyMappings?.remoteright?.action}")
-                        device?.keyMappings?.remoteright?.action?.let { executeKarooAction(it) }
-                    }
-                    GenericCommandNumber.LAP -> {
-                        Timber.d("ANT+ Left button: ${device?.keyMappings?.remoteleft?.action}")
-                        device?.keyMappings?.remoteleft?.action?.let { executeKarooAction(it) }
-                    }
-                    GenericCommandNumber.UNRECOGNIZED -> {
-                        Timber.d("ANT+ Up button: ${device?.keyMappings?.remoteup?.action}")
-                        device?.keyMappings?.remoteup?.action?.let { executeKarooAction(it) }
-                    }
-                    else -> {
-                        Timber.d("Unhandled ANT+ command: $commandNumber")
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error handling ANT+ command")
-            }
-        }
-    }
-
-    private fun handleBluetoothKeyPress(keyCode: Int) {
-        extensionScope?.launch {
-            try {
-                if (!isRiding) {
-                    Timber.d("Ignoring Bluetooth command: not riding")
-                    return@launch
-                }
-
-                val device = repository.getActiveDevice().first()
-                when (keyCode) {
-                    1 -> { // LEFT
-                        Timber.d("Bluetooth Left button: ${device?.keyMappings?.remoteleft?.action}")
-                        device?.keyMappings?.remoteleft?.action?.let { executeKarooAction(it) }
-                    }
-                    2 -> { // RIGHT
-                        Timber.d("Bluetooth Right button: ${device?.keyMappings?.remoteright?.action}")
-                        device?.keyMappings?.remoteright?.action?.let { executeKarooAction(it) }
-                    }
-                    3 -> { // UP
-                        Timber.d("Bluetooth Up button: ${device?.keyMappings?.remoteup?.action}")
-                        device?.keyMappings?.remoteup?.action?.let { executeKarooAction(it) }
-                    }
-                    else -> Timber.d("Unhandled Bluetooth keycode: $keyCode")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error handling Bluetooth key press")
-            }
-        }
-    }
-
-    private fun executeKarooAction(action: PerformHardwareAction) {
         if (!isServiceConnected) {
-            Timber.w("Cannot execute action: Karoo service not connected")
+            Timber.w("[KRemote] Servicio no conectado")
             return
         }
 
-        karooSystem.dispatch(TurnScreenOn)
+        if (!isRiding) {
+            Timber.w("[KRemote] No está en modo riding")
+            return
+        }
 
-        if (action == PerformHardwareAction.DrawerActionComboPress) {
-            karooSystem.dispatch(ShowMapPage(true))
-        } else {
-            karooSystem.dispatch(action)
+        extensionScope?.launch(Dispatchers.Main) {
+            try {
+                val device = repository.getActiveDevice().first()
+                Timber.d("[KRemote] Dispositivo activo: ${device?.name}")
+
+                when (commandNumber) {
+                    GenericCommandNumber.MENU_DOWN -> {
+                        Timber.d("[KRemote] Procesando MENU_DOWN")
+                        device?.keyMappings?.remoteright?.action?.let {
+                            Timber.d("[KRemote] Ejecutando acción derecha: $it")
+                            executeKarooAction(it)
+                        }
+                    }
+                    GenericCommandNumber.LAP -> {
+                        Timber.d("[KRemote] Procesando LAP")
+                        device?.keyMappings?.remoteleft?.action?.let {
+                            Timber.d("[KRemote] Ejecutando acción izquierda: $it")
+                            executeKarooAction(it)
+                        }
+                    }
+                    GenericCommandNumber.UNRECOGNIZED -> {
+                        Timber.d("[KRemote] Procesando UNRECOGNIZED")
+                        device?.keyMappings?.remoteup?.action?.let {
+                            Timber.d("[KRemote] Ejecutando acción arriba: $it")
+                            executeKarooAction(it)
+                        }
+                    }
+                    else -> Timber.w("[KRemote] Comando no manejado: $commandNumber")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "[KRemote] Error en handleAntCommand")
+            }
+        } ?: Timber.e("[KRemote] extensionScope es null")
+    }
+
+
+
+    private fun executeKarooAction(action: PerformHardwareAction) {
+        Timber.d("executeKarooAction: $action")
+
+        if (!isServiceConnected) {
+            Timber.w("No se puede ejecutar acción: servicio Karoo no conectado")
+            return
+        }
+
+        try {
+            Timber.d("Enviando TurnScreenOn")
+            karooSystem.dispatch(TurnScreenOn)
+
+            if (action == PerformHardwareAction.DrawerActionComboPress) {
+                Timber.d("Mostrando página de mapa")
+                karooSystem.dispatch(ShowMapPage(true))
+            } else {
+                Timber.d("Enviando acción: $action")
+                karooSystem.dispatch(action)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error ejecutando acción Karoo: $action")
         }
     }
 
     override fun onDestroy() {
         Timber.d("KremoteExtension onDestroy")
         try {
+            instance = null
             rideReceiver?.let { receiver ->
                 try {
                     applicationContext.unregisterReceiver(receiver)
@@ -288,11 +331,12 @@ class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
             karooSystem.disconnect()
             extensionScope?.cancel()
             extensionScope = null
-            bluetoothManager.cleanup()
             antManager.cleanup()
         } catch (e: Exception) {
             Timber.e(e, "Error during extension destruction")
         }
-        super.onDestroy()
+        finally {
+            super.onDestroy()
+        }
     }
 }
