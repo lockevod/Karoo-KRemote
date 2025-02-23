@@ -11,7 +11,6 @@ import com.enderthor.kremote.data.RemoteRepository
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModel
 import com.enderthor.kremote.viewmodel.ConfigurationViewModel
-import com.enderthor.kremote.viewmodel.SettingsViewModel
 import io.hammerhead.karooext.KarooSystemService
 
 @Composable
@@ -37,11 +36,6 @@ fun TabLayout(
         )
     )
 
-    val settingsViewModel: SettingsViewModel = viewModel(
-        factory = SettingsViewModelFactory(
-            repository = repository,
-        )
-    )
 
     val availableAntDevices by deviceViewModel.availableAntDevices.collectAsState()
     val devices by deviceViewModel.devices.collectAsState()
@@ -49,7 +43,6 @@ fun TabLayout(
     val errorMessage_device by deviceViewModel.errorMessage.collectAsState()
 
 
-    val settings by settingsViewModel.settings.collectAsState()
 
     val activeDevice by configViewModel.activeDevice.collectAsState()
     val errorMessage_config by configViewModel.errorMessage.collectAsState()
@@ -83,8 +76,6 @@ fun TabLayout(
                 onDeviceDelete = { device -> deviceViewModel.removeDevice(device.id) },
 
             )
-            2 -> SettingsScreen(settings = settings,
-                settingsViewModel = settingsViewModel)
         }
     }
 }
@@ -114,20 +105,6 @@ class ConfigViewModelFactory(
         if (modelClass.isAssignableFrom(ConfigurationViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
             return ConfigurationViewModel(
-                repository = repository,
-            ) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
-}
-
-class SettingsViewModelFactory(
-    private val repository: RemoteRepository,
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return SettingsViewModel(
                 repository = repository,
             ) as T
         }

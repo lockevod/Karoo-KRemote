@@ -18,8 +18,7 @@ enum class KarooKey(val action: PerformHardwareAction, val label: String) {
 
 @Serializable
 enum class RemoteType {
-    ANT,
-    BLUETOOTH
+    ANT
 }
 
 const val EXTENSION_NAME = "kremote"
@@ -56,7 +55,6 @@ data class GlobalConfig(
 data class GlobalSettings(
     val onlyWhileRiding: Boolean = true,
     val autoReconnect: Boolean = true,
-    val autoConnectOnStart: Boolean = true,
-    val reconnectAttempts: Int = 3,
+    val reconnectAttempts: Int = 5,
     val reconnectDelayMs: Long = 5000 // 5 segundos entre intentos
 )

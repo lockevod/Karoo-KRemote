@@ -1,6 +1,5 @@
 package com.enderthor.kremote.viewmodel
 
-import android.bluetooth.BluetoothDevice
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.enderthor.kremote.ant.AntDeviceInfo
@@ -28,8 +27,7 @@ class DeviceViewModel(
     private val _devices = MutableStateFlow<List<RemoteDevice>>(emptyList())
     val devices: StateFlow<List<RemoteDevice>> = _devices
 
-    private val _availableDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
-    val availableDevices: StateFlow<List<BluetoothDevice>> = _availableDevices
+
 
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning

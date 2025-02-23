@@ -59,10 +59,10 @@ class KremoteApplication : Application() {
 
         applicationScope.launch {
             try {
-                val config = repository.currentConfig.first()
-                if (config.globalSettings.autoConnectOnStart) {
+
+
                     startConnectionService()
-                }
+
             } catch (e: Exception) {
                 Timber.e(e, "Error initializing application")
             }
