@@ -52,22 +52,13 @@ class AntManager(
         }
         lastCommandTime = estTimestamp
 
-        when (commandNumber) {
-            GenericCommandNumber.MENU_DOWN,
-            GenericCommandNumber.LAP,
-            GenericCommandNumber.UNRECOGNIZED -> {
-                try {
-                    Timber.d("[ANT] Pre-ejecutar callback")
-                    commandCallback.invoke(commandNumber)
-                    Timber.d("[ANT] Post-ejecutar callback")
-                } catch (e: Exception) {
-                    Timber.e(e, "[ANT] Error ejecutando callback: ${e.message}")
-                    e.printStackTrace()
-                }
-            }
-            else -> Timber.d("[ANT] Comando no manejado: $commandNumber")
+        try {
+            Timber.d("[ANT] Pre-ejecutar callback")
+            commandCallback.invoke(commandNumber)
+            Timber.d("[ANT] Post-ejecutar callback")
+        } catch (e: Exception) {
+            Timber.e(e, "[ANT] Error ejecutando callback: ${e.message}")
         }
-
         Timber.d("[ANT] === FIN handleCommand ===")
         return CommandStatus.PASS
     }
@@ -209,8 +200,6 @@ class AntManager(
 
 
 
-
-
     fun disconnect() {
         Timber.d("Closing ANT+ remote handler")
         remoteReleaseHandle?.close()
@@ -255,43 +244,6 @@ class AntManager(
         }
     }
 
-
-
-/*
-    private fun handleCommand(
-        estTimestamp: Long,
-        commandNumber: GenericCommandNumber
-    ): CommandStatus {
-        Timber.d("[ANT] === INICIO handleCommand ===")
-        Timber.d("[ANT] Thread actual: ${Thread.currentThread().name}")
-        Timber.d("[ANT] Comando recibido: $commandNumber")
-
-        if (estTimestamp - lastCommandTime < commandDebounceTime) {
-            Timber.d("[ANT] Comando ignorado por debounce")
-            return CommandStatus.PASS
-        }
-        lastCommandTime = estTimestamp
-
-        when (commandNumber) {
-            GenericCommandNumber.MENU_DOWN,
-            GenericCommandNumber.LAP,
-            GenericCommandNumber.UNRECOGNIZED -> {
-                try {
-                    Timber.d("[ANT] Pre-ejecutar callback")
-                    commandCallback.invoke(commandNumber)
-                    Timber.d("[ANT] Post-ejecutar callback")
-                } catch (e: Exception) {
-                    Timber.e(e, "[ANT] Error ejecutando callback: ${e.message}")
-                    e.printStackTrace()
-                }
-            }
-            else -> Timber.d("[ANT] Comando no manejado: $commandNumber")
-        }
-
-        Timber.d("[ANT] === FIN handleCommand ===")
-        return CommandStatus.PASS
-    }
-*/
 
 
     fun cleanup() {

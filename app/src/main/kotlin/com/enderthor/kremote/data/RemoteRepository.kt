@@ -21,8 +21,6 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class RemoteRepository(private val context: Context) {
     private val settingsKey = stringPreferencesKey("remote_config")
 
-    private var antCallback: ((GenericCommandNumber) -> Unit)? = null
-
 
     val currentConfig: Flow<GlobalConfig> = context.dataStore.data
         .catch { exception ->
@@ -46,7 +44,6 @@ class RemoteRepository(private val context: Context) {
 
     fun getDevices(): Flow<List<RemoteDevice>> = currentConfig.map { it.devices }
 
-    fun getGlobalSettings(): Flow<GlobalSettings> = currentConfig.map { it.globalSettings }
 
     fun getActiveDevice(): Flow<RemoteDevice?> = currentConfig.map { config ->
         config.devices.find { it.isActive }
@@ -88,20 +85,6 @@ class RemoteRepository(private val context: Context) {
         return config.devices.find { it.id == id }
     }
 
-    suspend fun updateGlobalSettings(settings: GlobalSettings) {
-        try {
-            context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
-                preferences[settingsKey] = Json.encodeToString(
-                    GlobalConfig.serializer(),
-                    current.copy(globalSettings = settings)
-                )
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error updating global settings")
-            throw e
-        }
-    }
 
     suspend fun addDevice(device: RemoteDevice) {
         try {

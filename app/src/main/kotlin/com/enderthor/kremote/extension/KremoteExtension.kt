@@ -29,6 +29,7 @@ import com.enderthor.kremote.ant.AntManager
 import com.enderthor.kremote.data.EXTENSION_NAME
 import com.enderthor.kremote.data.GlobalConfig
 import com.enderthor.kremote.data.RemoteRepository
+import com.enderthor.kremote.data.RemoteSettings
 
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
 
@@ -46,7 +47,6 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         instance = this
     }
 
-    private val extensionId = System.identityHashCode(this)
 
     private lateinit var karooSystem: KarooSystemService
     private lateinit var antManager: AntManager
@@ -56,10 +56,10 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     private var isRiding = false
     private var isServiceConnected = false
     private var extensionScope: CoroutineScope? = null
+    private var activeDeviceSettings: RemoteSettings? = null
+    private var onlyWhileRiding = false
 
-
-
-
+    private val extensionId = System.identityHashCode(this)
     private val antCallback: (GenericCommandNumber) -> Unit = { commandNumber ->
         Timber.d("[KRemote] === INICIO Callback ANT ===")
         Timber.d("[KRemote] Callback hash: ${System.identityHashCode(this)}")
@@ -79,15 +79,6 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         super.onCreate()
         Timber.d("KREMOTE EXTENSION onCreate")
 
-        initializeComponents()
-        extensionScope = CoroutineScope(Dispatchers.IO + Job())
-        initializeKarooSystem()
-        initializeRideReceiver()
-    }
-
-
-
-    private fun initializeComponents() {
         repository = RemoteRepository(applicationContext)
 
         Timber.d("[KRemote] === Inicialización de AntManager ===")
@@ -96,26 +87,26 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         antManager = AntManager(applicationContext, antCallback).also { manager ->
             Timber.d("[KRemote] AntManager creado con callback hash: ${System.identityHashCode(antCallback)}")
         }
-    }
-
-    private fun initializeKarooSystem() {
+        extensionScope = CoroutineScope(Dispatchers.IO + Job())
         karooSystem = KarooSystemService(applicationContext)
         karooSystem.connect { connected ->
             Timber.i("Karoo system service connected: $connected")
             isServiceConnected = connected
             if (connected) {
+                karooSystem.dispatch(RequestAnt(extension))
                 initializeSettings()
                 startConnectionService()
             }
         }
+        initializeRideReceiver()
     }
+
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun initializeRideReceiver() {
         rideReceiver = KarooRideReceiver { isRideActive ->
             Timber.d("Ride state changed: active = $isRideActive")
             isRiding = isRideActive
-            handleRideStateChange(isRideActive)
         }
 
         rideReceiver?.let { receiver ->
@@ -132,39 +123,43 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         }
     }
 
-    private fun handleRideStateChange(isRideActive: Boolean) {
+
+    private fun initializeSettings() {
         extensionScope?.launch {
+            var currentActiveDevice: String? = null
+
             try {
-                val config = repository.currentConfig.first()
-                if (isRideActive) {
-                    Timber.d("Ride started, checking connections")
-                    if (isServiceConnected && config.globalSettings.onlyWhileRiding) {
-                        connectActiveDevices(config)
-                    }
-                } else {
-                    Timber.d("Ride stopped, checking disconnections")
-                    if (config.globalSettings.onlyWhileRiding) {
-                        disconnectDevices()
+                repository.currentConfig.collect { config ->
+
+                    val newActiveDevice = config.devices.find { it.isActive }
+
+                    onlyWhileRiding=config.globalSettings.onlyWhileRiding
+
+                    // Solo reconectamos si el dispositivo activo ha cambiado
+                    if (newActiveDevice?.id != currentActiveDevice) {
+                        Timber.d("Cambio de dispositivo activo detectado")
+                        currentActiveDevice = newActiveDevice?.id
+                        activeDeviceSettings = newActiveDevice?.keyMappings
+
+                        // Desconectamos el dispositivo actual
+                        antManager.disconnect()
+
+                        // Conectamos el nuevo dispositivo si existe
+                        newActiveDevice?.macAddress?.let { mac ->
+                            Timber.d("Conectando nuevo dispositivo: ${newActiveDevice.name}")
+                            antManager.connect(mac.toInt())
+
+                        }
+                    } else {
+                        Timber.d("No hay cambio en el dispositivo activo")
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error handling ride state change")
+                Timber.e(e, "Error monitorizando cambios en la configuración")
             }
         }
     }
 
-    private fun initializeSettings() {
-        extensionScope?.launch {
-            try {
-                val config = repository.currentConfig.first()
-                if (config.globalSettings.autoConnectOnStart && !config.globalSettings.onlyWhileRiding) {
-                    connectActiveDevices(config)
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error initializing settings")
-            }
-        }
-    }
 
     private fun startConnectionService() {
         try {
@@ -190,54 +185,6 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     fun isAntConnected(): Boolean = antManager.isConnected
 
 
-    fun requestConnection(enable: Boolean) {
-
-        val request = RequestAnt(extension)
-        val release = ReleaseAnt(extension)
-
-        if (enable) {
-            karooSystem.dispatch(request)
-        } else {
-            karooSystem.dispatch(release)
-        }
-
-    }
-
-
-    private fun connectActiveDevices(config: GlobalConfig) {
-        config.devices.filter { it.isActive }.forEach { device ->
-            try {
-                Timber.d("Initializing ANT+ remote")
-                karooSystem.dispatch(RequestAnt(extension))
-                device.macAddress?.let { mac ->
-                    extensionScope?.launch {
-                        antManager.connect(mac.toInt())
-                    }
-
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error connecting device: ${device.name}")
-            }
-        }
-    }
-
-    private fun disconnectDevices() {
-        Timber.d("Disconnecting all devices")
-        try {
-
-            antManager.disconnect()
-
-            // Liberar los servicios del sistema
-            if (isServiceConnected) {
-                karooSystem.dispatch(ReleaseBluetooth(extension))
-                karooSystem.dispatch(ReleaseAnt(extension))
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error disconnecting devices")
-        }
-    }
-
-
     private fun handleAntCommand(commandNumber: GenericCommandNumber) {
         Timber.d("[KRemote] handleAntCommand INICIO: $commandNumber")
         Timber.d("[KRemote] Estado actual - isServiceConnected: $isServiceConnected, isRiding: $isRiding")
@@ -254,27 +201,25 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
         extensionScope?.launch(Dispatchers.Main) {
             try {
-                val device = repository.getActiveDevice().first()
-                Timber.d("[KRemote] Dispositivo activo: ${device?.name}")
 
                 when (commandNumber) {
                     GenericCommandNumber.MENU_DOWN -> {
                         Timber.d("[KRemote] Procesando MENU_DOWN")
-                        device?.keyMappings?.remoteright?.action?.let {
+                        activeDeviceSettings?.remoteright?.action?.let {
                             Timber.d("[KRemote] Ejecutando acción derecha: $it")
                             executeKarooAction(it)
                         }
                     }
                     GenericCommandNumber.LAP -> {
                         Timber.d("[KRemote] Procesando LAP")
-                        device?.keyMappings?.remoteleft?.action?.let {
+                        activeDeviceSettings?.remoteleft?.action?.let {
                             Timber.d("[KRemote] Ejecutando acción izquierda: $it")
                             executeKarooAction(it)
                         }
                     }
                     GenericCommandNumber.UNRECOGNIZED -> {
                         Timber.d("[KRemote] Procesando UNRECOGNIZED")
-                        device?.keyMappings?.remoteup?.action?.let {
+                        activeDeviceSettings?.remoteup?.action?.let {
                             Timber.d("[KRemote] Ejecutando acción arriba: $it")
                             executeKarooAction(it)
                         }
@@ -310,6 +255,20 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             }
         } catch (e: Exception) {
             Timber.e(e, "Error ejecutando acción Karoo: $action")
+        }
+    }
+
+    private fun disconnectDevices() {
+        Timber.d("Disconnecting all devices")
+        try {
+
+            antManager.disconnect()
+            // Liberar los servicios del sistema
+            if (isServiceConnected) {
+                karooSystem.dispatch(ReleaseAnt(extension))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error disconnecting devices")
         }
     }
 
