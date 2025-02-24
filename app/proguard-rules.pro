@@ -116,11 +116,6 @@
     <init>(...);
 }
 
-# Mantener las clases de datos utilizadas en Glance
--keep class com.enderthor.kCustomField.model.** {
-    <init>(...);
-}
-
 # Mantener los métodos de los composables
 -keepclassmembers class * {
     @androidx.compose.runtime.Composable <methods>;
@@ -131,21 +126,20 @@
     <init>(...);
 }
 
-# Reglas para ANT+ Plugin
--keep class com.dsi.ant.plugins.** { *; }
--keep class com.dsi.ant.plugins.antplus.** { *; }
--keep class com.dsi.ant.plugins.antplus.pcc.** { *; }
--keep class com.dsi.ant.plugins.antplus.pccbase.** { *; }
 
-# Mantener interfaces específicas de ANT+
--keep interface com.dsi.ant.plugins.antplus.pcc.controls.AntPlusGenericControllableDevicePcc$* { *; }
--keep interface com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc$* { *; }
+# Reglas básicas para ANT+ Plugin
+-keep class com.dsi.ant.plugins.antplus.pcc.controls.AntPlusGenericControllableDevicePcc { *; }
+-keep class com.dsi.ant.plugins.antplus.pcc.controls.defines.CommandStatus { *; }
+-keep class com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber { *; }
+-keep class com.dsi.ant.plugins.antplus.pcc.defines.** { *; }
+-keep class com.dsi.ant.plugins.antplus.pccbase.PccReleaseHandle { *; }
 
-# Mantener enums de ANT+
--keepclassmembers class com.dsi.ant.plugins.antplus.pcc.controls.defines.** { *; }
--keepclassmembers class com.dsi.ant.plugins.antplus.pcc.defines.** { *; }
+# Mantener interfaces específicas usadas
+-keep interface com.dsi.ant.plugins.antplus.pcc.controls.AntPlusGenericControllableDevicePcc$IGenericCommandReceiver { *; }
+-keep interface com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc$IDeviceStateChangeReceiver { *; }
+-keep interface com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc$IPluginAccessResultReceiver { *; }
 
-# Mantener callbacks y listeners de ANT+
--keepclassmembers class * {
-    @com.dsi.ant.plugins.** *;
-}
+# Mantener enums y eventos
+-keep class com.dsi.ant.plugins.antplus.pcc.defines.EventFlag { *; }
+-keep class com.dsi.ant.plugins.antplus.pcc.defines.DeviceState { *; }
+-keep class com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult { *; }
