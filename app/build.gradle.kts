@@ -15,7 +15,7 @@ android {
         applicationId = "com.enderthor.kremote"
         minSdk = 26
         targetSdk = 34
-        versionCode = 202502011
+        versionCode = 202502241
         versionName = "1.6"
     }
 
@@ -87,7 +87,7 @@ dependencies {
     // coroutines
     implementation(libs.kotlinx.coroutines.android)
     // implementation(libs.kotlinx.coroutines.rx2)
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
 }
