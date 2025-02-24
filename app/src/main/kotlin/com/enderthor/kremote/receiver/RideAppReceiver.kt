@@ -1,8 +1,9 @@
-package com.enderthor.kremote.extension
+package com.enderthor.kremote.receiver
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.enderthor.kremote.extension.KremoteExtension
 import timber.log.Timber
 
 
