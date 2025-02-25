@@ -29,7 +29,7 @@ fun DeviceManagementScreen(
     onDeviceDelete: (RemoteDevice) -> Unit,
 ) {
     var deviceToDelete by remember { mutableStateOf<RemoteDevice?>(null) }
-    var selectedType by remember { mutableStateOf<RemoteType>(RemoteType.BLUETOOTH) }
+    var selectedType by remember { mutableStateOf<RemoteType>(RemoteType.ANT) }
 
     LazyColumn(
         modifier = Modifier
@@ -42,11 +42,7 @@ fun DeviceManagementScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                FilterChip(
-                    selected = selectedType == RemoteType.BLUETOOTH,
-                    onClick = { selectedType = RemoteType.BLUETOOTH },
-                    label = { Text("Bluetooth") }
-                )
+
                 FilterChip(
                     selected = selectedType == RemoteType.ANT,
                     onClick = { selectedType = RemoteType.ANT },
@@ -61,7 +57,7 @@ fun DeviceManagementScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !scanning
             ) {
-                Text(if (scanning) "Buscando..." else "Buscar ${if (selectedType == RemoteType.BLUETOOTH) "Bluetooth" else "ANT+"}")
+                Text(if (scanning) "Buscando..." else "Buscar ANT")
             }
 
             if (scanning) {

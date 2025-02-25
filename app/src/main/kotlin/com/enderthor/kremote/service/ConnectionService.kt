@@ -5,8 +5,10 @@ import android.content.Intent
 import android.os.IBinder
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.extension.KremoteExtension
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -20,7 +22,7 @@ class ConnectionService : Service() {
     private var reconnectJob: Job? = null
     private var antReconnectJob: Job? = null
     private var job: Job? = null
-    private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     // Obtener la instancia de AntManager desde KremoteExtension
 
@@ -48,23 +50,24 @@ class ConnectionService : Service() {
 
     private fun monitorConnections() {
         serviceScope.launch {
-            try {
-                repository.currentConfig.collect { config ->
-                    val activeDevice = config.devices.find { it.isActive }
-                    if (activeDevice != null && config.globalSettings.autoReconnect) {
-
-                        monitorAntConnection(
-                            activeDevice.macAddress?.toInt(),
-                            config.globalSettings.reconnectAttempts,
-                            config.globalSettings.reconnectDelayMs
-                        )
+            repository.currentConfig
+                .collect { config ->
+                    try {
+                        val activeDevice = config.devices.find { it.isActive }
+                        if (activeDevice != null && config.globalSettings.autoReconnect) {
+                            monitorAntConnection(
+                                activeDevice.macAddress?.toInt(),
+                                config.globalSettings.reconnectAttempts,
+                                config.globalSettings.reconnectDelayMs
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error monitorizando conexiones")
                     }
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Error monitoring connections")
-            }
         }
     }
+
 
 
     private fun monitorAntConnection(
@@ -82,8 +85,11 @@ class ConnectionService : Service() {
             var attempts = 0
             try {
                 while (attempts < maxAttempts) {
+                    // Obtener la instancia de KremoteExtension
                     val kremoteExtension = KremoteExtension.getInstance()
-                    if (kremoteExtension?.isAntConnected() == true) {
+
+                    // Verificar si el dispositivo está conectado usando antManager
+                    if (kremoteExtension?.antManager?.isConnected == true) {
                         attempts = 0
                         delay(1000)
                         continue
@@ -91,16 +97,18 @@ class ConnectionService : Service() {
 
                     Timber.d("Intento de reconexión ANT+ ${attempts + 1} de $maxAttempts para dispositivo #$deviceNumber")
                     try {
-                        kremoteExtension?.connectAntDevice(deviceNumber)
+                        // Usar antManager directamente para conectar
+                        kremoteExtension?.antManager?.connect(deviceNumber)
 
                         // Esperar a que la conexión se establezca
                         var checkAttempts = 0
-                        while (kremoteExtension?.isAntConnected() != true && checkAttempts < 5) {
+                        while (kremoteExtension?.antManager?.isConnected != true && checkAttempts < 5) {
                             delay(1000)
                             checkAttempts++
                         }
 
-                        if (kremoteExtension?.isAntConnected() == true) {
+                        // Verificar si la conexión fue exitosa usando antManager
+                        if (kremoteExtension?.antManager?.isConnected == true) {
                             Timber.d("Reconexión ANT+ exitosa para dispositivo #$deviceNumber")
                             attempts = 0
                         } else {
@@ -121,6 +129,7 @@ class ConnectionService : Service() {
         }
     }
 
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Timber.d("[ConnectionService] Servicio iniciado")
 
@@ -135,11 +144,10 @@ class ConnectionService : Service() {
             try {
                 val config = repository.currentConfig.first()
                 config.devices.filter { it.isActive }.forEach { device ->
-
                     device.macAddress?.let { mac ->
-                        kremoteExtension.connectAntDevice(mac.toInt())
+                        // Usar antManager directamente
+                        kremoteExtension.antManager.connect(mac.toInt())
                     }
-
                 }
             } catch (e: Exception) {
                 Timber.e(e, "[ConnectionService] Error iniciando conexiones")

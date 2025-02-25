@@ -5,10 +5,6 @@ import android.content.Intent
 import android.util.Log
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import timber.log.Timber
 import timber.log.Timber.DebugTree
 import timber.log.Timber.Forest.plant
@@ -16,7 +12,6 @@ import timber.log.Timber.Tree
 
 class KremoteApplication : Application() {
     private lateinit var repository: RemoteRepository
-    private val applicationScope = CoroutineScope(Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -38,7 +33,7 @@ class KremoteApplication : Application() {
         } else {
             Timber.plant(object : Tree() {
                 override fun isLoggable(tag: String?, priority: Int): Boolean {
-                    return priority > Log.DEBUG
+                    return priority > Log.WARN
                 }
 
                 override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -57,16 +52,8 @@ class KremoteApplication : Application() {
 
         repository = RemoteRepository(applicationContext)
 
-        applicationScope.launch {
-            try {
+        startConnectionService()
 
-
-                    startConnectionService()
-
-            } catch (e: Exception) {
-                Timber.e(e, "Error initializing application")
-            }
-        }
     }
 
     private fun startConnectionService() {
