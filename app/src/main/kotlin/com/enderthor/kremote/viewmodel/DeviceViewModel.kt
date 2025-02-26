@@ -4,57 +4,77 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.enderthor.kremote.ant.AntDeviceInfo
 import com.enderthor.kremote.ant.AntManager
-import com.enderthor.kremote.data.EXTENSION_NAME
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.RemoteRepository
-import com.enderthor.kremote.data.RemoteSettings
 import com.enderthor.kremote.data.RemoteType
-import io.hammerhead.karooext.KarooSystemService
-import io.hammerhead.karooext.models.ReleaseAnt
-import io.hammerhead.karooext.models.RequestAnt
+import com.enderthor.kremote.data.DeviceMessage
+import com.enderthor.kremote.data.AntRemoteKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import java.util.UUID
 
 class DeviceViewModel(
     private val antManager: AntManager,
     private val repository: RemoteRepository,
-    private val karooSystem: KarooSystemService
 ) : ViewModel() {
     private val _devices = MutableStateFlow<List<RemoteDevice>>(emptyList())
     val devices: StateFlow<List<RemoteDevice>> = _devices
 
-
-
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning
 
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage
+    private val _message = MutableStateFlow<DeviceMessage?>(null)
+    val message: StateFlow<DeviceMessage?> = _message
 
     private val _availableAntDevices = MutableStateFlow<List<AntDeviceInfo>>(emptyList())
     val availableAntDevices: StateFlow<List<AntDeviceInfo>> = _availableAntDevices
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _learnedCommands = MutableStateFlow<List<AntRemoteKey>>(emptyList())  // Cambiado a AntRemoteKey
+    val learnedCommands: StateFlow<List<AntRemoteKey>> = _learnedCommands.asStateFlow()
+
+
+    private var learningJob: Job? = null
 
     init {
         loadDevices()
         observeAntDevices()
     }
 
-    private fun observeAntDevices() {
-        viewModelScope.launch {
-            antManager.detectedDevices.collect { devices ->
-                Timber.d("ANT devices updated: $devices")
-                _availableAntDevices.value = devices
+
+
+    fun startLearning() {
+        learningJob?.cancel() // Cancelar cualquier búsqueda anterior
+        _learnedCommands.value = emptyList() // Limpiar la lista de comandos aprendidos
+        learningJob = viewModelScope.launch {
+            try {
+                antManager.startDeviceSearch()
+                val startTime = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startTime < 20000) { // 20 segundos
+                    delay(100) // Esperar un poco antes de verificar si hay nuevos comandos
+                }
+                stopLearning()
+            } catch (e: Exception) {
+                _message.value = DeviceMessage.Error("Error learning commands: ${e.message}")
+                Timber.e(e, "Error learning commands")
             }
         }
     }
 
+    fun stopLearning() {
+        learningJob?.cancel()
+        antManager.stopScan()
+    }
+
+    fun restartLearning(device: RemoteDevice) {
+        stopLearning()
+        startLearning()
+    }
 
     private fun loadDevices() {
         viewModelScope.launch {
@@ -66,10 +86,19 @@ class DeviceViewModel(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error cargando dispositivos")
-                _errorMessage.value = "Error cargando dispositivos: ${e.message}"
+                _message.value = DeviceMessage.Error("Error cargando dispositivos: ${e.message}")
             }
         }
     }
+
+    private fun observeAntDevices() {
+        viewModelScope.launch {
+            antManager.detectedDevices.collect { devices ->
+                _availableAntDevices.value = devices
+            }
+        }
+    }
+
 
 
     fun onNewAntDeviceSelected(antDevice: AntDeviceInfo) {
@@ -82,7 +111,7 @@ class DeviceViewModel(
                     name = antDevice.name,
                     type = RemoteType.ANT,
                     isActive = false,
-                    keyMappings = RemoteSettings(),
+                    learnedCommands =mutableListOf(),
                     macAddress = antDevice.deviceNumber.toString()
                 )
 
@@ -92,59 +121,34 @@ class DeviceViewModel(
                 }
 
                 if (existingDevice != null) {
-                    _errorMessage.value = "Dispositivo ya emparejado"
+                    _message.value = DeviceMessage.Error("Dispositivo ya emparejado")
                     return@launch
                 }
 
-                // Añadir logs para depuración
                 Timber.d("Añadiendo dispositivo ANT+: $newDevice")
-
-                // Desactivar otros dispositivos antes de añadir el nuevo
                 repository.deactivateAllDevices()
-
-                // Añadir y activar el nuevo dispositivo
                 repository.addDevice(newDevice)
                 repository.setActiveDevice(newDevice.id)
 
-                _errorMessage.value = "Dispositivo añadido y activado"
-
-                // Forzar actualización de la lista
+                _message.value = DeviceMessage.Success("Dispositivo añadido y activado")
                 loadDevices()
 
                 Timber.d("Dispositivo ANT+ añadido correctamente")
             } catch (e: Exception) {
-                _errorMessage.value = "Error al añadir dispositivo: ${e.message}"
+                _message.value = DeviceMessage.Error("Error al añadir dispositivo: ${e.message}")
                 Timber.e(e, "Error añadiendo dispositivo ANT+")
             }
         }
     }
 
-
-
-    fun requestConnection(enable: Boolean) {
-
-        val request =  RequestAnt(EXTENSION_NAME)
-        val release =  ReleaseAnt(EXTENSION_NAME)
-
-        if (enable) {
-            karooSystem.dispatch(request)
-        } else {
-            karooSystem.dispatch(release)
-        }
-
-    }
-    fun startDeviceScan(type: RemoteType) {
+    fun startDeviceScan() {
         viewModelScope.launch {
             try {
-
                 _scanning.value = true
-                requestConnection(true)
                 startAntScan()
-
-
             } catch (e: Exception) {
                 Timber.e(e, "Error starting device scan")
-                _errorMessage.value = "Error scanning devices: ${e.message}"
+                _message.value = DeviceMessage.Error("Error scanning devices: ${e.message}")
                 _scanning.value = false
             }
         }
@@ -153,78 +157,67 @@ class DeviceViewModel(
     fun startAntScan() {
         try {
             _scanning.value = true
-            _availableAntDevices.value = emptyList() // Limpiar lista anterior
+            _availableAntDevices.value = emptyList()
             antManager.startDeviceSearch()
             viewModelScope.launch {
-                delay(30000) // 30 segundos de escaneo
+                delay(30000)
                 stopScanAnt()
             }
         } catch (e: Exception) {
             Timber.e(e, "Error starting ANT+ scan")
-            _errorMessage.value = "Error scanning ANT+ devices: ${e.message}"
+            _message.value = DeviceMessage.Error("Error scanning ANT+ devices: ${e.message}")
             throw e
         }
     }
 
+    fun stopScanAnt() {
+        try {
+            _scanning.value = false
+            antManager.stopScan()
+        } catch (e: Exception) {
+            Timber.e(e, "Error stopping ANT+ scan")
+            _message.value = DeviceMessage.Error("Error stopping scan: ${e.message}")
+        }
+    }
 
     fun stopScan() {
-        _scanning.value = false
-        requestConnection(false)
-    }
-
-    fun stopScanAnt() {
-        _scanning.value = false
-        antManager.stopScan()
-        requestConnection(false)
-    }
-
-
-    fun onDeviceSelected(device: RemoteDevice) {
-        viewModelScope.launch {
-
-            activateDevice(device)
-        }
-    }
-
-    private fun handleKeyPress(keyCode: Int) {
         viewModelScope.launch {
             try {
-                Timber.d("Procesando tecla: $keyCode")
-                // Aquí puedes implementar la lógica para manejar las pulsaciones de teclas
-                // Por ejemplo, actualizar la UI o ejecutar alguna acción específica
+                stopScanAnt()
             } catch (e: Exception) {
-                Timber.e(e, "Error procesando tecla: ${e.message}")
-                _errorMessage.value = "Error procesando tecla: ${e.message}"
+                Timber.e(e, "Error stopping scan")
+                _message.value = DeviceMessage.Error("Error stopping scan: ${e.message}")
             }
         }
     }
 
-
-    private fun activateDevice(device: RemoteDevice) {
-        viewModelScope.launch {
-            try {
-                repository.setActiveDevice(device.id)
-            } catch (e: Exception) {
-                _errorMessage.value = "Error activating device: ${e.message}"
-                Timber.e(e, "Error activating device")
-            }
-        }
-    }
+   fun activateDevice(device: RemoteDevice) {
+       viewModelScope.launch {
+           try {
+               repository.setActiveDevice(device.id)
+           } catch (e: Exception) {
+               _message.value = DeviceMessage.Error("Error activating device: ${e.message}")
+               Timber.e(e, "Error activating device")
+           }
+       }
+   }
 
     fun removeDevice(deviceId: String) {
         viewModelScope.launch {
             try {
                 antManager.disconnect()
                 repository.removeDevice(deviceId)
+                _message.value = DeviceMessage.Success("Dispositivo eliminado correctamente")
             } catch (e: Exception) {
-                _errorMessage.value = "Error removing device: ${e.message}"
+                _message.value = DeviceMessage.Error("Error al eliminar el dispositivo: ${e.message}")
                 Timber.e(e, "Error removing device")
             }
         }
     }
 
-    fun clearError() {
-        _errorMessage.value = null
+
+    fun clearMessage() {
+        _message.value = null
     }
 
     override fun onCleared() {

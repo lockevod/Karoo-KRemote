@@ -11,8 +11,10 @@ import androidx.compose.ui.Modifier
 import com.enderthor.kremote.screens.TabLayout
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.ant.AntManager
-import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
+import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.data.EXTENSION_NAME
 import io.hammerhead.karooext.KarooSystemService
+import io.hammerhead.karooext.models.RequestAnt
 
 import timber.log.Timber
 
@@ -28,25 +30,25 @@ class MainActivity : ComponentActivity() {
             MainScreen(
                 repository = repository,
                 antManager = antManager,
-                karooSystem = karooSystem
             )
         }
     }
 
     private fun setupDependencies() {
         repository = RemoteRepository(applicationContext)
-        antManager = AntManager(this) { command ->
-            handleAntCommand(command)
+        antManager = AntManager(this) { antRemoteKey ->  // Ahora recibe AntRemoteKey
+            handleAntCommand(antRemoteKey)
         }
         karooSystem = KarooSystemService(applicationContext)
         karooSystem.connect { connected ->
             if (connected) {
-                Timber.i("Karoo system service connected: $connected")
+                Timber.i("Karoo system service connected")
+                karooSystem.dispatch(RequestAnt(EXTENSION_NAME+"_A"))
             }
         }
     }
 
-    private fun handleAntCommand(command: GenericCommandNumber) {
+    private fun handleAntCommand(command: AntRemoteKey) {
         Timber.d("ANT+ command received: $command")
         // Aquí puedes manejar los comandos ANT+ según sea necesario
     }
@@ -54,8 +56,11 @@ class MainActivity : ComponentActivity() {
 
 
     override fun onDestroy() {
-        super.onDestroy()
+        antManager.disconnect()
         antManager.cleanup()
+        //karooSystem.dispatch(ReleaseAnt(EXTENSION_NAME))
+        karooSystem.disconnect()
+        super.onDestroy()
     }
 }
 
@@ -63,7 +68,6 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(
     repository: RemoteRepository,
     antManager: AntManager,
-    karooSystem: KarooSystemService
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -72,7 +76,6 @@ fun MainScreen(
         TabLayout(
             repository = repository,
             antManager = antManager,
-            karooSystem = karooSystem
         )
     }
 }

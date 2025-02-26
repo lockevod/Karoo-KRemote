@@ -6,9 +6,7 @@ import android.content.Intent
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
 import io.hammerhead.karooext.models.RequestAnt
-import io.hammerhead.karooext.models.ReleaseAnt
 
-import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
 
 import kotlinx.coroutines.CoroutineScope
 
@@ -20,9 +18,11 @@ import timber.log.Timber
 
 import com.enderthor.kremote.BuildConfig
 import com.enderthor.kremote.ant.AntManager
+import com.enderthor.kremote.data.AntRemoteKey
 import com.enderthor.kremote.data.EXTENSION_NAME
 import com.enderthor.kremote.data.RemoteRepository
-import com.enderthor.kremote.data.RemoteSettings
+import com.enderthor.kremote.data.RemoteDevice
+import com.enderthor.kremote.data.GlobalSettings
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -52,17 +52,17 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     private var isRiding = false
     private var isServiceConnected = false
     private val extensionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var activeDeviceSettings: RemoteSettings? = null
-    private var onlyWhileRiding = false
+    private var activeDevice: RemoteDevice? = null
+    private var globalSettings: GlobalSettings? = null
 
     private val extensionId = System.identityHashCode(this)
-    private val antCallback: (GenericCommandNumber) -> Unit = { commandNumber ->
+    private val antCallback: (AntRemoteKey) -> Unit = { antRemoteKey ->  // Cambiado a AntRemoteKey
         Timber.d("[KRemote] === INICIO Callback ANT ===")
         Timber.d("[KRemote] Callback hash: ${System.identityHashCode(this)}")
 
         extensionScope.launch(Dispatchers.Main) {
             try {
-                karooAction.handleAntCommand(commandNumber)
+                karooAction.handleAntCommand(antRemoteKey.gCommand)  // Usar gCommand para mantener compatibilidad
             } catch (e: Exception) {
                 Timber.e(e, "[KRemote] Error en callback ANT: ${e.message}")
             }
@@ -89,10 +89,10 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     karooSystem,
                     { isServiceConnected },
                     { isRiding },
-                    { onlyWhileRiding },
-                    { activeDeviceSettings }
+                    { globalSettings?.onlyWhileRiding != false },
+                    { activeDevice }
                 )
-                karooSystem.dispatch(RequestAnt(extension))
+                karooSystem.dispatch(RequestAnt(EXTENSION_NAME))
             }
         }
 
@@ -108,18 +108,14 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         extensionScope.launch {
             try {
                 repository.currentConfig.collect { config ->
-                    val activeDevice = config.devices.find { it.isActive }
-
-                    // Actualizar configuración de riding
-                    onlyWhileRiding = config.globalSettings.onlyWhileRiding
-                    activeDeviceSettings = activeDevice?.keyMappings
+                    activeDevice = config.devices.find { it.isActive }
+                    globalSettings = config.globalSettings
 
                     // Manejar conexión ANT+
                     if (activeDevice?.macAddress != null) {
                         try {
-                            val deviceNumber = activeDevice.macAddress.toInt()
-                            if (!antManager.isConnected) {
-                                Timber.d("[KRemote] Conectando a dispositivo ANT+ #$deviceNumber")
+                            val deviceNumber = activeDevice?.macAddress?.toInt()
+                            if (!antManager.isConnected && deviceNumber != null) {
                                 antManager.connect(deviceNumber)
                             }
                         } catch (e: Exception) {
@@ -127,7 +123,6 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                         }
                     } else {
                         if (antManager.isConnected) {
-                            Timber.d("[KRemote] Desconectando dispositivo ANT+ actual")
                             antManager.disconnect()
                         }
                     }
@@ -137,6 +132,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             }
         }
     }
+
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun initializeRideReceiver() {
         rideReceiver = KarooRideReceiver { isRideActive ->
@@ -184,7 +180,6 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
             antManager.disconnect()
             antManager.cleanup()
-            karooSystem.dispatch(ReleaseAnt(extension))
             karooSystem.disconnect()
             extensionScope.cancel()
 
