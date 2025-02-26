@@ -1,12 +1,11 @@
 package com.enderthor.kremote.extension
 
 import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
+import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.data.RemoteDevice
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.PerformHardwareAction
 import io.hammerhead.karooext.models.ShowMapPage
-import io.hammerhead.karooext.models.TurnScreenOn
-import com.enderthor.kremote.data.RemoteSettings
-
 import timber.log.Timber
 
 class KarooAction(
@@ -14,9 +13,8 @@ class KarooAction(
     private val isServiceConnected: () -> Boolean,
     private val isRiding: () -> Boolean,
     private val onlyWhileRiding: () -> Boolean,
-    private val activeDeviceSettings: () -> RemoteSettings?
+    private val activeDevice: () -> RemoteDevice?
 ) {
-
 
     fun handleAntCommand(commandNumber: GenericCommandNumber) {
         if (!isServiceConnected() || (!isRiding() && onlyWhileRiding())) {
@@ -25,20 +23,22 @@ class KarooAction(
         }
 
         try {
-            activeDeviceSettings()?.let { settings ->
-                when (commandNumber) {
-                    GenericCommandNumber.MENU_DOWN -> settings.remoteright
-                    GenericCommandNumber.LAP -> settings.remoteleft
-                    GenericCommandNumber.UNRECOGNIZED -> settings.remoteup
-                    else -> null
-                }?.action?.let { action ->
-                    executeKarooAction(action)
-                }
+            val antRemoteKey = AntRemoteKey.entries.find { it.gCommand == commandNumber }
+            if (antRemoteKey == null) {
+                Timber.d("Comando no reconocido: $commandNumber")
+                return
+            }
+
+            activeDevice()?.let { device ->
+                device.getKarooKey(antRemoteKey.gCommand)?.let { karooKey ->
+                    executeKarooAction(karooKey.action)
+                } ?: Timber.d("No se encontró tecla asignada para el comando: ${antRemoteKey.label}")
             }
         } catch (e: Exception) {
             Timber.e(e, "[KRemote] Error en handleAntCommand")
         }
     }
+
     fun executeKarooAction(action: PerformHardwareAction) {
         Timber.d("executeKarooAction: $action")
 

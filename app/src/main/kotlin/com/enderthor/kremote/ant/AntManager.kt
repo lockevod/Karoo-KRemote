@@ -3,19 +3,17 @@ package com.enderthor.kremote.ant
 import android.content.Context
 import com.dsi.ant.plugins.antplus.pcc.controls.AntPlusGenericControllableDevicePcc
 import com.dsi.ant.plugins.antplus.pcc.controls.defines.CommandStatus
-import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
 import com.dsi.ant.plugins.antplus.pcc.defines.DeviceState
-import com.dsi.ant.plugins.antplus.pcc.defines.EventFlag
 import com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult
 import com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc
 import com.dsi.ant.plugins.antplus.pccbase.PccReleaseHandle
+import com.enderthor.kremote.data.AntRemoteKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.util.EnumSet
 
 data class AntDeviceInfo(
     val name: String,
@@ -24,12 +22,12 @@ data class AntDeviceInfo(
 
 class AntManager(
     private val context: Context,
-    private val commandCallback: (GenericCommandNumber) -> Unit
+    private val commandCallback: (AntRemoteKey) -> Unit
 ) {
     private var remotePcc: AntPlusGenericControllableDevicePcc? = null
     private var remoteReleaseHandle: PccReleaseHandle<AntPlusGenericControllableDevicePcc?>? = null
     private var lastCommandTime: Long = 0
-    private val commandDebounceTime = 300L // 300ms debounce time
+    private val commandDebounceTime = 200L // 300ms debounce time
 
     private val _detectedDevices = MutableStateFlow<List<AntDeviceInfo>>(emptyList())
     val detectedDevices: StateFlow<List<AntDeviceInfo>> = _detectedDevices.asStateFlow()
@@ -38,7 +36,7 @@ class AntManager(
     val isConnected: Boolean get() = _isConnected
 
 
-    private fun handleCommand(
+    /*private fun handleCommand(
         estTimestamp: Long,
         commandNumber: GenericCommandNumber
     ): CommandStatus {
@@ -62,7 +60,7 @@ class AntManager(
         Timber.d("[ANT] === FIN handleCommand ===")
         return CommandStatus.PASS
     }
-
+*/
 
     private val mRemoteResultReceiver =
         AntPluginPcc.IPluginAccessResultReceiver<AntPlusGenericControllableDevicePcc> {
@@ -159,7 +157,7 @@ class AntManager(
             }
         }
 
-    private val mRemoteCommand =
+   /* private val mRemoteCommand =
         AntPlusGenericControllableDevicePcc.IGenericCommandReceiver {
                 estTimestamp: Long,
                 eventFlags: EnumSet<EventFlag>,
@@ -170,7 +168,24 @@ class AntManager(
 
             handleCommand(estTimestamp, commandNumber)
         }
+*/
 
+    private val mRemoteCommand =
+        AntPlusGenericControllableDevicePcc.IGenericCommandReceiver { estTimestamp, _, _, _, _, commandNumber ->
+            if (estTimestamp - lastCommandTime >= commandDebounceTime) {
+                lastCommandTime = estTimestamp
+                try {
+                    // Convertir GenericCommandNumber a AntRemoteKey
+                    AntRemoteKey.entries.find { it.gCommand == commandNumber }
+                        ?.let { antRemoteKey ->
+                            commandCallback.invoke(antRemoteKey)
+                        }
+                } catch (e: Exception) {
+                    Timber.e(e, "[ANT] Error ejecutando callback: ${e.message}")
+                }
+            }
+            CommandStatus.PASS
+        }
 
     suspend fun connect(deviceNumber: Int) {
         withContext(Dispatchers.Main) {

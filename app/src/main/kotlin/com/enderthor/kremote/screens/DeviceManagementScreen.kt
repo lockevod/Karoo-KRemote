@@ -14,22 +14,35 @@ import androidx.compose.ui.unit.dp
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.RemoteType
 import com.enderthor.kremote.ant.AntDeviceInfo
-
+import com.enderthor.kremote.data.DeviceMessage
+import com.enderthor.kremote.data.AntRemoteKey
 
 @Composable
-fun DeviceManagementScreen(
+fun
+    DeviceManagementScreen(
     devices: List<RemoteDevice>,
     availableAntDevices: List<AntDeviceInfo>,
     scanning: Boolean,
-    errorMessage: String?,
-    onScanClick: (RemoteType) -> Unit,
-    onDeviceClick: (RemoteDevice) -> Unit,
+    message: DeviceMessage?,
+    onScanClick: () -> Unit,
     onNewAntDeviceClick: (AntDeviceInfo) -> Unit,
-    onErrorDismiss: () -> Unit,
+    onMessageDismiss: () -> Unit,
     onDeviceDelete: (RemoteDevice) -> Unit,
+    onDeviceClick: (RemoteDevice) -> Unit,
+    learnedCommands: List<AntRemoteKey>, // Lista de comandos aprendidos
+    onStartLearning: (RemoteDevice) -> Unit, // Función para iniciar el aprendizaje
+    onStopLearning: () -> Unit, // Función para detener el aprendizaje
+    onRestartLearning: (RemoteDevice) -> Unit //
 ) {
     var deviceToDelete by remember { mutableStateOf<RemoteDevice?>(null) }
     var selectedType by remember { mutableStateOf<RemoteType>(RemoteType.ANT) }
+    var selectedDevice by remember { mutableStateOf<RemoteDevice?>(null) } // Dispositivo seleccionado
+
+    LaunchedEffect(selectedDevice) {
+        selectedDevice?.let {
+            onStartLearning(it)
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -53,7 +66,7 @@ fun DeviceManagementScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { onScanClick(selectedType) },
+                onClick = { onScanClick() },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !scanning
             ) {
@@ -115,11 +128,35 @@ fun DeviceManagementScreen(
         items(filteredDevices) { device ->
             DeviceItem(
                 device = device,
-                onClick = { onDeviceClick(device) },
+                onClick = {
+                    selectedDevice = device // Actualizar el dispositivo seleccionado
+                    onDeviceClick(device)
+                },
                 onDeleteClick = { deviceToDelete = device }
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
+
+        // Mostrar los comandos aprendidos
+        item {
+            Text("Comandos Aprendidos:")
+            learnedCommands.forEach { command ->
+                Text(command.label)  // Usar label en lugar de toString()
+            }
+        }
+
+        // Botones para detener y reiniciar la búsqueda
+        item {
+            Row {
+                Button(onClick = { onStopLearning() }) {
+                    Text("Detener Búsqueda")
+                }
+                Button(onClick = { selectedDevice?.let { onRestartLearning(it) } }) {
+                    Text("Reiniciar Búsqueda")
+                }
+            }
+        }
+
     }
 
     // Diálogos
@@ -145,14 +182,27 @@ fun DeviceManagementScreen(
             }
         )
     }
-
-    errorMessage?.let { error ->
+    message?.let { msg ->
         AlertDialog(
-            onDismissRequest = onErrorDismiss,
-            title = { Text("Error") },
-            text = { Text(error) },
+            onDismissRequest = onMessageDismiss,
+            title = {
+                Text(
+                    when (msg) {
+                        is DeviceMessage.Error -> "Error"
+                        is DeviceMessage.Success -> "Información"
+                    }
+                )
+            },
+            text = {
+                Text(
+                    when (msg) {
+                        is DeviceMessage.Error -> msg.message
+                        is DeviceMessage.Success -> msg.message
+                    }
+                )
+            },
             confirmButton = {
-                TextButton(onClick = onErrorDismiss) {
+                TextButton(onClick = onMessageDismiss) {
                     Text("Aceptar")
                 }
             }
@@ -189,7 +239,7 @@ fun DeviceItem(
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        text =  "ANT+",
+                        text = "ANT+",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     if (device.macAddress != null) {
@@ -198,6 +248,11 @@ fun DeviceItem(
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
+                    // Nuevo: Mostrar número de comandos aprendidos
+                    Text(
+                        text = "${device.learnedCommands.size} comandos configurados",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
 
                 Row(
@@ -208,15 +263,13 @@ fun DeviceItem(
                         Badge(
                             containerColor = MaterialTheme.colorScheme.primary
                         ) {
-                            Text("Active", color = MaterialTheme.colorScheme.onPrimary)
+                            Text("Activo", color = MaterialTheme.colorScheme.onPrimary)
                         }
                     }
-                    IconButton(
-                        onClick = onDeleteClick
-                    ) {
+                    IconButton(onClick = onDeleteClick) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete device",
+                            contentDescription = "Eliminar dispositivo",
                             tint = MaterialTheme.colorScheme.error
                         )
                     }

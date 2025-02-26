@@ -1,51 +1,50 @@
+// Kotlin
 package com.enderthor.kremote.screens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.enderthor.kremote.viewmodel.DeviceViewModel
 import com.enderthor.kremote.ant.AntManager
 import com.enderthor.kremote.data.RemoteRepository
-
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModel
 import com.enderthor.kremote.viewmodel.ConfigurationViewModel
-import io.hammerhead.karooext.KarooSystemService
+import com.enderthor.kremote.viewmodel.DeviceViewModel
+
 
 @Composable
 fun TabLayout(
     antManager: AntManager,
     repository: RemoteRepository,
-    karooSystem: KarooSystemService
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Conf.", "Remotes", "General")
+    val tabs = listOf("Mapping", "Remotes")
 
+    // ViewModels
     val deviceViewModel: DeviceViewModel = viewModel(
-        factory = DeviceViewModelFactory(
-            antManager = antManager,
-            repository = repository,
-            karooSystem = karooSystem
-        )
+        factory = DeviceViewModelFactory(antManager, repository)
     )
 
     val configViewModel: ConfigurationViewModel = viewModel(
-        factory = ConfigViewModelFactory(
-            repository = repository,
-        )
+        factory = ConfigViewModelFactory(repository)
     )
 
+    // Estados
+    val deviceStates = with(deviceViewModel) {
+        Triple(
+            availableAntDevices.collectAsState(),
+            devices.collectAsState(),
+            scanning.collectAsState()
+        )
+    }
 
-    val availableAntDevices by deviceViewModel.availableAntDevices.collectAsState()
-    val devices by deviceViewModel.devices.collectAsState()
-    val scanning by deviceViewModel.scanning.collectAsState()
-    val errorMessage_device by deviceViewModel.errorMessage.collectAsState()
-
-
-
-    val activeDevice by configViewModel.activeDevice.collectAsState()
-    val errorMessage_config by configViewModel.errorMessage.collectAsState()
+    val configStates = with(configViewModel) {
+        Pair(
+            activeDevice.collectAsState(),
+            errorMessage.collectAsState()
+        )
+    }
 
     Column {
         TabRow(selectedTabIndex = selectedTab) {
@@ -60,22 +59,25 @@ fun TabLayout(
 
         when (selectedTab) {
             0 -> ConfigurationScreen(
-                    activeDevice = activeDevice,
-                    errorMessage = errorMessage_config,
-                    configViewModel = configViewModel
+                devices = deviceStates.second.value,
+                activeDevice = configStates.first.value,
+                errorMessage = configStates.second.value,
+                configViewModel = configViewModel
             )
             1 -> DeviceManagementScreen(
-                devices = devices,
-                scanning = scanning,
-                errorMessage = errorMessage_device,
-                onScanClick = { type -> deviceViewModel.startDeviceScan(type) },
-                onDeviceClick = { device -> deviceViewModel.onDeviceSelected(device) },
-                availableAntDevices = availableAntDevices,
-                onNewAntDeviceClick = { device -> deviceViewModel.onNewAntDeviceSelected(device) },
-                onErrorDismiss = { deviceViewModel.clearError() },
+                devices = deviceViewModel.devices.collectAsState().value,
+                availableAntDevices = deviceViewModel.availableAntDevices.collectAsState().value,
+                scanning = deviceViewModel.scanning.collectAsState().value,
+                message = deviceViewModel.message.collectAsState().value,
+                onScanClick = { deviceViewModel.startDeviceScan() },
+                onNewAntDeviceClick = { deviceInfo -> deviceViewModel.onNewAntDeviceSelected(deviceInfo) },
+                onMessageDismiss = { deviceViewModel.clearMessage() },
                 onDeviceDelete = { device -> deviceViewModel.removeDevice(device.id) },
-
-            )
+                onDeviceClick = { device -> deviceViewModel.activateDevice(device) },
+                learnedCommands = deviceViewModel.learnedCommands.collectAsState().value, // Pasar la lista de comandos aprendidos
+                onStartLearning = { device -> deviceViewModel.startLearning() }, // Pasar la función para iniciar el aprendizaje
+                onStopLearning = { deviceViewModel.stopLearning() }, // Pasar la función para detener el aprendizaje
+                onRestartLearning = { device -> deviceViewModel.restartLearning(device) }  )
         }
     }
 }
@@ -83,30 +85,23 @@ fun TabLayout(
 class DeviceViewModelFactory(
     private val antManager: AntManager,
     private val repository: RemoteRepository,
-    private val karooSystem: KarooSystemService
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DeviceViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return DeviceViewModel(
-                antManager = antManager,
-                repository = repository,
-                karooSystem = karooSystem
-            ) as T
+            return DeviceViewModel(antManager, repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
 
 class ConfigViewModelFactory(
-    private val repository: RemoteRepository,
+    private val repository: RemoteRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ConfigurationViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ConfigurationViewModel(
-                repository = repository,
-            ) as T
+            return ConfigurationViewModel(repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

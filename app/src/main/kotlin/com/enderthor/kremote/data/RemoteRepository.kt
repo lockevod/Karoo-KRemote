@@ -15,11 +15,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 
+
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 class RemoteRepository(private val context: Context) {
     private val settingsKey = stringPreferencesKey("remote_config")
-
 
     val currentConfig: Flow<GlobalConfig> = context.dataStore.data
         .catch { exception ->
@@ -40,15 +40,12 @@ class RemoteRepository(private val context: Context) {
             }
         }
 
-
     fun getDevices(): Flow<List<RemoteDevice>> = currentConfig.map { it.devices }
-
 
     fun getActiveDevice(): Flow<RemoteDevice?> = currentConfig.map { config ->
         config.devices.find { it.isActive }
     }
 
-    // Función de utilidad para obtener la configuración actual
     private suspend fun getCurrentConfig(): GlobalConfig {
         return try {
             val preferences = context.dataStore.data.first()
@@ -57,13 +54,14 @@ class RemoteRepository(private val context: Context) {
             if (configString != null) {
                 Json.decodeFromString(configString)
             } else {
-                GlobalConfig() // Usa el constructor por defecto
+                GlobalConfig()
             }
         } catch (e: Exception) {
             Timber.e(e, "Error leyendo configuración")
             throw e
         }
     }
+
     suspend fun deactivateAllDevices() {
         val config = currentConfig.firstOrNull() ?: GlobalConfig()
         val updatedDevices = config.devices.map { device ->
@@ -76,12 +74,6 @@ class RemoteRepository(private val context: Context) {
                 config.copy(devices = updatedDevices)
             )
         }
-    }
-
-
-    suspend fun getDeviceById(id: String): RemoteDevice? {
-        val config = currentConfig.firstOrNull() ?: GlobalConfig()
-        return config.devices.find { it.id == id }
     }
 
 
@@ -113,8 +105,6 @@ class RemoteRepository(private val context: Context) {
                 val current = getCurrentConfig()
                 val updatedDevices = current.devices.filter { it.id != deviceId }
 
-                // Si eliminamos el dispositivo activo y hay otros dispositivos,
-                // activamos el primero de la lista
                 val finalDevices = if (current.devices.find { it.isActive }?.id == deviceId && updatedDevices.isNotEmpty()) {
                     updatedDevices.mapIndexed { index, device ->
                         device.copy(isActive = index == 0)
@@ -153,7 +143,7 @@ class RemoteRepository(private val context: Context) {
         }
     }
 
-    suspend fun updateDeviceMapping(deviceId: String, mappings: RemoteSettings) {
+   suspend fun assignKeyCodeToCommand(deviceId: String, command: AntRemoteKey, karooKey: KarooKey?) {
         try {
             context.dataStore.edit { preferences ->
                 val current = getCurrentConfig()
@@ -162,14 +152,43 @@ class RemoteRepository(private val context: Context) {
                     current.copy(
                         devices = current.devices.map { device ->
                             if (device.id == deviceId) {
-                                device.copy(keyMappings = mappings)
+                                device.copy(
+                                    learnedCommands = device.learnedCommands.map { learnedCommand ->
+                                        if (learnedCommand.command == command) {
+                                            learnedCommand.copy(karooKey = karooKey)
+                                        } else {
+                                            learnedCommand
+                                        }
+                                    }.toMutableList()
+                                )
                             } else device
                         }
                     )
                 )
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error updating device mapping")
+            Timber.e(e, "Error asignando KeyCode al comando")
+            throw e
+        }
+    }
+
+    suspend fun updateDeviceLearnedCommands(deviceId: String, learnedCommands: List<LearnedCommand>) {
+        try {
+            context.dataStore.edit { preferences ->
+                val current = getCurrentConfig()
+                preferences[settingsKey] = Json.encodeToString(
+                    GlobalConfig.serializer(),
+                    current.copy(
+                        devices = current.devices.map { device ->
+                            if (device.id == deviceId) {
+                                device.copy(learnedCommands = learnedCommands.toMutableList())
+                            } else device
+                        }
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error updating device learned commands")
             throw e
         }
     }
