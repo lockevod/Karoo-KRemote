@@ -172,24 +172,4 @@ class RemoteRepository(private val context: Context) {
         }
     }
 
-    suspend fun updateDeviceLearnedCommands(deviceId: String, learnedCommands: List<LearnedCommand>) {
-        try {
-            context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
-                preferences[settingsKey] = Json.encodeToString(
-                    GlobalConfig.serializer(),
-                    current.copy(
-                        devices = current.devices.map { device ->
-                            if (device.id == deviceId) {
-                                device.copy(learnedCommands = learnedCommands.toMutableList())
-                            } else device
-                        }
-                    )
-                )
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error updating device learned commands")
-            throw e
-        }
-    }
 }

@@ -71,7 +71,7 @@ class DeviceViewModel(
         antManager.stopScan()
     }
 
-    fun restartLearning(device: RemoteDevice) {
+    fun restartLearning() {
         stopLearning()
         startLearning()
     }
