@@ -77,7 +77,7 @@ fun TabLayout(
                 learnedCommands = deviceViewModel.learnedCommands.collectAsState().value, // Pasar la lista de comandos aprendidos
                 onStartLearning = { device -> deviceViewModel.startLearning() }, // Pasar la función para iniciar el aprendizaje
                 onStopLearning = { deviceViewModel.stopLearning() }, // Pasar la función para detener el aprendizaje
-                onRestartLearning = { device -> deviceViewModel.restartLearning(device) }  )
+                onRestartLearning = { device -> deviceViewModel.restartLearning() }  )
         }
     }
 }
