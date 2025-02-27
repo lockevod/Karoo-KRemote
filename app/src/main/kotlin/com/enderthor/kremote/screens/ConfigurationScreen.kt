@@ -12,6 +12,8 @@ import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.viewmodel.ConfigurationViewModel
 import com.enderthor.kremote.data.KarooKey
 import com.enderthor.kremote.data.AntRemoteKey
+import androidx.compose.ui.res.stringResource
+import com.enderthor.kremote.R
 
 
 @Composable
@@ -22,8 +24,8 @@ fun ConfigurationScreen(
     configViewModel: ConfigurationViewModel
 ) {
     var selectedDeviceId by remember { mutableStateOf(activeDevice?.id) }
-
     val selectedDevice = devices.find { it.id == selectedDeviceId }
+    val onlyWhileRiding by configViewModel.onlyWhileRiding.collectAsState()
 
     Column(
         modifier = Modifier
@@ -32,21 +34,16 @@ fun ConfigurationScreen(
             .verticalScroll(rememberScrollState())
     ) {
         selectedDevice?.let { device ->
-            Text(
-                text = "Configuración de ${device.name}",
-                style = MaterialTheme.typography.headlineSmall
-            )
-
             val deviceOptions = devices.map { DropdownOption(it.id, it.name) }
             val selectedDeviceOption = deviceOptions.find { it.id == device.id }
                 ?: deviceOptions.firstOrNull()
                 ?: DropdownOption("", "No devices")
 
             KarooKeyDropdown(
-                remotekey = "Dispositivo",
+                remotekey = "Device",
                 options = deviceOptions,
                 selectedOption = selectedDeviceOption,
-                onSelect = { selectedOption: DropdownOption ->  // Especificamos el tipo explícitamente
+                onSelect = { selectedOption: DropdownOption ->
                     selectedDeviceId = selectedOption.id
                 }
             )
@@ -59,9 +56,43 @@ fun ConfigurationScreen(
                     configViewModel.assignKeyCodeToCommand(device.id, command, karooKey)
                 }
             )
+
+            // Añadir espaciador antes de la configuración global
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Sección de configuración global al final
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                   Text(
+                        text = stringResource(R.string.global_settings),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = onlyWhileRiding,
+                            onCheckedChange = { checked ->
+                                configViewModel.updateOnlyWhileRiding(checked)
+                            }
+                        )
+
+                        Text(
+                            text = stringResource(R.string.only_while_riding),
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            }
+
         } ?: run {
             Text(
-                text = "No hay dispositivos activos",
+                text = stringResource(R.string.no_active_devices),
                 style = MaterialTheme.typography.bodyLarge
             )
         }
@@ -69,53 +100,67 @@ fun ConfigurationScreen(
         errorMessage?.let { error ->
             AlertDialog(
                 onDismissRequest = { configViewModel.clearError() },
-                title = { Text("Error") },
+                title = { Text(stringResource(R.string.error)) },
                 text = { Text(error) },
                 confirmButton = {
                     TextButton(onClick = { configViewModel.clearError() }) {
-                        Text("Aceptar")
+                        Text(stringResource(R.string.ok))
                     }
                 }
             )
         }
     }
 }
+
 @Composable
 fun LearnedCommandsSection(
     device: RemoteDevice,
     onKarooKeyAssigned: (AntRemoteKey, KarooKey?) -> Unit
 ) {
-    val commands = if (device.learnedCommands.isEmpty()) {
-        RemoteDevice.getDefaultLearnedCommands()
-    } else {
-        device.learnedCommands
+    val commands = remember(device.learnedCommands) {
+        if (device.learnedCommands.isEmpty()) {
+            RemoteDevice.getDefaultLearnedCommands()
+        } else {
+            // Asegurarse de que todos los comandos por defecto estén presentes
+            val defaultCommands = RemoteDevice.getDefaultLearnedCommands()
+            val existingCommandTypes = device.learnedCommands.map { it.command }
+
+            device.learnedCommands + defaultCommands.filter {
+                it.command !in existingCommandTypes
+            }
+        }
     }
 
     Column {
-        Text("Asignar KarooKey a Comandos:")
-        if (commands.isEmpty()) {
-            Text("No hay comandos aprendidos ni comandos por defecto disponibles.")
-        } else {
-            commands.forEach { learnedCommand ->
-                Column {
-                    Text(text = learnedCommand.command.label)
+        Text(stringResource(R.string.assign_karookey_to_commands))
+        commands.forEach { learnedCommand ->
+            Column {
 
-                    val options = listOf(DropdownOption("null", "None")) +
-                            KarooKey.entries.map { DropdownOption(it.name, it.label) }
-                    val selectedOption = options.find { it.id == learnedCommand.karooKey?.name }
-                        ?: options[0]
+                Spacer(modifier = Modifier.height(4.dp))
 
-                    KarooKeyDropdown(
-                        remotekey = learnedCommand.command.label,
-                        options = options,
-                        selectedOption = selectedOption,
-                        onSelect = { selected: DropdownOption ->
-                            val karooKey = KarooKey.entries.find { it.name == selected.id }
-                            onKarooKeyAssigned(learnedCommand.command, karooKey)
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                val options = remember {
+                    listOf(DropdownOption("null", "None")) +
+                    KarooKey.entries.map { DropdownOption(it.name, it.label) }
                 }
+
+                val selectedOption = options.find {
+                    it.id == learnedCommand.karooKey?.name
+                } ?: options[0]
+
+                KarooKeyDropdown(
+                    remotekey = learnedCommand.command.label,
+                    options = options,
+                    selectedOption = selectedOption,
+                    onSelect = { selected ->
+                        val karooKey = if (selected.id == "null") {
+                            null
+                        } else {
+                            KarooKey.entries.find { it.name == selected.id }
+                        }
+                        onKarooKeyAssigned(learnedCommand.command, karooKey)
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }

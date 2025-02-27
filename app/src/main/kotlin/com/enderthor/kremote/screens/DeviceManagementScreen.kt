@@ -4,22 +4,101 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.delay
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.RemoteType
 import com.enderthor.kremote.ant.AntDeviceInfo
 import com.enderthor.kremote.data.DeviceMessage
 import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.R
 
 @Composable
-fun
-    DeviceManagementScreen(
+fun DeviceItem(
+    device: RemoteDevice,
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onConfigureClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (device.isActive) 4.dp else 1.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Primera fila: Título
+            Text(
+                text = device.name,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Segunda fila: Información y botones
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Lado izquierdo: Comandos aprendidos y estado activo
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "${device.learnedCommands.size} LC",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (device.isActive) {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Text(stringResource(R.string.active_device), color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
+                }
+
+                // Lado derecho: Botones
+                Row {
+                    IconButton(onClick = onConfigureClick) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.configure_commands),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(onClick = onDeleteClick) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.delete_device),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DeviceManagementScreen(
     devices: List<RemoteDevice>,
     availableAntDevices: List<AntDeviceInfo>,
     scanning: Boolean,
@@ -29,20 +108,10 @@ fun
     onMessageDismiss: () -> Unit,
     onDeviceDelete: (RemoteDevice) -> Unit,
     onDeviceClick: (RemoteDevice) -> Unit,
-    learnedCommands: List<AntRemoteKey>, // Lista de comandos aprendidos
-    onStartLearning: (RemoteDevice) -> Unit, // Función para iniciar el aprendizaje
-    onStopLearning: () -> Unit, // Función para detener el aprendizaje
-    onRestartLearning: (RemoteDevice) -> Unit //
+    onDeviceConfigure: (RemoteDevice) -> Unit
 ) {
     var deviceToDelete by remember { mutableStateOf<RemoteDevice?>(null) }
     var selectedType by remember { mutableStateOf<RemoteType>(RemoteType.ANT) }
-    var selectedDevice by remember { mutableStateOf<RemoteDevice?>(null) } // Dispositivo seleccionado
-
-    LaunchedEffect(selectedDevice) {
-        selectedDevice?.let {
-            onStartLearning(it)
-        }
-    }
 
     LazyColumn(
         modifier = Modifier
@@ -55,7 +124,6 @@ fun
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-
                 FilterChip(
                     selected = selectedType == RemoteType.ANT,
                     onClick = { selectedType = RemoteType.ANT },
@@ -66,11 +134,11 @@ fun
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { onScanClick() },
+                onClick = onScanClick,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !scanning
             ) {
-                Text(if (scanning) "Buscando..." else "Buscar ANT")
+                Text(if (scanning) stringResource(R.string.searching) else stringResource(R.string.search_ant))
             }
 
             if (scanning) {
@@ -81,13 +149,11 @@ fun
         }
 
         // Dispositivos disponibles
-
-
         if (availableAntDevices.isNotEmpty()) {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Dispositivos ANT+ disponibles",
+                    text = stringResource(R.string.available_ant_devices),
                     style = MaterialTheme.typography.headlineSmall
                 )
             }
@@ -104,21 +170,20 @@ fun
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "Dispositivo #${device.deviceNumber}",
+                            text = stringResource(R.string.device_number, device.deviceNumber),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-
         }
 
         // Dispositivos emparejados
         item {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Dispositivos emparejados",
+                text = stringResource(R.string.paired_devices),
                 style = MaterialTheme.typography.headlineSmall
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -128,68 +193,44 @@ fun
         items(filteredDevices) { device ->
             DeviceItem(
                 device = device,
-                onClick = {
-                    selectedDevice = device // Actualizar el dispositivo seleccionado
-                    onDeviceClick(device)
-                },
-                onDeleteClick = { deviceToDelete = device }
+                onClick = { onDeviceClick(device) },
+                onDeleteClick = { deviceToDelete = device },
+                onConfigureClick = { onDeviceConfigure(device) }
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
-
-        // Mostrar los comandos aprendidos
-        item {
-            Text("Comandos Aprendidos:")
-            learnedCommands.forEach { command ->
-                Text(command.label)  // Usar label en lugar de toString()
-            }
-        }
-
-        // Botones para detener y reiniciar la búsqueda
-        item {
-            Row {
-                Button(onClick = { onStopLearning() }) {
-                    Text("Detener Búsqueda")
-                }
-                Button(onClick = { selectedDevice?.let { onRestartLearning(it) } }) {
-                    Text("Reiniciar Búsqueda")
-                }
-            }
-        }
-
     }
 
     // Diálogos
     deviceToDelete?.let { device ->
         AlertDialog(
             onDismissRequest = { deviceToDelete = null },
-            title = { Text("Eliminar dispositivo") },
-            text = { Text("¿Estás seguro de que quieres eliminar ${device.name}?") },
+            title = { Text(stringResource(R.string.delete_device_title)) },
+            text = { Text(stringResource(R.string.delete_device_confirmation, device.name)) },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeviceDelete(device)
-                        deviceToDelete = null
-                    }
-                ) {
-                    Text("Eliminar")
+                TextButton(onClick = {
+                    onDeviceDelete(device)
+                    deviceToDelete = null
+                }) {
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deviceToDelete = null }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
     }
+
     message?.let { msg ->
         AlertDialog(
             onDismissRequest = onMessageDismiss,
             title = {
                 Text(
                     when (msg) {
-                        is DeviceMessage.Error -> "Error"
-                        is DeviceMessage.Success -> "Información"
+                        is DeviceMessage.Error -> stringResource(R.string.error)
+                        is DeviceMessage.Success -> stringResource(R.string.information)
                     }
                 )
             },
@@ -203,79 +244,254 @@ fun
             },
             confirmButton = {
                 TextButton(onClick = onMessageDismiss) {
-                    Text("Aceptar")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeviceItem(
+fun DeviceCommandsScreen(
     device: RemoteDevice,
-    onClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    learnedCommands: List<AntRemoteKey>,
+    isLearning: Boolean,
+    onStartLearning: () -> Unit,
+    onStopLearning: () -> Unit,
+    onRestartLearning: () -> Unit,
+    onNavigateBack: () -> Unit,
+    onClearAllCommands: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    ) {
+    // Estado para mostrar cuándo se inició el aprendizaje
+    var learningStartTime by remember { mutableStateOf<Long?>(null) }
+
+    // Actualizar el tiempo de inicio cuando cambia isLearning
+    LaunchedEffect(isLearning) {
+        learningStartTime = if (isLearning) System.currentTimeMillis() else null
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.configure_device, device.name)) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
+                }
+            )
+        }
+    ) { padding ->
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .padding(padding)
+                .padding(16.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Sección de aprendizaje
+            Card(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(onClick = onClick)
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = device.name,
+                        stringResource(R.string.learning_mode),
                         style = MaterialTheme.typography.titleMedium
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Text(
-                        text = "ANT+",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = stringResource(
+                            R.string.status,
+                            if (isLearning) stringResource(R.string.awaiting_signal)
+                            else stringResource(R.string.ready_to_learn)
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isLearning) MaterialTheme.colorScheme.primary else LocalContentColor.current
                     )
-                    if (device.macAddress != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (isLearning) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Mostrar tiempo transcurrido
+                        learningStartTime?.let { startTime ->
+                            val elapsed by produceState(initialValue = 0L, key1 = startTime) {
+                                while (true) {
+                                    value = System.currentTimeMillis() - startTime
+                                    delay(1000)
+                                }
+                            }
+                            Text(
+                                text = stringResource(R.string.elapsed_time, elapsed / 1000),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    } else {
                         Text(
-                            text = device.macAddress,
-                            style = MaterialTheme.typography.bodySmall
+                            text = stringResource(R.string.start_learning_instructions),
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
-                    // Nuevo: Mostrar número de comandos aprendidos
-                    Text(
-                        text = "${device.learnedCommands.size} comandos configurados",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (device.isActive) {
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.primary
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Botones de control
+                    if (isLearning) {
+                        Button(
+                            onClick = onStopLearning,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
                         ) {
-                            Text("Activo", color = MaterialTheme.colorScheme.onPrimary)
+                            Text(stringResource(R.string.stop_learning))
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Button(
+                            onClick = onRestartLearning,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.restart_learning))
+                        }
+                    } else {
+                        Button(
+                            onClick = onStartLearning,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.start_learning))
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Button(
+                            onClick = onClearAllCommands,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text(stringResource(R.string.clear_all_commands))
                         }
                     }
-                    IconButton(onClick = onDeleteClick) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar dispositivo",
-                            tint = MaterialTheme.colorScheme.error
+                }
+            }
+
+            // Nueva sección: Comandos detectados en la sesión actual
+            if (learnedCommands.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.detected_commands),
+                            style = MaterialTheme.typography.titleMedium
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 200.dp)
+                        ) {
+                            items(learnedCommands) { command ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = command.label,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Text(
+                                            text = "Code: ${command.gCommand}",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Sección de comandos ya guardados
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        stringResource(R.string.saved_commands, device.learnedCommands.size),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (device.learnedCommands.isEmpty()) {
+                        Text(
+                            stringResource(R.string.no_saved_commands),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 300.dp)
+                        ) {
+                            items(device.learnedCommands) { learnedCommand ->
+                                ListItem(
+                                    leadingContent = {
+                                        Icon(
+                                            imageVector = Icons.Default.Settings,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    headlineContent = {
+                                        Text(
+                                            text = learnedCommand.command.label,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    },
+                                    supportingContent = {
+                                        Text(
+                                            text = learnedCommand.karooKey?.label ?: "No assigned",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                )
+                                HorizontalDivider()
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
-

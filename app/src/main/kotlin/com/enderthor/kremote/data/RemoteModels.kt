@@ -5,6 +5,14 @@ import io.hammerhead.karooext.models.PerformHardwareAction
 import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
 
 
+const val EXTENSION_NAME = "kremote"
+const val reconnectAttempts = 10
+const val reconnectDelayMs = 5000L // 5 segundos entre intentos
+const val maxreconnectDelayMs = 60000L // 1 minuto
+const val checkIntervalMs=  120000L // 10 segundos
+const val autoReconnect = true
+const val minReconnectInterval = 2000L
+
 sealed class DeviceMessage {
     data class Error(val message: String) : DeviceMessage()
     data class Success(val message: String) : DeviceMessage()
@@ -13,7 +21,7 @@ sealed class DeviceMessage {
 
 @Serializable
 enum class KarooKey(val action: PerformHardwareAction, val label: String) {
-    BOTTOMLEFT(PerformHardwareAction.BottomLeftPress, "Back"),
+    BOTTOMLEFT(PerformHardwareAction.BottomLeftPress, "Back/Lap"),
     BOTTOMRIGHT(PerformHardwareAction.BottomRightPress, "Accept / Navigate In"),
     TOPLEFT(PerformHardwareAction.TopLeftPress, "Page Left"),
     TOPRIGHT(PerformHardwareAction.TopRightPress, "Page Right"),
@@ -23,7 +31,7 @@ enum class KarooKey(val action: PerformHardwareAction, val label: String) {
 
 @Serializable
 enum class AntRemoteKey(val label: String, val gCommand: GenericCommandNumber) {
-    MENU_DOWN("Menu Down", GenericCommandNumber.MENU_DOWN),
+    MENU_DOWN("Right", GenericCommandNumber.MENU_DOWN),
     MENU_UP("Menu Up", GenericCommandNumber.MENU_UP),
     LENGTH("Function Down", GenericCommandNumber.LENGTH),
     MENU_BACK("Menu Back", GenericCommandNumber.MENU_BACK),
@@ -33,7 +41,7 @@ enum class AntRemoteKey(val label: String, val gCommand: GenericCommandNumber) {
     LAP("Lap", GenericCommandNumber.LAP),
     START("Start", GenericCommandNumber.START),
     STOP("Stop", GenericCommandNumber.STOP),
-    UNRECOGNIZED("Unrecognized", GenericCommandNumber.UNRECOGNIZED)
+    UNRECOGNIZED("Up", GenericCommandNumber.UNRECOGNIZED)
 }
 
 @Serializable
@@ -48,7 +56,6 @@ enum class RemoteType {
     ANT
 }
 
-const val EXTENSION_NAME = "kremote"
 
 @Serializable
 data class RemoteDevice(
@@ -84,7 +91,5 @@ data class GlobalConfig(
 @Serializable
 data class GlobalSettings(
     val onlyWhileRiding: Boolean = true,
-    val autoReconnect: Boolean = true,
-    val reconnectAttempts: Int = 5,
-    val reconnectDelayMs: Long = 5000 // 5 segundos entre intentos
 )
+

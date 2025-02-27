@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KRemote</string>
+    <string name="extension_name">KRemote</string>
+    <!-- Common -->
+    <string name="ok">Aceptar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="delete">Eliminar</string>
+    <string name="error">Error</string>
+    <string name="information">Información</string>
+    <string name="back">Volver</string>
+
+    <!-- Tab Layout -->
+    <string name="tab_mapping">Mapeo</string>
+    <string name="tab_remotes">Controles</string>
+
+    <!-- Device Management Screen -->
+    <string name="configure_commands">Configurar Comandos</string>
+    <string name="delete_device">Eliminar Dispositivo</string>
+    <string name="searching">Buscando…</string>
+    <string name="search_ant">Buscar ANT</string>
+    <string name="available_ant_devices">Dispositivos ANT+ Disponibles</string>
+    <string name="device_number">Dispositivo #%1$d</string>
+    <string name="paired_devices">Dispositivos Emparejados</string>
+    <string name="delete_device_title">Eliminar Dispositivo</string>
+    <string name="delete_device_confirmation">¿Estás seguro de que deseas eliminar %1$s?</string>
+    <string name="remote_registered_successfully">Remote registrado</string>
+    <!-- Device Commands Screen -->
+    <string name="configure_device">Configurar %1$s</string>
+    <string name="learning_mode">Modo Aprendizaje</string>
+    <string name="status">Estado: %1$s</string>
+    <string name="awaiting_signal">Esperando señal remota…</string>
+    <string name="ready_to_learn">Listo para aprender</string>
+    <string name="elapsed_time">Tiempo: %1$d segundos</string>
+    <string name="start_learning_instructions">Pulsa \'Iniciar Aprendizaje\' y luego presiona cualquier botón en tu control remoto.</string>
+    <string name="stop_learning">Detener Aprendizaje</string>
+    <string name="restart_learning">Reiniciar Aprendizaje</string>
+    <string name="start_learning">Iniciar Aprendizaje</string>
+    <string name="clear_all_commands">Borrar Todos los Comandos</string>
+    <string name="detected_commands">Comandos Detectados en esta Sesión</string>
+    <string name="command_code">Código: %1$s</string>
+    <string name="saved_commands">Comandos Guardados (%1$d)</string>
+    <string name="no_saved_commands">No hay comandos guardados. Usa el modo aprendizaje para añadir comandos.</string>
+    <string name="not_assigned">No asignado</string>
+
+    <!-- Configuration Screen -->
+    <string name="configuration_of">Configuración de %1$s</string>
+    <string name="no_active_devices">No hay dispositivos activos</string>
+    <string name="active_device">Activo</string>
+    <string name="assign_karookey_to_commands">Asignar KarooKey a Comandos:</string>
+    <string name="none">Ninguno</string>
+    <string name="global_settings">Configuración General</string>
+    <string name="only_while_riding">Activar solo durante paseo</string>
+
+    <!-- Success Messages -->
+    <string name="device_deleted">Dispositivo eliminado</string>
+    <string name="all_commands_cleared">Todos los comandos borrados</string>
+    <string name="command_learned">Comando %1$s aprendido</string>
+    <string name="ant_device_added">Dispositivo ANT+ añadido</string>
+
+    <!-- Error Messages -->
+    <string name="connection_error">Error de conexión</string>
+    <string name="invalid_device_id">ID de dispositivo no válido</string>
+    <string name="learning_error">Error en aprendizaje: %1$s</string>
+    <string name="no_device_selected">No hay dispositivo seleccionado</string>
+    <string name="error_loading_devices">Error cargando dispositivos: %1$s</string>
+    <string name="error_adding_device">Error añadiendo dispositivo: %1$s</string>
+    <string name="scanning_error">Error escaneando: %1$s</string>
+    <string name="ant_scan_error">Error escaneando dispositivos ANT+: %1$s</string>
+    <string name="stop_scan_error">Error deteniendo escaneo: %1$s</string>
+    <string name="error_activating_device">Error activando dispositivo: %1$s</string>
+    <string name="error_deleting_device">Error eliminando dispositivo: %1$s</string>
+    <string name="error_clearing_commands">Error borrando comandos: %1$s</string>
+</resources>
