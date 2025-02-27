@@ -54,4 +54,20 @@
     <!-- Success Messages -->
     <string name="device_deleted">Device deleted</string>
     <string name="all_commands_cleared">All commands cleared</string>
+    <string name="command_learned">Command %1$s learned</string>
+    <string name="ant_device_added">Device ANT+ added</string>
+
+    <!-- Error Messages -->
+    <string name="connection_error">Connection error</string>
+    <string name="invalid_device_id">Invalid device ID</string>
+    <string name="learning_error">Learning error: %1$s</string>
+    <string name="no_device_selected">No device selected</string>
+    <string name="error_loading_devices">Error loading devices: %1$s</string>
+    <string name="error_adding_device">Error adding device: %1$s</string>
+    <string name="scanning_error">Scanning error: %1$s</string>
+    <string name="ant_scan_error">Error scanning ANT+ devices: %1$s</string>
+    <string name="stop_scan_error">Error stopping scan: %1$s</string>
+    <string name="error_activating_device">Error activating device: %1$s</string>
+    <string name="error_deleting_device">Error deleting device: %1$s</string>
+    <string name="error_clearing_commands">Error clearing commands: %1$s</string>
 </resources>
