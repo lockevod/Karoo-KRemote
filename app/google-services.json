@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "96947654786",
+    "project_id": "kremote-d2210",
+    "storage_bucket": "kremote-d2210.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:96947654786:android:498eac6f3ae9792633249b",
+        "android_client_info": {
+          "package_name": "com.enderthor.kremote"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3Xrv1KD7iJSG_Jwev7eecZ3RfVh_-qnU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
