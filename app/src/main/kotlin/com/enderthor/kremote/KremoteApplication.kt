@@ -1,20 +1,24 @@
 package com.enderthor.kremote
 
 import android.app.Application
+import android.content.Intent
 import android.util.Log
-
+import com.enderthor.kremote.data.RemoteRepository
+import com.enderthor.kremote.receiver.ConnectionServiceReceiver
 import timber.log.Timber
 import timber.log.Timber.DebugTree
 import timber.log.Timber.Forest.plant
 import timber.log.Timber.Tree
 
 class KremoteApplication : Application() {
-
+    private lateinit var repository: RemoteRepository
 
     override fun onCreate() {
         super.onCreate()
 
-        if (BuildConfig.DEBUG) {
+        val forceDebug = true
+
+        if (BuildConfig.DEBUG || forceDebug) {
             plant(object : DebugTree() {
                 override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
                     Log.println(
@@ -29,7 +33,7 @@ class KremoteApplication : Application() {
         } else {
             Timber.plant(object : Tree() {
                 override fun isLoggable(tag: String?, priority: Int): Boolean {
-                    return priority > Log.INFO
+                    return priority > Log.WARN
                 }
 
                 override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -41,9 +45,24 @@ class KremoteApplication : Application() {
                         ))
                     )
                 }
-
             })
         }
-        Timber.d("Starting KRemote App")
+        Timber.d("KREMOTE APP START")
+
+
+        repository = RemoteRepository(applicationContext)
+
+        startConnectionService()
+
+    }
+
+    private fun startConnectionService() {
+        try {
+            val intent = Intent("com.enderthor.kremote.START_CONNECTION_SERVICE")
+            intent.putExtra(ConnectionServiceReceiver.EXTRA_IS_EXTENSION, false)
+            sendBroadcast(intent)
+        } catch (e: Exception) {
+            Timber.e(e, "Error starting ConnectionService")
+        }
     }
 }

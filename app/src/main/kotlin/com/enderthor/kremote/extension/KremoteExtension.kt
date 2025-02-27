@@ -1,60 +1,220 @@
 package com.enderthor.kremote.extension
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.content.IntentFilter
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.preferencesDataStore
+import android.content.Intent
+
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
-import com.enderthor.kremote.BuildConfig
-import com.enderthor.kremote.manager.AntRemoteManager
-import com.enderthor.kremote.manager.KarooActionManager
-import com.enderthor.kremote.receiver.RideAppReceiver
-import io.hammerhead.karooext.models.ReleaseAnt
 import io.hammerhead.karooext.models.RequestAnt
+
+
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+
 import timber.log.Timber
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
-class KremoteExtension : KarooExtension("kremote", BuildConfig.VERSION_NAME) {
-
-    lateinit var karooSystem: KarooSystemService
-    private lateinit var rideAppReceiver: RideAppReceiver
-    private lateinit var antRemoteManager: AntRemoteManager
-    private lateinit var karooActionManager: KarooActionManager
-    var onRideApp: Boolean = false
+import com.enderthor.kremote.BuildConfig
+import com.enderthor.kremote.ant.AntManager
+import com.enderthor.kremote.data.EXTENSION_NAME
+import com.enderthor.kremote.data.RemoteRepository
+import com.enderthor.kremote.data.RemoteDevice
+import com.enderthor.kremote.data.GlobalSettings
+import com.enderthor.kremote.receiver.ConnectionServiceReceiver
 
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+
+class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME) {
+
+    companion object {
+        @Volatile
+        private var instance: KremoteExtension? = null
+
+        fun getInstance(): KremoteExtension? = instance
+    }
+
+    init {
+        instance = this
+    }
+
+    private lateinit var karooSystem: KarooSystemService
+    private lateinit var _antManager: AntManager
+    private lateinit var repository: RemoteRepository
+    private lateinit var karooAction: KarooAction
+
+    val antManager: AntManager get() = _antManager
+
+    private var rideReceiver: KarooRideReceiver? = null
+    private var isRiding = false
+    private var isServiceConnected = false
+    private val extensionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var activeDevice: RemoteDevice? = null
+    private var globalSettings: GlobalSettings? = null
+
     override fun onCreate() {
         super.onCreate()
+        Timber.d("[KRemote] Extension onCreate - ID: ${System.identityHashCode(this)}")
+
         karooSystem = KarooSystemService(applicationContext)
+        repository = RemoteRepository(applicationContext)
+
+        // Crear AntManager con callback mejorado
+        _antManager = AntManager(applicationContext) { command ->
+            Timber.d("[KRemote] 🔥 Comando ANT recibido en extensión: ${command.label}")
+            extensionScope.launch(Dispatchers.Main) {
+                try {
+                    if (::karooAction.isInitialized) {
+                        karooAction.handleAntCommand(command.gCommand)
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "[KRemote] Error procesando comando ANT")
+                }
+            }
+        }
+
         karooSystem.connect { connected ->
-            Timber.i("Karoo system service connected: $connected")
+            Timber.i("[KRemote] Karoo service connected: $connected")
+            isServiceConnected = connected
+
+            if (connected) {
+                // Crear KarooAction después de conectar
+                karooAction = KarooAction(
+                    karooSystem,
+                    { isServiceConnected },
+                    { isRiding },
+                    { globalSettings?.onlyWhileRiding != false },
+                    { activeDevice }
+                )
+
+                // Solicitar acceso ANT
+                karooSystem.dispatch(RequestAnt(EXTENSION_NAME))
+                Timber.d("[KRemote] Solicitado acceso ANT+")
+
+                // Iniciar conexión INMEDIATAMENTE si hay dispositivo activo
+                connectActiveDevice()
+            }
         }
-       // Timber.d("oncreate")
 
-        karooSystem.dispatch(RequestAnt(extension))
-        karooActionManager = KarooActionManager(karooSystem)
-        antRemoteManager = AntRemoteManager(this, applicationContext, karooActionManager)
-        antRemoteManager.startAntRemote()
+        monitorActiveDeviceChanges()
+        startConnectionService()
+        initializeRideReceiver()
+    }
 
-        rideAppReceiver = RideAppReceiver(this)
+    private fun connectActiveDevice() {
+        extensionScope.launch {
+            try {
+                val device = repository.getActiveDevice().first()
+                if (device != null) {
+                    val deviceId = device.macAddress?.toIntOrNull()
+                    if (deviceId != null) {
+                        Timber.d("[KRemote] Conectando a dispositivo #$deviceId")
 
-        val filter = IntentFilter().apply {
-            addAction("io.hammerhead.intent.action.RIDE_APP_OPENED")
-            addAction("io.hammerhead.hx.intent.action.RIDE_STOP")
+                        // No desconectar antes - dejar que AntManager lo maneje
+                        antManager.connect(deviceId)
+
+                        // Verificar conexión después de un tiempo
+                        delay(2000)
+                        if (antManager.isConnected) {
+                            Timber.d("[KRemote] ✅ Conexión exitosa a dispositivo ANT+ #$deviceId")
+                        } else {
+                            Timber.d("[KRemote] ❌ No se pudo conectar a dispositivo ANT+ #$deviceId")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "[KRemote] Error conectando dispositivo")
+            }
         }
-        registerReceiver(rideAppReceiver, filter)
+    }
+
+    private fun monitorActiveDeviceChanges() {
+        extensionScope.launch {
+            try {
+                repository.currentConfig.collect { config ->
+                    activeDevice = config.devices.find { it.isActive }
+                    globalSettings = config.globalSettings
+
+                    // Manejar conexión ANT+
+                    if (activeDevice?.macAddress != null) {
+                        try {
+                            val deviceNumber = activeDevice?.macAddress?.toInt()
+                            if (!antManager.isConnected && deviceNumber != null) {
+                                antManager.connect(deviceNumber)
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "[KRemote] Error conectando dispositivo ANT+")
+                        }
+                    } else {
+                        if (antManager.isConnected) {
+                            antManager.disconnect()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "[KRemote] Error monitorizando cambios de dispositivo")
+            }
+        }
+    }
+
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    private fun initializeRideReceiver() {
+        rideReceiver = KarooRideReceiver { isRideActive ->
+            Timber.d("Ride state changed: active = $isRideActive")
+            isRiding = isRideActive
+        }
+
+        rideReceiver?.let { receiver ->
+            try {
+                // Registrar sin la flag RECEIVER_NOT_EXPORTED
+                applicationContext.registerReceiver(
+                    receiver,
+                    KarooRideReceiver.getIntentFilter()
+                )
+                Timber.d("Ride receiver registrado correctamente")
+            } catch (e: Exception) {
+                Timber.e(e, "Error al registrar ride receiver")
+            }
+        }
+    }
+
+    private fun startConnectionService() {
+        try {
+            val intent = Intent("com.enderthor.kremote.START_CONNECTION_SERVICE")
+            intent.putExtra(ConnectionServiceReceiver.EXTRA_IS_EXTENSION, true)
+            sendBroadcast(intent)
+        } catch (e: Exception) {
+            Timber.e(e, "Error starting ConnectionService")
+        }
     }
 
     override fun onDestroy() {
-        unregisterReceiver(rideAppReceiver)
-        antRemoteManager.closeAntHandler()
-        karooSystem.dispatch(ReleaseAnt(extension))
-        karooSystem.disconnect()
-        super.onDestroy()
+        Timber.d("KremoteExtension onDestroy")
+        try {
+            instance = null
+            rideReceiver?.let { receiver ->
+                try {
+                    applicationContext.unregisterReceiver(receiver)
+                    Timber.d("Ride receiver unregistered successfully")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error unregistering ride receiver")
+                }
+            }
+            rideReceiver = null
+
+            antManager.disconnect()
+            antManager.cleanup()
+            karooSystem.disconnect()
+            extensionScope.cancel()
+
+        } catch (e: Exception) {
+            Timber.e(e, "Error during extension destruction")
+        }
+        finally {
+            super.onDestroy()
+        }
     }
 }
