@@ -1,4 +1,3 @@
-// Kotlin
 package com.enderthor.kremote.screens
 
 import androidx.compose.foundation.layout.Column
@@ -11,8 +10,10 @@ import com.enderthor.kremote.ant.AntManager
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.viewmodel.ConfigurationViewModel
 import com.enderthor.kremote.viewmodel.DeviceViewModel
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TabLayout(
     antManager: AntManager,
@@ -23,73 +24,75 @@ fun TabLayout(
 
     // ViewModels
     val deviceViewModel: DeviceViewModel = viewModel(
-        factory = DeviceViewModelFactory(antManager, repository)
+        factory = DeviceViewModelFactory(antManager, repository, LocalContext.current)
     )
 
     val configViewModel: ConfigurationViewModel = viewModel(
         factory = ConfigViewModelFactory(repository)
     )
 
-    // Estados
-    val deviceStates = with(deviceViewModel) {
-        Triple(
-            availableAntDevices.collectAsState(),
-            devices.collectAsState(),
-            scanning.collectAsState()
-        )
-    }
-
-    val configStates = with(configViewModel) {
-        Pair(
-            activeDevice.collectAsState(),
-            errorMessage.collectAsState()
-        )
-    }
+    // Obtener el dispositivo seleccionado para la pantalla de comandos
+    val selectedDevice = deviceViewModel.selectedDevice.collectAsState()
 
     Column {
-        TabRow(selectedTabIndex = selectedTab) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    text = { Text(title) },
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index }
+        // Si hay un dispositivo seleccionado, mostrar la pantalla de comandos
+        selectedDevice.value?.let { device ->
+            DeviceCommandsScreen(
+                device = device,
+                learnedCommands = deviceViewModel.learnedCommands.collectAsState().value,
+                isLearning = deviceViewModel.scanning.collectAsState().value,
+                onStartLearning = { deviceViewModel.startLearning() },
+                onStopLearning = { deviceViewModel.stopLearning() },
+                onRestartLearning = { deviceViewModel.restartLearning() },
+                onNavigateBack = { deviceViewModel.clearSelectedDevice() },
+                onClearAllCommands = { deviceViewModel.clearAllLearnedCommands() }
+            )
+        } ?: run {
+            // Mostrar la pantalla normal con pestañas si no hay dispositivo seleccionado
+            TabRow(selectedTabIndex = selectedTab) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        text = { Text(title) },
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index }
+                    )
+                }
+            }
+
+            when (selectedTab) {
+                0 -> ConfigurationScreen(
+                    devices = deviceViewModel.devices.collectAsState().value,
+                    activeDevice = configViewModel.activeDevice.collectAsState().value,
+                    errorMessage = configViewModel.errorMessage.collectAsState().value,
+                    configViewModel = configViewModel
+                )
+                1 -> DeviceManagementScreen(
+                    devices = deviceViewModel.devices.collectAsState().value,
+                    availableAntDevices = deviceViewModel.availableAntDevices.collectAsState().value,
+                    scanning = deviceViewModel.scanning.collectAsState().value,
+                    message = deviceViewModel.message.collectAsState().value,
+                    onScanClick = { deviceViewModel.startDeviceScan() },
+                    onNewAntDeviceClick = { deviceInfo -> deviceViewModel.onNewAntDeviceSelected(deviceInfo) },
+                    onMessageDismiss = { deviceViewModel.clearMessage() },
+                    onDeviceDelete = { device -> deviceViewModel.removeDevice(device.id) },
+                    onDeviceClick = { device -> deviceViewModel.activateDevice(device) },
+                    onDeviceConfigure = { device -> deviceViewModel.onDeviceConfigureClick(device) }
                 )
             }
-        }
-
-        when (selectedTab) {
-            0 -> ConfigurationScreen(
-                devices = deviceStates.second.value,
-                activeDevice = configStates.first.value,
-                errorMessage = configStates.second.value,
-                configViewModel = configViewModel
-            )
-            1 -> DeviceManagementScreen(
-                devices = deviceViewModel.devices.collectAsState().value,
-                availableAntDevices = deviceViewModel.availableAntDevices.collectAsState().value,
-                scanning = deviceViewModel.scanning.collectAsState().value,
-                message = deviceViewModel.message.collectAsState().value,
-                onScanClick = { deviceViewModel.startDeviceScan() },
-                onNewAntDeviceClick = { deviceInfo -> deviceViewModel.onNewAntDeviceSelected(deviceInfo) },
-                onMessageDismiss = { deviceViewModel.clearMessage() },
-                onDeviceDelete = { device -> deviceViewModel.removeDevice(device.id) },
-                onDeviceClick = { device -> deviceViewModel.activateDevice(device) },
-                learnedCommands = deviceViewModel.learnedCommands.collectAsState().value, // Pasar la lista de comandos aprendidos
-                onStartLearning = { device -> deviceViewModel.startLearning() }, // Pasar la función para iniciar el aprendizaje
-                onStopLearning = { deviceViewModel.stopLearning() }, // Pasar la función para detener el aprendizaje
-                onRestartLearning = { device -> deviceViewModel.restartLearning() }  )
         }
     }
 }
 
+// Factories se mantienen igual
 class DeviceViewModelFactory(
     private val antManager: AntManager,
     private val repository: RemoteRepository,
+    private val context: Context
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DeviceViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return DeviceViewModel(antManager, repository) as T
+            return DeviceViewModel(antManager, repository,context) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

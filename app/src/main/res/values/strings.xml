@@ -1,4 +1,57 @@
 <resources>
     <string name="app_name">KRemote</string>
     <string name="extension_name">KRemote</string>
+    <!-- Common -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="error">Error</string>
+    <string name="information">Information</string>
+    <string name="back">Back</string>
+
+    <!-- Tab Layout -->
+    <string name="tab_mapping">Mapping</string>
+    <string name="tab_remotes">Remotes</string>
+
+    <!-- Device Management Screen -->
+    <string name="configure_commands">Configure Commands</string>
+    <string name="delete_device">Delete Device</string>
+    <string name="searching">Searching…</string>
+    <string name="search_ant">Search ANT</string>
+    <string name="available_ant_devices">Available ANT+ Devices</string>
+    <string name="device_number">Device #%1$d</string>
+    <string name="paired_devices">Paired Devices</string>
+    <string name="delete_device_title">Delete Device</string>
+    <string name="delete_device_confirmation">Are you sure you want to delete %1$s?</string>
+    <string name="remote_registered_successfully">Remote registered</string>
+    <!-- Device Commands Screen -->
+    <string name="configure_device">Configure %1$s</string>
+    <string name="learning_mode">Learning Mode</string>
+    <string name="status">Status: %1$s</string>
+    <string name="awaiting_signal">Awaiting remote signal…</string>
+    <string name="ready_to_learn">Ready to learn</string>
+    <string name="elapsed_time">Time: %1$d seconds</string>
+    <string name="start_learning_instructions">Press \'Start Learning\' then press any button on your remote.</string>
+    <string name="stop_learning">Stop Learning</string>
+    <string name="restart_learning">Restart Learning</string>
+    <string name="start_learning">Start Learning</string>
+    <string name="clear_all_commands">Clear All Commands</string>
+    <string name="detected_commands">Commands Detected in this Session</string>
+    <string name="command_code">Code: %1$s</string>
+    <string name="saved_commands">Saved Commands (%1$d)</string>
+    <string name="no_saved_commands">No saved commands. Use learning mode to add commands.</string>
+    <string name="not_assigned">Not assigned</string>
+
+    <!-- Configuration Screen -->
+    <string name="configuration_of">Configuration of %1$s</string>
+    <string name="no_active_devices">No active devices</string>
+    <string name="active_device">Active</string>
+    <string name="assign_karookey_to_commands">Assign KarooKey to Commands:</string>
+    <string name="none">None</string>
+    <string name="global_settings">Global settings</string>
+    <string name="only_while_riding">Only in ride screen?</string>
+
+    <!-- Success Messages -->
+    <string name="device_deleted">Device deleted</string>
+    <string name="all_commands_cleared">All commands cleared</string>
 </resources>
