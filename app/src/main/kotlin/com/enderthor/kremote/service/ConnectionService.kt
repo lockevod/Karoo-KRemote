@@ -110,21 +110,19 @@ class ConnectionService : Service() {
 
    private fun startPeriodicConnectionCheck(extension: KremoteExtension) {
         serviceScope.launch {
-            var stableConnection = true
             while (true) {
                 try {
-                    val delayTime = if (stableConnection) checkIntervalMs else checkIntervalMs / 2
-                    delay(delayTime)
+                    delay(checkIntervalMs)
 
                     val device = repository.getActiveDevice().first()
-                    if (device != null && !extension.antManager.isConnected) {
-                        stableConnection = false
-                        Timber.d("[ConnectionService] 🔄 Reconexión periódica")
-                        device.macAddress?.toInt()?.let { deviceId ->
-                            extension.antManager.connect(deviceId)
+                    if (device != null) {
+                        val deviceId = device.macAddress?.toInt()
+                        if (deviceId != null) {
+                            if (!extension.antManager.isConnectedToDevice(deviceId)) {
+                                Timber.d("[ConnectionService] 🔄 Reconexión a dispositivo específico #$deviceId")
+                                extension.antManager.connect(deviceId)
+                            }
                         }
-                    } else {
-                        stableConnection = true
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "[ConnectionService] Error en verificación periódica")

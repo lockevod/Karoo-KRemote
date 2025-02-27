@@ -109,7 +109,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             try {
                 val device = repository.getActiveDevice().first()
                 if (device != null) {
-                    val deviceId = device.macAddress?.toIntOrNull()
+                    val deviceId = device.macAddress?.toInt()
                     if (deviceId != null) {
                         Timber.d("[KRemote] Conectando a dispositivo #$deviceId")
 
@@ -118,7 +118,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
                         // Verificar conexión después de un tiempo
                         delay(2000)
-                        if (antManager.isConnected) {
+                        if (antManager.isConnectedToDevice(deviceId)) {
                             Timber.d("[KRemote] ✅ Conexión exitosa a dispositivo ANT+ #$deviceId")
                         } else {
                             Timber.d("[KRemote] ❌ No se pudo conectar a dispositivo ANT+ #$deviceId")
@@ -131,7 +131,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         }
     }
 
-    private fun monitorActiveDeviceChanges() {
+   private fun monitorActiveDeviceChanges() {
         extensionScope.launch {
             try {
                 repository.currentConfig.collect { config ->
@@ -142,8 +142,11 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     if (activeDevice?.macAddress != null) {
                         try {
                             val deviceNumber = activeDevice?.macAddress?.toInt()
-                            if (!antManager.isConnected && deviceNumber != null) {
-                                antManager.connect(deviceNumber)
+                            if (deviceNumber != null) {
+                                if (!antManager.isConnectedToDevice(deviceNumber)) {
+                                    Timber.d("[KRemote] Conectando a dispositivo #$deviceNumber (no conectado o dispositivo incorrecto)")
+                                    antManager.connect(deviceNumber)
+                                }
                             }
                         } catch (e: Exception) {
                             Timber.e(e, "[KRemote] Error conectando dispositivo ANT+")
