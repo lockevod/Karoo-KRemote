@@ -125,7 +125,9 @@ class AntManager(
 
         }
 
-
+    fun isConnectedToDevice(deviceNumber: Int): Boolean {
+        return _isConnected && remotePcc?.antDeviceNumber == deviceNumber
+    }
     fun setupCommandCallback(callback: (AntRemoteKey) -> Unit) {
         Timber.d("Configurando callback para comandos ANT+")
         this.commandCallback = callback
@@ -197,7 +199,7 @@ class AntManager(
         lastConnectionAttempt = now
         isConnecting = true
 
-        // La biblioteca ANT+ requiere estar en el hilo principal
+
         runBlocking(Dispatchers.Main) {
             try {
                 Timber.d("[ANT] Conectando a dispositivo #$deviceNumber (Modo aprendizaje: $learningMode)")
@@ -205,7 +207,7 @@ class AntManager(
                 // Guardar el estado actual del modo de aprendizaje
                 val currentLearningMode = learningMode
 
-                // Solo desconectar si no estamos ya conectados a este dispositivo
+                // Solo desconectamos si no estamos ya conectados a este dispositivo
                 if (_isConnected && remotePcc?.antDeviceNumber != deviceNumber) {
                     disconnect()
                 } else if (_isConnected && remotePcc?.antDeviceNumber == deviceNumber) {
@@ -254,7 +256,6 @@ class AntManager(
     fun stopScan() {
         Timber.d("Stopping ANT+ device search")
         try {
-            // Cerramos la búsqueda actual desconectando el dispositivo
             _detectedDevices.value = emptyList()
             disconnect()
             _isConnected = false
@@ -267,7 +268,7 @@ class AntManager(
    fun startDeviceSearch() {
         Timber.d("Starting ANT+ device search")
         try {
-            // Ejecutar en el hilo principal
+
             runBlocking(Dispatchers.Main) {
                 // Si ya hay una conexión ANT+, la desconectamos primero
                 disconnect()

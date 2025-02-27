@@ -22,19 +22,17 @@
 # Mantener la extensión Karoo
 -keep class io.hammerhead.karooext.** { *; }
 
-# Reglas para ANT+ SDK
--keep class com.dsi.ant.** { *; }
--keep class com.dynastream.** { *; }
-
-# Reglas para Bluetooth
--keep class android.bluetooth.** { *; }
--keep class android.bluetooth.le.** { *; }
-
 # Mantener las clases de tu aplicación
 -keep class com.enderthor.kremote.** { *; }
 -keep class com.enderthor.kremote.ant.** { *; }
--keep class com.enderthor.kremote.bluetooth.** { *; }
+-keep class com.enderthor.kremote.activity.** { *; }
+-keep class com.enderthor.kremote.data.** { *; }
 -keep class com.enderthor.kremote.extension.** { *; }
+-keep class com.enderthor.kremote.receiver.** { *; }
+-keep class com.enderthor.kremote.service.** { *; }
+-keep class com.enderthor.kremote.screens.** { *; }
+-keep class com.enderthor.kremote.viewmodel.** { *; }
+
 
 # Reglas para Timber
 -dontwarn org.jetbrains.annotations.**
@@ -84,3 +82,19 @@
 -keepclassmembers class * {
     @androidx.compose.** *;
 }
+
+-keep class com.dsi.ant.plugins.antplus.pcc.controls.AntPlusGenericControllableDevicePcc { *; }
+-keep class com.dsi.ant.plugins.antplus.pcc.controls.defines.CommandStatus { *; }
+-keep class com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber { *; }
+-keep class com.dsi.ant.plugins.antplus.pcc.defines.** { *; }
+-keep class com.dsi.ant.plugins.antplus.pccbase.PccReleaseHandle { *; }
+
+# Mantener interfaces específicas usadas
+-keep interface com.dsi.ant.plugins.antplus.pcc.controls.AntPlusGenericControllableDevicePcc$IGenericCommandReceiver { *; }
+-keep interface com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc$IDeviceStateChangeReceiver { *; }
+-keep interface com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc$IPluginAccessResultReceiver { *; }
+
+# Mantener enums y eventos
+-keep class com.dsi.ant.plugins.antplus.pcc.defines.EventFlag { *; }
+-keep class com.dsi.ant.plugins.antplus.pcc.defines.DeviceState { *; }
+-keep class com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult { *; }
