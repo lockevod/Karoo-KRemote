@@ -1,7 +1,7 @@
 # KRemote  Extension
 
 > [!WARNING]  
-> This app is currently in beta stage and its main features might not work at all.
+> This release is a major upgrade, it's necessary to configure remote.
 
 
 KRemote allows to use a Remote with Karoo and perform some actions with it (swipe screens, etc.)
@@ -29,25 +29,21 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 
 ## Instructions
 
-- Press any button in the Remote to connect, you only need to open this app the first time.
-- I recommend to restart your karoo (off-on) and restart the remote. If you're using a GRemote you need to push two buttons at the same time (in your G Remote) until light flashes.
-- Kremote auto-starts when Karoo starts, then push a button in GRemote and wait until the Remote flashing green several times.
-- Kremote works (if only when riding option is enabled) only when you've started a ride (or ride is in pause). Please if you want kremote works in all screens, uncheck this option.
+- This release adds the possibility to add multiple remotes. 
+- It's mandatory to scan your remote first. When you've the remote added (Remotes screen -> Scan -> push over your remote), you can scan for commands from your remote.
+- If you have a garmin remote, you don't need to scan/learn commands (if you use other Ant remote it's mandatory)
+- Then you need to go to Conf screen, select your remote and map Remotes commands to Karoo actions.
+- Kremote auto-starts when Karoo starts, then push a button in remote and wait until the Remote flashing green several times.
+- Kremote works (if only when riding option is enabled) only when you're in Ride app. Please if you want kremote works in all screens, uncheck this option. If you detect some lags, sometimes you can uncheck this option and try if it's work better.
 
 ## Configuration
-Apps is configured by default:
-
-- Left Button ==> Left screen or item.
-- Right Button ==> Next screen or item. 
-- Upper Button ==> Back Button (several actions, depends on the current Karoo screen.. back, zoom level etc).
-
-You can change the default configuration in the app and select different actions for each button. KRemote only works in Ride app and when ride is recording (forced until Hammerhead deploy Ride screen detection)
+You need to configure the remote buttons to perform some actions in Karoo. There isn't any default configuration, you need to configure it in the app.
 If you have karoo > 1.535 you can use showmap option also
 
 ## Know Bugs
-- Sometimes app isn't working fine. You've to stop the app and re-start again (you can do this from karoo menu).
-- Hammerhead doesn't provide a way to detect the current screen, so KRemote only worked when you're in Ride app and ride is recording. This produce some problems when you auto-pause your ride.
-KRemote will work in every screen now.
+- Sometimes app isn't working fine, this new release has better support and it's working fine, but you need to know, Karoo function have priority oven kremote actions.
+- Sometimes app can't detect the remote, you need to restart the app.. or the Karoo. Restart karoo solve most of the problems (with this app and with anything.. sometimes karoo is slowly if you have several custom apps)
+
 ## Credits
 
 - Made possible by the generous usage terms of timklge (apache 2.0). He has a great development and I use part of his code to create this extension.
