@@ -52,7 +52,8 @@ If you have karoo > 1.535 you can use showmap option also
   https://github.com/timklge?tab=repositories
 - This app use ANT library from ANT+ (please review their copyright and conditions). If you want to compile you need to download antpluginlib_3-9-0.aar  and place in lib directory. You can download from ANT+ repositories
 - SRAM and Hammerhead coypyright are describer in Karoo file.
-- Kremote doesn't save or share any information, but it use firebase crashlytics service only for crashes in app. I only use this information to prevent new crashes in the app. Please if you isn't agree with Firebase use (this conditions are in firebase web and can change, please read it), please you cannot use kremote app. If you use kremote you are agree with all conditions and copyrights.
+- Credits and copyright. Please respect license and specific parts licencsers (icons, etc). If you use this app you're agree.
+- KRemote doesn't save or share any information for it's use, but it use firebase crashlytics service only for crashes in app (and firebase use this crash information). I only use this information to prevent new crashes in the app. Please if you isn't agree with Firebase use (this conditions are in firebase web and can change, please read it), please you cannot use app. If you use it you are agree with all conditions and copyrights.
 
 ## Links
 
