@@ -50,6 +50,7 @@ If you have karoo > 1.535 you can use showmap option also
 
 - Made possible by the generous usage terms of timklge (apache 2.0). He has a great development and I use part of his code to create this extension.
   https://github.com/timklge?tab=repositories
+- This app use ANT library from ANT+. If you want to compile you need to download antpluginlib_3-9-0.aar  and place in lib directory. You can download from ANT+ repositories
 
 ## Links
 
