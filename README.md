@@ -46,11 +46,13 @@ If you have karoo > 1.535 you can use showmap option also
 - Sometimes app isn't working fine, this new release has better support and it's working fine, but you need to know, Karoo function have priority oven kremote actions.
 - Sometimes app can't detect the remote, you need to restart the app.. or the Karoo. Restart karoo solve most of the problems (with this app and with anything.. sometimes karoo is slowly if you have several custom apps)
 
-## Credits
+## Credits, license and  privacy
 
 - Made possible by the generous usage terms of timklge (apache 2.0). He has a great development and I use part of his code to create this extension.
   https://github.com/timklge?tab=repositories
 - This app use ANT library from ANT+ (please review their copyright and conditions). If you want to compile you need to download antpluginlib_3-9-0.aar  and place in lib directory. You can download from ANT+ repositories
+- SRAM and Hammerhead coypyright are describer in Karoo file.
+- Kremote doesn't save or share any information, but it use firebase crashlytics service only for crashes in app. I only use this information to prevent new crashes in the app. Please if you isn't agree with Firebase use (this conditions are in firebase web and can change, please read it), please you cannot use kremote app. If you use kremote you are agree with all conditions and copyrights.
 
 ## Links
 
