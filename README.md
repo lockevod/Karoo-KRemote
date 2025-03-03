@@ -6,6 +6,8 @@
 
 KRemote allows to use a Remote with Karoo and perform some actions with it (swipe screens, etc.)
 
+<a href="https://www.buymeacoffee.com/enderthor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
 ## Requirements
 - Ant+ Remote (tested with Garmin Remote but should work with others Ant+ remotes)
 - Karoo (tested on last Karoo ) with version 1.524.2003 or later
@@ -44,10 +46,14 @@ If you have karoo > 1.535 you can use showmap option also
 - Sometimes app isn't working fine, this new release has better support and it's working fine, but you need to know, Karoo function have priority oven kremote actions.
 - Sometimes app can't detect the remote, you need to restart the app.. or the Karoo. Restart karoo solve most of the problems (with this app and with anything.. sometimes karoo is slowly if you have several custom apps)
 
-## Credits
+## Credits, license and  privacy
 
 - Made possible by the generous usage terms of timklge (apache 2.0). He has a great development and I use part of his code to create this extension.
   https://github.com/timklge?tab=repositories
+- This app use ANT library from ANT+ (please review their copyright and conditions). If you want to compile you need to download antpluginlib_3-9-0.aar  and place in lib directory. You can download from ANT+ repositories
+- SRAM and Hammerhead coypyright are describer in Karoo file.
+- Credits and copyright. Please respect license and specific parts licencsers (icons, etc). If you use this app you're agree.
+- KRemote doesn't save or share any information for it's use, but it use firebase crashlytics service only for crashes in app (and firebase use this crash information). I only use this information to prevent new crashes in the app. Please if you isn't agree with Firebase use (this conditions are in firebase web and can change, please read it), please you cannot use app. If you use it you are agree with all conditions and copyrights.
 
 ## Links
 
