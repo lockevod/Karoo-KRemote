@@ -16,6 +16,7 @@ local.properties
 
 # Project exclude paths
 /lib/build/
+/lib/antpluginlib_3-9-0.aar
 /.idea/
 /.kotlin/
 /app/release/
