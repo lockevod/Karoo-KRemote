@@ -176,7 +176,10 @@ fun LearnedCommandsSection(
 ) {
 
     val learnedCommands = remember(device.learnedCommands) {
-        device.learnedCommands.map { it.command }.distinct()
+        if (device.learnedCommands.isEmpty())
+            RemoteDevice.getDefaultLearnedCommands().map { it.command }.distinct()
+         else
+            device.learnedCommands.map { it.command }.distinct()
     }
 
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -242,7 +245,7 @@ fun CommandAssignmentRow(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Pulsación simple
+
         Column {
 
             val selectedOption = options.find {
