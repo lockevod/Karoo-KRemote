@@ -197,6 +197,16 @@ class AntManager(
 
     fun updateDoubleTapTimeout(timeout: Long) {
         this.doubleTapTimeout = timeout
+        // Actualizar el doubleTapDetector existente o crear uno nuevo
+        doubleTapDetector?.updateTimeout(timeout) ?: run {
+            doubleTapDetector = DoubleTapDetector(timeout) { commandNumber, pressType ->
+                val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
+                antCommand?.let {
+                    Timber.d("[ANT] Procesando comando: ${it.label} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+                    commandCallback.invoke(it, pressType)
+                }
+            }
+        }
     }
 
     fun connect(deviceNumber: Int) {

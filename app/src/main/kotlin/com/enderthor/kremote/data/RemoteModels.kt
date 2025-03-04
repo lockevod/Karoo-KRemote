@@ -8,6 +8,8 @@ import io.hammerhead.karooext.models.MarkLap
 import io.hammerhead.karooext.models.PauseRide
 import io.hammerhead.karooext.models.ResumeRide
 import io.hammerhead.karooext.models.ShowMapPage
+import io.hammerhead.karooext.models.TurnScreenOff
+import io.hammerhead.karooext.models.TurnScreenOn
 import io.hammerhead.karooext.models.ZoomPage
 
 
@@ -18,7 +20,7 @@ const val maxreconnectDelayMs = 60000L // 1 minuto
 const val checkIntervalMs=  120000L // 10 segundos
 const val autoReconnect = true
 const val minReconnectInterval = 2000L
-const val DEFAULT_DOUBLE_TAP_TIMEOUT = 500L // tiempo máximo entre pulsaciones (ms)
+const val DEFAULT_DOUBLE_TAP_TIMEOUT = 1500L // tiempo máximo entre pulsaciones (ms)
 
 
 @Serializable
@@ -43,8 +45,10 @@ enum class KarooKey(val action: KarooEffect, val label: String) {
     SHOWMAP(ShowMapPage(true), "Map and Zoom In"),
     TOPLEFT(PerformHardwareAction.TopLeftPress, "Page Left"),
     TOPRIGHT(PerformHardwareAction.TopRightPress, "Page Right"),
-    PAUSE(PauseRide, "Pause"),
-    RESUME(ResumeRide, "Resume"),
+    PAUSE(PauseRide, "Pause Ride"),
+    RESUME(ResumeRide, "Resume Ride"),
+    TURN_ON(TurnScreenOn, "Screen On"),
+    TURN_OFF(TurnScreenOff, "Screen Off"),
     ZOOM_IN(ZoomPage(true), "Zoom In"),
     ZOOM_OUT(ZoomPage(false), "Zoom Out"),
 }

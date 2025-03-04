@@ -51,6 +51,7 @@
     <string name="none">Ninguno</string>
     <string name="global_settings">Configuración General</string>
     <string name="only_while_riding">Activar solo durante paseo</string>
+    <string name="forced_screen_on">Mantener pantalla encendida</string>
 
     <!-- Success Messages -->
     <string name="device_deleted">Dispositivo eliminado</string>
