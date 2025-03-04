@@ -31,11 +31,11 @@ fun TabLayout(
         factory = ConfigViewModelFactory(repository)
     )
 
-    // Obtener el dispositivo seleccionado para la pantalla de comandos
+
     val selectedDevice = deviceViewModel.selectedDevice.collectAsState()
 
     Column {
-        // Si hay un dispositivo seleccionado, mostrar la pantalla de comandos
+
         selectedDevice.value?.let { device ->
             DeviceCommandsScreen(
                 device = device,
@@ -48,7 +48,7 @@ fun TabLayout(
                 onClearAllCommands = { deviceViewModel.clearAllLearnedCommands() }
             )
         } ?: run {
-            // Mostrar la pantalla normal con pestañas si no hay dispositivo seleccionado
+
             TabRow(selectedTabIndex = selectedTab) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
@@ -83,7 +83,7 @@ fun TabLayout(
     }
 }
 
-// Factories se mantienen igual
+
 class DeviceViewModelFactory(
     private val antManager: AntManager,
     private val repository: RemoteRepository,
