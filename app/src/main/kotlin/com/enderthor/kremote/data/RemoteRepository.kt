@@ -134,13 +134,12 @@ class RemoteRepository(private val context: Context) {
                 val current = getCurrentConfig()
                 val updatedDevices = current.devices.map { device ->
                     if (device.id == deviceId) {
-                        // Comprobar si el comando ya existe con este tipo de pulsación
+
                         val commandExists = device.learnedCommands.any {
                             it.command == command && it.pressType == pressType
                         }
 
                         if (!commandExists) {
-                            // Agregar nuevo comando con el tipo de pulsación
                             val newCommand = LearnedCommand(command = command, pressType = pressType)
                             device.copy(learnedCommands = (device.learnedCommands + newCommand).toMutableList())
                         } else {
@@ -197,7 +196,7 @@ class RemoteRepository(private val context: Context) {
                 val updatedConfig = current.copy(
                     devices = current.devices.map { device ->
                         if (device.id == deviceId) {
-                            // Buscar si ya existe este comando con este tipo de pulsación
+
                             val existingCommandIndex = device.learnedCommands.indexOfFirst {
                                 it.command == command && it.pressType == pressType
                             }

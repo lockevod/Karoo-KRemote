@@ -78,4 +78,5 @@
     <string name="lower_values_explanation">Lower values require faster taps</string>
     <string name="single_press">Single press:</string>
     <string name="double_press">Double press:</string>
+    <string name="no_learned_commands">No learned command. You need to learn all commands first (Remotes screen).</string>
 </resources>

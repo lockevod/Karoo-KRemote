@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handleAntCommand(command: AntRemoteKey, pressType: PressType) {
         Timber.d("ANT+ command received: $command and pressType: $pressType")
-        // Aquí puedes manejar los comandos ANT+ según sea necesario
+        // Handle the received command and pressType here
     }
 
 
