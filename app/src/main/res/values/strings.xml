@@ -70,4 +70,12 @@
     <string name="error_activating_device">Error activating device: %1$s</string>
     <string name="error_deleting_device">Error deleting device: %1$s</string>
     <string name="error_clearing_commands">Error clearing commands: %1$s</string>
+
+    <!-- Double tap configuration -->
+    <string name="double_tap_configuration">Double tap configuration</string>
+    <string name="enable_double_tap">Enable double tap</string>
+    <string name="double_tap_timeout">Timeout: %1$d ms</string>
+    <string name="lower_values_explanation">Lower values require faster taps</string>
+    <string name="single_press">Single press:</string>
+    <string name="double_press">Double press:</string>
 </resources>

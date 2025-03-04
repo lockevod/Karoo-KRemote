@@ -70,7 +70,7 @@ class ConnectionService : Service() {
                     } ?: Timber.w("[ConnectionService] Dispositivo sin dirección MAC")
                 }
 
-                // Iniciar verificación periódica si hay configuración de auto-reconexión
+
                 if (autoReconnect) {
                     startPeriodicConnectionCheck(kremoteExtension)
                 }
