@@ -97,12 +97,20 @@ data class RemoteDevice(
     }
 
     companion object {
+
+
         fun getDefaultLearnedCommands(): List<LearnedCommand> {
-            return listOf(
-                LearnedCommand(command = AntRemoteKey.MENU_DOWN),
-                LearnedCommand(command = AntRemoteKey.LAP),
-                LearnedCommand(command = AntRemoteKey.UNRECOGNIZED)
-            )
+            val defaultCommands = mutableListOf<LearnedCommand>()
+
+
+            defaultCommands.add(LearnedCommand(command = AntRemoteKey.MENU_DOWN, pressType = PressType.SINGLE, karooKey = KarooKey.TOPRIGHT))
+            defaultCommands.add(LearnedCommand(command = AntRemoteKey.LAP, pressType = PressType.SINGLE, karooKey = KarooKey. BOTTOMLEFT))
+            defaultCommands.add(LearnedCommand(command = AntRemoteKey.UNRECOGNIZED, pressType = PressType.SINGLE, karooKey = KarooKey.SHOWMAP))
+            defaultCommands.add(LearnedCommand(command = AntRemoteKey.MENU_DOWN, pressType = PressType.DOUBLE, karooKey = KarooKey.TOPRIGHT))
+            defaultCommands.add(LearnedCommand(command = AntRemoteKey.LAP, pressType = PressType.DOUBLE, karooKey = KarooKey. BOTTOMLEFT))
+            defaultCommands.add(LearnedCommand(command = AntRemoteKey.UNRECOGNIZED, pressType = PressType.DOUBLE, karooKey = KarooKey.SHOWMAP))
+
+            return defaultCommands
         }
     }
 }

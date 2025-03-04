@@ -79,4 +79,5 @@
     <string name="lower_values_explanation">Valores más bajos requieren pulsaciones más rápidas</string>
     <string name="single_press">Pulsación simple:</string>
     <string name="double_press">Doble pulsación:</string>
+    <string name="no_learned_commands">No hay comandos aprendidos. Primero configura tu mando en la pestaña Remotes.</string>
 </resources>
