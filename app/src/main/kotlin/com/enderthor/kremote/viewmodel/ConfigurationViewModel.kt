@@ -6,6 +6,7 @@ import com.enderthor.kremote.data.KarooKey
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.data.PressType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,11 +51,10 @@ class ConfigurationViewModel(
         }
     }
 
-   fun assignKeyCodeToCommand(deviceId: String, command: AntRemoteKey, karooKey: KarooKey?) {
+    fun assignKeyCodeToCommand(deviceId: String, command: AntRemoteKey, karooKey: KarooKey?, pressType: PressType) {
         viewModelScope.launch {
             try {
-                repository.assignKeyCodeToCommand(deviceId, command, karooKey)
-                // No necesitamos forzar la actualización, solo mantener la suscripción
+                repository.assignKeyCodeToCommand(deviceId, command, karooKey, pressType)
             } catch (e: Exception) {
                 Timber.e(e, "Error asignando KeyCode al comando")
                 _errorMessage.value = "Error al asignar el comando: ${e.message}"
@@ -75,5 +75,31 @@ class ConfigurationViewModel(
 
     fun clearError() {
         _errorMessage.value = null
+    }
+
+    fun updateDoubleTapEnabled(deviceId: String, enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                repository.updateDeviceProperty(deviceId) { device ->
+                    device.copy(enabledDoubleTap = enabled)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error actualizando enabledDoubleTap")
+                _errorMessage.value = "Error al actualizar la configuración: ${e.message}"
+            }
+        }
+    }
+
+    fun updateDoubleTapTimeout(deviceId: String, timeout: Long) {
+        viewModelScope.launch {
+            try {
+                repository.updateDeviceProperty(deviceId) { device ->
+                    device.copy(doubleTapTimeout = timeout)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error actualizando doubleTapTimeout")
+                _errorMessage.value = "Error al actualizar la configuración: ${e.message}"
+            }
+        }
     }
 }

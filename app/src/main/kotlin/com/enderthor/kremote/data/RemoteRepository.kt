@@ -128,18 +128,20 @@ class RemoteRepository(private val context: Context) {
         }
     }
 
-    suspend fun updateLearnedCommand(deviceId: String, command: AntRemoteKey) {
+   suspend fun updateLearnedCommand(deviceId: String, command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
         try {
             context.dataStore.edit { preferences ->
                 val current = getCurrentConfig()
                 val updatedDevices = current.devices.map { device ->
                     if (device.id == deviceId) {
-                        // Comprobar si el comando ya existe
-                        val commandExists = device.learnedCommands.any { it.command == command }
+                        // Comprobar si el comando ya existe con este tipo de pulsación
+                        val commandExists = device.learnedCommands.any {
+                            it.command == command && it.pressType == pressType
+                        }
 
                         if (!commandExists) {
-                            // Agregar nuevo comando
-                            val newCommand = LearnedCommand(command = command)
+                            // Agregar nuevo comando con el tipo de pulsación
+                            val newCommand = LearnedCommand(command = command, pressType = pressType)
                             device.copy(learnedCommands = (device.learnedCommands + newCommand).toMutableList())
                         } else {
                             device
@@ -183,10 +185,11 @@ class RemoteRepository(private val context: Context) {
         }
     }
 
-    suspend fun assignKeyCodeToCommand(
+   suspend fun assignKeyCodeToCommand(
         deviceId: String,
         command: AntRemoteKey,
-        karooKey: KarooKey?
+        karooKey: KarooKey?,
+        pressType: PressType
     ) {
         try {
             context.dataStore.edit { preferences ->
@@ -194,23 +197,22 @@ class RemoteRepository(private val context: Context) {
                 val updatedConfig = current.copy(
                     devices = current.devices.map { device ->
                         if (device.id == deviceId) {
-                            // Obtener todos los comandos actuales o los por defecto si no hay ninguno
-                            val currentCommands = if (device.learnedCommands.isEmpty()) {
-                                RemoteDevice.getDefaultLearnedCommands()
+                            // Buscar si ya existe este comando con este tipo de pulsación
+                            val existingCommandIndex = device.learnedCommands.indexOfFirst {
+                                it.command == command && it.pressType == pressType
+                            }
+
+                            val updatedCommands = device.learnedCommands.toMutableList()
+
+                            if (existingCommandIndex >= 0) {
+                                // Actualizar comando existente
+                                updatedCommands[existingCommandIndex] = updatedCommands[existingCommandIndex].copy(karooKey = karooKey)
                             } else {
-                                device.learnedCommands
+                                // Añadir nuevo comando
+                                updatedCommands.add(LearnedCommand(command = command, pressType = pressType, karooKey = karooKey))
                             }
 
-                            // Actualizar el comando específico manteniendo los demás
-                            val updatedCommands = currentCommands.map { learnedCommand ->
-                                if (learnedCommand.command == command) {
-                                    learnedCommand.copy(karooKey = karooKey)
-                                } else {
-                                    learnedCommand
-                                }
-                            }
-
-                            device.copy(learnedCommands = updatedCommands.toMutableList())
+                            device.copy(learnedCommands = updatedCommands)
                         } else device
                     }
                 )
@@ -218,10 +220,31 @@ class RemoteRepository(private val context: Context) {
                     GlobalConfig.serializer(),
                     updatedConfig
                 )
-                Timber.d("Comando actualizado: $command con KarooKey: $karooKey")
             }
         } catch (e: Exception) {
             Timber.e(e, "Error asignando KeyCode al comando")
+            throw e
+        }
+    }
+
+    suspend fun updateDeviceProperty(deviceId: String, update: (RemoteDevice) -> RemoteDevice) {
+        try {
+            context.dataStore.edit { preferences ->
+                val current = getCurrentConfig()
+                val updatedDevices = current.devices.map { device ->
+                    if (device.id == deviceId) {
+                        update(device)
+                    } else {
+                        device
+                    }
+                }
+                preferences[settingsKey] = Json.encodeToString(
+                    GlobalConfig.serializer(),
+                    current.copy(devices = updatedDevices)
+                )
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error actualizando propiedad del dispositivo")
             throw e
         }
     }

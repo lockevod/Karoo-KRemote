@@ -9,6 +9,7 @@ import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteType
 import com.enderthor.kremote.data.DeviceMessage
 import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,14 +59,17 @@ class DeviceViewModel(
             }
         }
 
-        antManager.setupCommandCallback { command ->
+        antManager.setupCommandCallback { command, pressType ->
             if (scanning.value) {
-                onCommandDetected(command)
+                onCommandDetected(command, pressType)
             }
         }
     }
 
     private fun getString(resId: Int): String = appContext.getString(resId)
+    private fun getString(resId: Int, vararg formatArgs: Any): String = appContext.getString(resId, *formatArgs)
+
+
 
     fun clearSelectedDevice() {
         _selectedDevice.value = null
@@ -217,17 +221,20 @@ class DeviceViewModel(
         startLearning()
     }
 
-    private fun onCommandDetected(command: AntRemoteKey) {
-        val currentCommands = _learnedCommands.value.toMutableList()
-        if (!currentCommands.contains(command)) {
-            currentCommands.add(command)
-            _learnedCommands.value = currentCommands
+    private fun onCommandDetected(command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
+        // Verificamos si el comando ya está en la lista de comandos detectados en esta sesión
+        if (!_learnedCommands.value.contains(command)) {
+            _learnedCommands.value = _learnedCommands.value + command
 
             // Solo guardar en el repositorio si hay un dispositivo seleccionado
             selectedDevice.value?.let { device ->
                 viewModelScope.launch {
                     try {
-                        repository.updateLearnedCommand(device.id, command)
+
+                        repository.updateLearnedCommand(device.id, command, pressType)
+                        _message.value = DeviceMessage.Success(
+                            getString(R.string.command_learned, command.label)
+                        )
                     } catch (e: Exception) {
                         Timber.e(e, "Error saving learned command")
                     }

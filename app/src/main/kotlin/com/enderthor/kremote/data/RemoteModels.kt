@@ -2,7 +2,13 @@ package com.enderthor.kremote.data
 
 import kotlinx.serialization.Serializable
 import io.hammerhead.karooext.models.PerformHardwareAction
+import io.hammerhead.karooext.models.KarooEffect
 import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
+import io.hammerhead.karooext.models.MarkLap
+import io.hammerhead.karooext.models.PauseRide
+import io.hammerhead.karooext.models.ResumeRide
+import io.hammerhead.karooext.models.ShowMapPage
+import io.hammerhead.karooext.models.ZoomPage
 
 
 const val EXTENSION_NAME = "kremote"
@@ -12,6 +18,14 @@ const val maxreconnectDelayMs = 60000L // 1 minuto
 const val checkIntervalMs=  120000L // 10 segundos
 const val autoReconnect = true
 const val minReconnectInterval = 2000L
+const val DEFAULT_DOUBLE_TAP_TIMEOUT = 500L // tiempo máximo entre pulsaciones (ms)
+
+
+@Serializable
+enum class PressType {
+    SINGLE,
+    DOUBLE
+}
 
 sealed class DeviceMessage {
     data class Error(val message: String) : DeviceMessage()
@@ -20,13 +34,19 @@ sealed class DeviceMessage {
 
 
 @Serializable
-enum class KarooKey(val action: PerformHardwareAction, val label: String) {
+enum class KarooKey(val action: KarooEffect, val label: String) {
+    BOTTOMRIGHT(PerformHardwareAction.BottomRightPress, "Accept/Navigate In"),
     BOTTOMLEFT(PerformHardwareAction.BottomLeftPress, "Back/Lap"),
-    BOTTOMRIGHT(PerformHardwareAction.BottomRightPress, "Accept / Navigate In"),
+    CONTROLCENTER(PerformHardwareAction.ControlCenterComboPress, "Control Center"),
+    DRAWER(PerformHardwareAction.DrawerActionComboPress, "Drawer"),
+    LAP(MarkLap, "Lap"),
+    SHOWMAP(ShowMapPage(true), "Map and Zoom In"),
     TOPLEFT(PerformHardwareAction.TopLeftPress, "Page Left"),
     TOPRIGHT(PerformHardwareAction.TopRightPress, "Page Right"),
-    CONTROLCENTER(PerformHardwareAction.ControlCenterComboPress, "Control Center"),
-    DRAWER(PerformHardwareAction.DrawerActionComboPress, "Map/Zoom In"),
+    PAUSE(PauseRide, "Pause"),
+    RESUME(ResumeRide, "Resume"),
+    ZOOM_IN(ZoomPage(true), "Zoom In"),
+    ZOOM_OUT(ZoomPage(false), "Zoom Out"),
 }
 
 @Serializable
@@ -47,7 +67,8 @@ enum class AntRemoteKey(val label: String, val gCommand: GenericCommandNumber) {
 @Serializable
 data class LearnedCommand(
     val command: AntRemoteKey,
-    val karooKey: KarooKey? = null // KarooKey asignado al comando
+    val pressType: PressType = PressType.SINGLE,
+    val karooKey: KarooKey? = null
 )
 
 
@@ -65,10 +86,14 @@ data class RemoteDevice(
     val antDeviceId: Int? = null,
     val macAddress: String? = null,
     val isActive: Boolean = false,
+    val enabledDoubleTap: Boolean = false,
+    val doubleTapTimeout: Long = DEFAULT_DOUBLE_TAP_TIMEOUT,
     val learnedCommands: MutableList<LearnedCommand> = mutableListOf()
 ) {
-    fun getKarooKey(command: GenericCommandNumber): KarooKey? {
-        return learnedCommands.find { it.command.gCommand == command }?.karooKey
+    fun getKarooKey(command: GenericCommandNumber, pressType: PressType = PressType.SINGLE): KarooKey? {
+        return learnedCommands.find {
+            it.command.gCommand == command && it.pressType == pressType
+        }?.karooKey
     }
 
     companion object {
@@ -91,5 +116,6 @@ data class GlobalConfig(
 @Serializable
 data class GlobalSettings(
     val onlyWhileRiding: Boolean = true,
+    val isForcedScreenOn: Boolean = false,
 )
 

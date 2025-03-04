@@ -71,4 +71,12 @@
     <string name="error_activating_device">Error activando dispositivo: %1$s</string>
     <string name="error_deleting_device">Error eliminando dispositivo: %1$s</string>
     <string name="error_clearing_commands">Error borrando comandos: %1$s</string>
+
+    <!-- Double tap configuration -->
+    <string name="double_tap_configuration">Configuración de doble pulsación</string>
+    <string name="enable_double_tap">Habilitar doble pulsación</string>
+    <string name="double_tap_timeout">Tiempo de espera: %1$d ms</string>
+    <string name="lower_values_explanation">Valores más bajos requieren pulsaciones más rápidas</string>
+    <string name="single_press">Pulsación simple:</string>
+    <string name="double_press">Doble pulsación:</string>
 </resources>

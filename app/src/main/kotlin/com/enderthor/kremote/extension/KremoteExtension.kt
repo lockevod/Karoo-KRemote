@@ -20,11 +20,13 @@ import timber.log.Timber
 
 import com.enderthor.kremote.BuildConfig
 import com.enderthor.kremote.ant.AntManager
+import com.enderthor.kremote.data.DEFAULT_DOUBLE_TAP_TIMEOUT
 import com.enderthor.kremote.data.EXTENSION_NAME
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.GlobalSettings
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
+import com.enderthor.kremote.data.PressType
 
 
 
@@ -63,18 +65,20 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         repository = RemoteRepository(applicationContext)
 
         // Crear AntManager con callback mejorado
-        _antManager = AntManager(applicationContext) { command ->
-            Timber.d("[KRemote] 🔥 Comando ANT recibido en extensión: ${command.label}")
+
+        _antManager = AntManager(applicationContext, { command, pressType ->
+            Timber.d("[KRemote] 🔥 Comando ANT recibido en extensión: ${command.label} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
             extensionScope.launch(Dispatchers.Main) {
                 try {
                     if (::karooAction.isInitialized) {
-                        karooAction.handleAntCommand(command.gCommand)
+                        karooAction.handleAntCommand(command.gCommand, pressType)
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "[KRemote] Error procesando comando ANT")
                 }
             }
-        }
+        }, DEFAULT_DOUBLE_TAP_TIMEOUT)
+
 
         karooSystem.connect { connected ->
             Timber.i("[KRemote] Karoo service connected: $connected")
@@ -87,14 +91,15 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     { isServiceConnected },
                     { isRiding },
                     { globalSettings?.onlyWhileRiding != false },
+                    { globalSettings?.isForcedScreenOn != false},
                     { activeDevice }
                 )
 
-                // Solicitar acceso ANT
+
                 karooSystem.dispatch(RequestAnt(EXTENSION_NAME))
                 Timber.d("[KRemote] Solicitado acceso ANT+")
 
-                // Iniciar conexión INMEDIATAMENTE si hay dispositivo activo
+
                 connectActiveDevice()
             }
         }
@@ -107,16 +112,16 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     private fun connectActiveDevice() {
         extensionScope.launch {
             try {
+
                 val device = repository.getActiveDevice().first()
                 if (device != null) {
                     val deviceId = device.macAddress?.toInt()
                     if (deviceId != null) {
                         Timber.d("[KRemote] Conectando a dispositivo #$deviceId")
 
-                        // No desconectar antes - dejar que AntManager lo maneje
+
                         antManager.connect(deviceId)
 
-                        // Verificar conexión después de un tiempo
                         delay(2000)
                         if (antManager.isConnectedToDevice(deviceId)) {
                             Timber.d("[KRemote] ✅ Conexión exitosa a dispositivo ANT+ #$deviceId")
@@ -138,7 +143,10 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     activeDevice = config.devices.find { it.isActive }
                     globalSettings = config.globalSettings
 
-                    // Manejar conexión ANT+
+                    activeDevice?.doubleTapTimeout?.let { timeout ->
+                        antManager.updateDoubleTapTimeout(timeout)
+                    }
+
                     if (activeDevice?.macAddress != null) {
                         try {
                             val deviceNumber = activeDevice?.macAddress?.toInt()
