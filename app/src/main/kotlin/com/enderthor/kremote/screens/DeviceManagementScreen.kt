@@ -22,6 +22,7 @@ import com.enderthor.kremote.data.RemoteType
 import com.enderthor.kremote.ant.AntDeviceInfo
 import com.enderthor.kremote.data.DeviceMessage
 import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.R
 
 @Composable
@@ -63,7 +64,7 @@ fun DeviceItem(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "${device.learnedCommands.size} LC",
+                        text = "${device.learnedCommands.count { it.pressType == PressType.SINGLE }} LC",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     if (device.isActive) {
@@ -293,7 +294,7 @@ fun DeviceCommandsScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Sección de aprendizaje
+
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -441,7 +442,6 @@ fun DeviceCommandsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Sección de comandos ya guardados
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -449,7 +449,7 @@ fun DeviceCommandsScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        stringResource(R.string.saved_commands, device.learnedCommands.size),
+                        stringResource(R.string.saved_commands, device.learnedCommands.count { it.pressType == PressType.SINGLE }),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -464,7 +464,9 @@ fun DeviceCommandsScreen(
                         LazyColumn(
                             modifier = Modifier.heightIn(max = 300.dp)
                         ) {
-                            items(device.learnedCommands) { learnedCommand ->
+                            val singlePressCommands = device.learnedCommands.filter { it.pressType == PressType.SINGLE }
+
+                            items(singlePressCommands) { learnedCommand ->
                                 ListItem(
                                     leadingContent = {
                                         Icon(
@@ -480,7 +482,7 @@ fun DeviceCommandsScreen(
                                     },
                                     supportingContent = {
                                         Text(
-                                            text = learnedCommand.karooKey?.label ?: "No assigned",
+                                            text =  learnedCommand.karooKey?.let { "Assigned" } ?: "No assigned",
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

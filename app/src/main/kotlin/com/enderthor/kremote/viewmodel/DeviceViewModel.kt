@@ -148,31 +148,34 @@ class DeviceViewModel(
     }
 
     fun onNewAntDeviceSelected(deviceInfo: AntDeviceInfo) {
-        _scanning.value = false
-        scanJob?.cancel()
+    _scanning.value = false
+    scanJob?.cancel()
 
-        viewModelScope.launch {
-            try {
-                val deviceId = UUID.randomUUID().toString()
-                val newDevice = RemoteDevice(
-                    id = deviceId,
-                    name = deviceInfo.name,
-                    type = RemoteType.ANT,
-                    antDeviceId = deviceInfo.deviceNumber,
-                    macAddress = deviceInfo.deviceNumber.toString()
-                )
+    viewModelScope.launch {
+        try {
+            val deviceId = UUID.randomUUID().toString()
+            val newDevice = RemoteDevice(
+                id = deviceId,
+                name = deviceInfo.name,
+                type = RemoteType.ANT,
+                antDeviceId = deviceInfo.deviceNumber,
+                macAddress = deviceInfo.deviceNumber.toString()
+            )
 
-                repository.addDevice(newDevice)
-                _message.value = DeviceMessage.Success(getString(R.string.remote_registered_successfully))
+            repository.addDevice(newDevice)
+            _message.value = DeviceMessage.Success(getString(R.string.remote_registered_successfully))
 
-                repository.setActiveDevice(deviceId)
-            } catch (e: Exception) {
-                Timber.e(e, "Error adding new ANT+ device")
-                _message.value = DeviceMessage.Error(getString(R.string.error))
+            _availableAntDevices.value = _availableAntDevices.value.filter {
+                it.deviceNumber != deviceInfo.deviceNumber
             }
+
+            repository.setActiveDevice(deviceId)
+        } catch (e: Exception) {
+            Timber.e(e, "Error adding new ANT+ device")
+            _message.value = DeviceMessage.Error(getString(R.string.error))
         }
     }
-
+}
     fun clearMessage() {
         _message.value = null
     }

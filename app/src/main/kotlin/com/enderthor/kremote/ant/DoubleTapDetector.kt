@@ -17,6 +17,10 @@ class DoubleTapDetector(
         val currentTime = System.currentTimeMillis()
         val lastTime = lastCommandTime[commandNumber] ?: 0L
 
+        Timber.d("Comando recibido: $commandNumber")
+        Timber.d("Tiempo desde la última pulsación: ${currentTime - lastTime}")
+        Timber.d("Tiempo de doble pulsación: $doubleTapTimeout")
+
         if (currentTime - lastTime <= doubleTapTimeout) {
 
             Timber.d("Doble pulsación detectada: $commandNumber")
@@ -33,6 +37,11 @@ class DoubleTapDetector(
         }
 
         lastCommandTime[commandNumber] = currentTime
+    }
+
+    fun updateTimeout(newTimeout: Long) {
+        this.doubleTapTimeout = newTimeout
+        Timber.d("[DoubleTapDetector] Timeout actualizado a: $newTimeout ms")
     }
 
 }

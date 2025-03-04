@@ -50,6 +50,7 @@
     <string name="none">None</string>
     <string name="global_settings">Global settings</string>
     <string name="only_while_riding">Only in ride screen?</string>
+    <string name="forced_screen_on">Force Screen On when Action?</string>
 
     <!-- Success Messages -->
     <string name="device_deleted">Device deleted</string>

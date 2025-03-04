@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.viewmodel.ConfigurationViewModel
@@ -17,6 +18,7 @@ import com.enderthor.kremote.data.AntRemoteKey
 import com.enderthor.kremote.R
 import com.enderthor.kremote.data.LearnedCommand
 import com.enderthor.kremote.data.PressType
+import com.enderthor.kremote.data.RemoteRepository
 
 
 @Composable
@@ -29,6 +31,10 @@ fun ConfigurationScreen(
     var selectedDeviceId by remember { mutableStateOf(activeDevice?.id) }
     val selectedDevice = devices.find { it.id == selectedDeviceId }
     val onlyWhileRiding by configViewModel.onlyWhileRiding.collectAsState()
+    val forcedScreenOn by configViewModel.forcedScreenOn.collectAsState()
+
+    val context = LocalContext.current
+    val repository = remember { RemoteRepository(context) }
 
     Column(
         modifier = Modifier
@@ -56,6 +62,7 @@ fun ConfigurationScreen(
 
             LearnedCommandsSection(
                 device = device,
+                repository = repository, // Pasar el repositorio aquí
                 onKarooKeyAssigned = { command, karooKey, pressType ->
                     configViewModel.assignKeyCodeToCommand(device.id, command, karooKey, pressType)
                 }
@@ -100,10 +107,11 @@ fun ConfigurationScreen(
                         Slider(
                             value = device.doubleTapTimeout.toFloat(),
                             onValueChange = { value ->
-                                configViewModel.updateDoubleTapTimeout(device.id, value.toLong())
+                                val roundedValue = (value / 100f).toInt() * 100L
+                                configViewModel.updateDoubleTapTimeout(device.id, roundedValue)
                             },
-                            valueRange = 200f..1000f,
-                            steps = 8, // Pasos de 100ms
+                            valueRange = 600f..3000f,
+                            steps = 24, // Pasos de 100ms
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -132,7 +140,7 @@ fun ConfigurationScreen(
                     Row(
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        Checkbox(
+                       Switch(
                             checked = onlyWhileRiding,
                             onCheckedChange = { checked ->
                                 configViewModel.updateOnlyWhileRiding(checked)
@@ -141,6 +149,21 @@ fun ConfigurationScreen(
 
                         Text(
                             text = stringResource(R.string.only_while_riding),
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                    Row(
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Switch(
+                            checked = forcedScreenOn,
+                            onCheckedChange = { checked ->
+                                configViewModel.updateForcedScreenOn(checked)
+                            }
+                        )
+
+                        Text(
+                            text = stringResource(R.string.forced_screen_on),
                             modifier = Modifier.padding(start = 8.dp)
                         )
                     }
@@ -172,14 +195,37 @@ fun ConfigurationScreen(
 @Composable
 fun LearnedCommandsSection(
     device: RemoteDevice,
+    repository: RemoteRepository,
     onKarooKeyAssigned: (AntRemoteKey, KarooKey?, PressType) -> Unit
 ) {
 
-    val learnedCommands = remember(device.learnedCommands) {
-        if (device.learnedCommands.isEmpty())
-            RemoteDevice.getDefaultLearnedCommands().map { it.command }.distinct()
-         else
-            device.learnedCommands.map { it.command }.distinct()
+
+    LaunchedEffect(device.id) {
+        if (device.learnedCommands.isEmpty()) {
+
+            val defaultCommands = RemoteDevice.getDefaultLearnedCommands()
+            defaultCommands.forEach { command ->
+                repository.assignKeyCodeToCommand(
+                    deviceId = device.id,
+                    command = command.command,
+                    karooKey = command.karooKey,
+                    pressType = command.pressType
+                )
+            }
+        }
+    }
+
+
+    val commands = remember(device.learnedCommands) {
+        if (device.learnedCommands.isEmpty()) {
+            RemoteDevice.getDefaultLearnedCommands()
+        } else {
+            device.learnedCommands
+        }
+    }
+
+    val learnedCommands = remember(commands) {
+        commands.map { it.command }.distinct()
     }
 
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -199,13 +245,12 @@ fun LearnedCommandsSection(
                 )
             } else {
                 learnedCommands.forEach { command ->
-
-                    val singleCommand = device.learnedCommands.find {
+                    val singleCommand = commands.find {
                         it.command == command && it.pressType == PressType.SINGLE
                     } ?: LearnedCommand(command, PressType.SINGLE)
 
                     val doubleCommand = if (device.enabledDoubleTap) {
-                        device.learnedCommands.find {
+                        commands.find {
                             it.command == command && it.pressType == PressType.DOUBLE
                         } ?: LearnedCommand(command, PressType.DOUBLE)
                     } else null
@@ -289,7 +334,3 @@ fun CommandAssignmentRow(
         }
     }
 }
-
-
-
-
