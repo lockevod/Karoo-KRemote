@@ -64,10 +64,9 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         karooSystem = KarooSystemService(applicationContext)
         repository = RemoteRepository(applicationContext)
 
-        // Crear AntManager con callback mejorado
 
         _antManager = AntManager(applicationContext, { command, pressType ->
-            Timber.d("[KRemote] 🔥 Comando ANT recibido en extensión: ${command.label} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+            Timber.d("[KRemote] Comando ANT recibido en extensión: ${command.label} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
             extensionScope.launch(Dispatchers.Main) {
                 try {
                     if (::karooAction.isInitialized) {
@@ -85,7 +84,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             isServiceConnected = connected
 
             if (connected) {
-                // Crear KarooAction después de conectar
+
                 karooAction = KarooAction(
                     karooSystem,
                     { isServiceConnected },
@@ -124,9 +123,9 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
                         delay(2000)
                         if (antManager.isConnectedToDevice(deviceId)) {
-                            Timber.d("[KRemote] ✅ Conexión exitosa a dispositivo ANT+ #$deviceId")
+                            Timber.d("[KRemote] Conexión exitosa a dispositivo ANT+ #$deviceId")
                         } else {
-                            Timber.d("[KRemote] ❌ No se pudo conectar a dispositivo ANT+ #$deviceId")
+                            Timber.d("[KRemote] No se pudo conectar a dispositivo ANT+ #$deviceId")
                         }
                     }
                 }

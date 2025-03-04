@@ -44,20 +44,20 @@ fun DeviceItem(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Primera fila: Título
+
             Text(
                 text = device.name,
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Segunda fila: Información y botones
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Lado izquierdo: Comandos aprendidos y estado activo
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -75,7 +75,7 @@ fun DeviceItem(
                     }
                 }
 
-                // Lado derecho: Botones
+
                 Row {
                     IconButton(onClick = onConfigureClick) {
                         Icon(
@@ -148,7 +148,7 @@ fun DeviceManagementScreen(
             }
         }
 
-        // Dispositivos disponibles
+
         if (availableAntDevices.isNotEmpty()) {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -179,7 +179,7 @@ fun DeviceManagementScreen(
             }
         }
 
-        // Dispositivos emparejados
+
         item {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -201,7 +201,7 @@ fun DeviceManagementScreen(
         }
     }
 
-    // Diálogos
+
     deviceToDelete?.let { device ->
         AlertDialog(
             onDismissRequest = { deviceToDelete = null },
@@ -263,10 +263,10 @@ fun DeviceCommandsScreen(
     onNavigateBack: () -> Unit,
     onClearAllCommands: () -> Unit
 ) {
-    // Estado para mostrar cuándo se inició el aprendizaje
+
     var learningStartTime by remember { mutableStateOf<Long?>(null) }
 
-    // Actualizar el tiempo de inicio cuando cambia isLearning
+
     LaunchedEffect(isLearning) {
         learningStartTime = if (isLearning) System.currentTimeMillis() else null
     }
@@ -323,7 +323,7 @@ fun DeviceCommandsScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Mostrar tiempo transcurrido
+
                         learningStartTime?.let { startTime ->
                             val elapsed by produceState(initialValue = 0L, key1 = startTime) {
                                 while (true) {
@@ -345,7 +345,7 @@ fun DeviceCommandsScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Botones de control
+
                     if (isLearning) {
                         Button(
                             onClick = onStopLearning,
@@ -388,7 +388,7 @@ fun DeviceCommandsScreen(
                 }
             }
 
-            // Nueva sección: Comandos detectados en la sesión actual
+
             if (learnedCommands.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Card(

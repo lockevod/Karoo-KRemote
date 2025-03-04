@@ -70,7 +70,6 @@ class DeviceViewModel(
     private fun getString(resId: Int, vararg formatArgs: Any): String = appContext.getString(resId, *formatArgs)
 
 
-
     fun clearSelectedDevice() {
         _selectedDevice.value = null
         _learnedCommands.value = emptyList()
@@ -86,7 +85,6 @@ class DeviceViewModel(
                     antManager.startDeviceSearch()
                 }
 
-                // Observar los dispositivos detectados durante 30 segundos
                 val startTime = System.currentTimeMillis()
                 while (System.currentTimeMillis() - startTime < 30000) {
                     _availableAntDevices.value = antManager.detectedDevices.value
@@ -111,7 +109,7 @@ class DeviceViewModel(
     fun onDeviceConfigureClick(device: RemoteDevice) {
         _selectedDevice.value = device
 
-        // Conectarse al dispositivo ANT+ si es necesario
+
         viewModelScope.launch {
             try {
                 device.antDeviceId?.let { deviceId ->
@@ -167,7 +165,6 @@ class DeviceViewModel(
                 repository.addDevice(newDevice)
                 _message.value = DeviceMessage.Success(getString(R.string.remote_registered_successfully))
 
-                // Asignar como activo al nuevo dispositivo
                 repository.setActiveDevice(deviceId)
             } catch (e: Exception) {
                 Timber.e(e, "Error adding new ANT+ device")
@@ -211,7 +208,6 @@ class DeviceViewModel(
         _scanning.value = false
         antManager.setLearningMode(false)
 
-        // Guardar comandos aprendidos
         saveLearnedCommands()
     }
 
@@ -222,11 +218,11 @@ class DeviceViewModel(
     }
 
     private fun onCommandDetected(command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
-        // Verificamos si el comando ya está en la lista de comandos detectados en esta sesión
+
         if (!_learnedCommands.value.contains(command)) {
             _learnedCommands.value = _learnedCommands.value + command
 
-            // Solo guardar en el repositorio si hay un dispositivo seleccionado
+
             selectedDevice.value?.let { device ->
                 viewModelScope.launch {
                     try {
