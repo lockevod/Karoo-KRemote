@@ -59,13 +59,7 @@ class KarooAction(
             if(isForcedScreenOn()) karooSystem.dispatch(TurnScreenOn)
 
             karooSystem.dispatch(action)
-            /*if (action == PerformHardwareAction.DrawerActionComboPress) {
-                Timber.d("Mostrando página de mapa")
-                karooSystem.dispatch(ShowMapPage(true))
-            } else {
-                Timber.d("Enviando acción: $action")
-                karooSystem.dispatch(action)
-            }*/
+
         } catch (e: Exception) {
             Timber.e(e, "Error ejecutando acción Karoo: $action")
         }

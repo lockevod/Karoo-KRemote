@@ -152,25 +152,6 @@ class AntManager(
     }
 
 
-    /*private val mRemoteCommand =
-            AntPlusGenericControllableDevicePcc.IGenericCommandReceiver { estTimestamp, _, _, _, _, commandNumber ->
-                try {
-                    // Buscar el comando en la lista de AntRemoteKey
-                    val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
-
-                    Timber.d("[ANT] Comando recibido: ${antCommand?.label ?: commandNumber} (Modo aprendizaje: $learningMode)")
-
-                    antCommand?.let {
-                        Timber.d("[ANT] Procesando comando: ${it.label}")
-                        commandCallback.invoke(it)
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "[ANT] Error procesando comando")
-                }
-                CommandStatus.PASS
-            }
-*/
-    // Modifica mRemoteCommand para usar el detector
     private val mRemoteCommand =
         AntPlusGenericControllableDevicePcc.IGenericCommandReceiver { _, _, _, _, _, commandNumber ->
             try {
@@ -219,13 +200,12 @@ class AntManager(
     }
 
     fun connect(deviceNumber: Int) {
-        // Evitar múltiples intentos simultáneos
+
         if (isConnecting) {
             Timber.d("[ANT] Ya hay un intento de conexión en curso")
             return
         }
 
-        // Evitar reconexiones demasiado frecuentes
         val now = System.currentTimeMillis()
         if (now - lastConnectionAttempt < minReconnectInterval) {
             Timber.d("[ANT] Intento de reconexión demasiado frecuente, ignorando")
@@ -240,10 +220,9 @@ class AntManager(
             try {
                 Timber.d("[ANT] Conectando a dispositivo #$deviceNumber (Modo aprendizaje: $learningMode)")
 
-                // Guardar el estado actual del modo de aprendizaje
+
                 val currentLearningMode = learningMode
 
-                // Solo desconectamos si no estamos ya conectados a este dispositivo
                 if (_isConnected && remotePcc?.antDeviceNumber != deviceNumber) {
                     disconnect()
                 } else if (_isConnected && remotePcc?.antDeviceNumber == deviceNumber) {
@@ -252,10 +231,8 @@ class AntManager(
                     return@runBlocking
                 }
 
-                // Restaurar el estado del modo de aprendizaje
                 learningMode = currentLearningMode
 
-                // Iniciar la nueva conexión
                 remoteReleaseHandle = AntPlusGenericControllableDevicePcc.requestAccess(
                     context,
                     mRemoteResultReceiver,
@@ -282,7 +259,6 @@ class AntManager(
         remotePcc = null
         _isConnected = false
 
-        // Mantener el modo aprendizaje
         if (wasLearning) {
             Timber.d("[ANT] Preservando modo aprendizaje: true")
             learningMode = true
@@ -306,10 +282,9 @@ class AntManager(
         try {
 
             runBlocking(Dispatchers.Main) {
-                // Si ya hay una conexión ANT+, la desconectamos primero
+
                 disconnect()
 
-                // Iniciamos la búsqueda de dispositivos ANT+
                 remoteReleaseHandle = AntPlusGenericControllableDevicePcc.requestAccess(
                     context,
                     mRemoteResultReceiver,

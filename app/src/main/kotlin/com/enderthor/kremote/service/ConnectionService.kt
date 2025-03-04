@@ -40,7 +40,7 @@ class ConnectionService : Service() {
 
         val kremoteExtension = KremoteExtension.getInstance()
         if (kremoteExtension == null) {
-            Timber.e("[ConnectionService] ❌ KremoteExtension no disponible")
+            Timber.e("[ConnectionService]  KremoteExtension no disponible")
             stopSelf()
             return START_NOT_STICKY
         }
