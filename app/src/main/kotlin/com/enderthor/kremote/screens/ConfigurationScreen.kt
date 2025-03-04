@@ -14,6 +14,8 @@ import com.enderthor.kremote.data.KarooKey
 import com.enderthor.kremote.data.AntRemoteKey
 import androidx.compose.ui.res.stringResource
 import com.enderthor.kremote.R
+import com.enderthor.kremote.data.LearnedCommand
+import com.enderthor.kremote.data.PressType
 
 
 @Composable
@@ -50,12 +52,71 @@ fun ConfigurationScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+
             LearnedCommandsSection(
                 device = device,
-                onKarooKeyAssigned = { command, karooKey ->
-                    configViewModel.assignKeyCodeToCommand(device.id, command, karooKey)
+                onKarooKeyAssigned = { command, karooKey, pressType ->
+                    configViewModel.assignKeyCodeToCommand(device.id, command, karooKey, pressType)
                 }
             )
+
+            // Añadir sección de configuración de doble pulsación
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.double_tap_configuration),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Switch(
+                            checked = device.enabledDoubleTap,
+                            onCheckedChange = { checked ->
+                                configViewModel.updateDoubleTapEnabled(device.id, checked)
+                            }
+                        )
+
+                        Text(
+                            text = stringResource(R.string.enable_double_tap),
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+
+                    // Mostrar el control deslizante solo si la doble pulsación está habilitada
+                    if (device.enabledDoubleTap) {
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = stringResource(R.string.double_tap_timeout, device.doubleTapTimeout.toInt()),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        Slider(
+                            value = device.doubleTapTimeout.toFloat(),
+                            onValueChange = { value ->
+                                configViewModel.updateDoubleTapTimeout(device.id, value.toLong())
+                            },
+                            valueRange = 200f..1000f,
+                            steps = 8, // Pasos de 100ms
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Text(
+                            text = stringResource(R.string.lower_values_explanation),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Añadir espaciador antes de la configuración global
             Spacer(modifier = Modifier.height(24.dp))
@@ -115,53 +176,125 @@ fun ConfigurationScreen(
 @Composable
 fun LearnedCommandsSection(
     device: RemoteDevice,
-    onKarooKeyAssigned: (AntRemoteKey, KarooKey?) -> Unit
+    onKarooKeyAssigned: (AntRemoteKey, KarooKey?, PressType) -> Unit
 ) {
-    val commands = remember(device.learnedCommands) {
-        if (device.learnedCommands.isEmpty()) {
-            RemoteDevice.getDefaultLearnedCommands()
-        } else {
-            // Asegurarse de que todos los comandos por defecto estén presentes
-            val defaultCommands = RemoteDevice.getDefaultLearnedCommands()
-            val existingCommandTypes = device.learnedCommands.map { it.command }
+    val defaultCommands = remember { AntRemoteKey.entries }
 
-            device.learnedCommands + defaultCommands.filter {
-                it.command !in existingCommandTypes
-            }
-        }
-    }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.assign_karookey_to_commands),
+                style = MaterialTheme.typography.titleMedium
+            )
 
-    Column {
-        Text(stringResource(R.string.assign_karookey_to_commands))
-        commands.forEach { learnedCommand ->
-            Column {
+            Spacer(modifier = Modifier.height(8.dp))
 
-                Spacer(modifier = Modifier.height(4.dp))
+            defaultCommands.forEach { command ->
+                // Comandos existentes o nuevos
+                val singleCommand = device.learnedCommands.find {
+                    it.command == command && it.pressType == PressType.SINGLE
+                } ?: LearnedCommand(command, PressType.SINGLE)
 
-                val options = remember {
-                    listOf(DropdownOption("null", "None")) +
-                    KarooKey.entries.map { DropdownOption(it.name, it.label) }
-                }
+                val doubleCommand = if (device.enabledDoubleTap) {
+                    device.learnedCommands.find {
+                        it.command == command && it.pressType == PressType.DOUBLE
+                    } ?: LearnedCommand(command, PressType.DOUBLE)
+                } else null
 
-                val selectedOption = options.find {
-                    it.id == learnedCommand.karooKey?.name
-                } ?: options[0]
-
-                KarooKeyDropdown(
-                    remotekey = learnedCommand.command.label,
-                    options = options,
-                    selectedOption = selectedOption,
-                    onSelect = { selected ->
-                        val karooKey = if (selected.id == "null") {
-                            null
-                        } else {
-                            KarooKey.entries.find { it.name == selected.id }
-                        }
-                        onKarooKeyAssigned(learnedCommand.command, karooKey)
-                    }
+                CommandAssignmentRow(
+                    command = command,
+                    singleCommand = singleCommand,
+                    doubleCommand = doubleCommand,
+                    onKarooKeyAssigned = onKarooKeyAssigned
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
         }
     }
 }
+
+@Composable
+fun CommandAssignmentRow(
+    command: AntRemoteKey,
+    singleCommand: LearnedCommand,
+    doubleCommand: LearnedCommand?,
+    onKarooKeyAssigned: (AntRemoteKey, KarooKey?, PressType) -> Unit
+) {
+    val noneString = stringResource(R.string.none)
+    val options = remember {
+        listOf(DropdownOption("null", noneString)) +
+                KarooKey.entries.map { DropdownOption(it.name, it.label) }
+    }
+
+    Column {
+        Text(
+            text = command.label,
+            style = MaterialTheme.typography.titleSmall
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Pulsación simple
+        Row(
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = stringResource(R.string.single_press),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.width(120.dp)
+            )
+
+            val selectedOption = options.find {
+                it.id == singleCommand.karooKey?.name
+            } ?: options[0]
+
+            KarooKeyDropdown(
+                remotekey = "",
+                options = options,
+                selectedOption = selectedOption,
+                onSelect = { selected ->
+                    val karooKey = if (selected.id == "null") null
+                                  else KarooKey.entries.find { it.name == selected.id }
+                    onKarooKeyAssigned(command, karooKey, PressType.SINGLE)
+                }
+            )
+        }
+
+        // Doble pulsación (solo si está habilitada)
+        doubleCommand?.let {
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = stringResource(R.string.double_press),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.width(120.dp)
+                )
+
+                val selectedOption = options.find {
+                    it.id == doubleCommand.karooKey?.name
+                } ?: options[0]
+
+                KarooKeyDropdown(
+                    remotekey = "",
+                    options = options,
+                    selectedOption = selectedOption,
+                    onSelect = { selected ->
+                        val karooKey = if (selected.id == "null") null
+                                      else KarooKey.entries.find { it.name == selected.id }
+                        onKarooKeyAssigned(command, karooKey, PressType.DOUBLE)
+                    }
+                )
+            }
+        }
+    }
+}
+
+
+
+

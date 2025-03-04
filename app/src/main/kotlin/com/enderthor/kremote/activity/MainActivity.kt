@@ -14,6 +14,7 @@ import com.enderthor.kremote.ant.AntManager
 import com.enderthor.kremote.data.AntRemoteKey
 import com.enderthor.kremote.data.EXTENSION_NAME
 import io.hammerhead.karooext.KarooSystemService
+import com.enderthor.kremote.data.PressType
 import io.hammerhead.karooext.models.RequestAnt
 
 import timber.log.Timber
@@ -36,9 +37,12 @@ class MainActivity : ComponentActivity() {
 
     private fun setupDependencies() {
         repository = RemoteRepository(applicationContext)
-        antManager = AntManager(this) { antRemoteKey ->  // Ahora recibe AntRemoteKey
-            handleAntCommand(antRemoteKey)
-        }
+        antManager = AntManager(
+            context = this,
+            commandCallback = { command: AntRemoteKey, pressType: PressType ->
+                handleAntCommand(command, pressType)
+            }
+        )
         karooSystem = KarooSystemService(applicationContext)
         karooSystem.connect { connected ->
             if (connected) {
@@ -48,8 +52,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun handleAntCommand(command: AntRemoteKey) {
-        Timber.d("ANT+ command received: $command")
+    private fun handleAntCommand(command: AntRemoteKey, pressType: PressType) {
+        Timber.d("ANT+ command received: $command and pressType: $pressType")
         // Aquí puedes manejar los comandos ANT+ según sea necesario
     }
 
