@@ -31,6 +31,10 @@ class ConfigurationViewModel(
     private val _onlyWhileRiding = MutableStateFlow(true)
     val onlyWhileRiding: StateFlow<Boolean> = _onlyWhileRiding.asStateFlow()
 
+    private val _forcedScreenOn = MutableStateFlow(false)
+    val forcedScreenOn: StateFlow<Boolean> = _forcedScreenOn.asStateFlow()
+
+
     init {
         viewModelScope.launch {
             repository.getDevices().collect {
@@ -47,6 +51,7 @@ class ConfigurationViewModel(
         viewModelScope.launch {
             repository.currentConfig.collect { config ->
                 _onlyWhileRiding.value = config.globalSettings.onlyWhileRiding
+                _forcedScreenOn.value = config.globalSettings.isForcedScreenOn
             }
         }
     }
@@ -98,6 +103,17 @@ class ConfigurationViewModel(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error actualizando doubleTapTimeout")
+                _errorMessage.value = "Error updating configuration: ${e.message}"
+            }
+        }
+    }
+
+    fun updateForcedScreenOn(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                repository.updateGlobalSetting { it.copy(isForcedScreenOn = enabled) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error actualizando la configuración isForcedScreenOn")
                 _errorMessage.value = "Error updating configuration: ${e.message}"
             }
         }
