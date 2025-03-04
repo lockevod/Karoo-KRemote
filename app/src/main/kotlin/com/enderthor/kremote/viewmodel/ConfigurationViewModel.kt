@@ -19,7 +19,7 @@ class ConfigurationViewModel(
 ) : ViewModel() {
 
     private val _devices = MutableStateFlow<List<RemoteDevice>>(emptyList())
-    @Suppress("unused")
+
     val devices: StateFlow<List<RemoteDevice>> = _devices.asStateFlow()
 
     private val _activeDevice = MutableStateFlow<RemoteDevice?>(null)
@@ -57,7 +57,7 @@ class ConfigurationViewModel(
                 repository.assignKeyCodeToCommand(deviceId, command, karooKey, pressType)
             } catch (e: Exception) {
                 Timber.e(e, "Error asignando KeyCode al comando")
-                _errorMessage.value = "Error al asignar el comando: ${e.message}"
+                _errorMessage.value = "Error assigning keycode: ${e.message}"
             }
         }
     }
@@ -68,7 +68,7 @@ class ConfigurationViewModel(
                 repository.updateGlobalSetting { it.copy(onlyWhileRiding = enabled) }
             } catch (e: Exception) {
                 Timber.e(e, "Error actualizando la configuración onlyWhileRiding")
-                _errorMessage.value = "Error al actualizar la configuración: ${e.message}"
+                _errorMessage.value = "Error updating configuration: ${e.message}"
             }
         }
     }
@@ -85,7 +85,7 @@ class ConfigurationViewModel(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error actualizando enabledDoubleTap")
-                _errorMessage.value = "Error al actualizar la configuración: ${e.message}"
+                _errorMessage.value = "Error updating configuration: ${e.message}"
             }
         }
     }
@@ -98,7 +98,7 @@ class ConfigurationViewModel(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error actualizando doubleTapTimeout")
-                _errorMessage.value = "Error al actualizar la configuración: ${e.message}"
+                _errorMessage.value = "Error updating configuration: ${e.message}"
             }
         }
     }
