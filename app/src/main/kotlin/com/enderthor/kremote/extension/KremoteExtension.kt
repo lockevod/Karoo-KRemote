@@ -179,7 +179,6 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
         rideReceiver?.let { receiver ->
             try {
-                // Registrar sin la flag RECEIVER_NOT_EXPORTED
                 applicationContext.registerReceiver(
                     receiver,
                     KarooRideReceiver.getIntentFilter()
