@@ -58,8 +58,7 @@ class KremoteApplication : Application() {
 
     private fun startConnectionService() {
         try {
-            val intent = Intent(applicationContext, ConnectionServiceReceiver::class.java)
-            intent.action = "com.enderthor.kremote.START_CONNECTION_SERVICE"
+            val intent = Intent("com.enderthor.kremote.START_CONNECTION_SERVICE")
             intent.putExtra(ConnectionServiceReceiver.EXTRA_IS_EXTENSION, false)
             sendBroadcast(intent)
         } catch (e: Exception) {
