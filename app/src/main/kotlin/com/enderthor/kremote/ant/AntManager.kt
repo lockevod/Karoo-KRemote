@@ -275,12 +275,14 @@ class AntManager(
         }
     }
 
-    fun stopScan() {
-        Timber.d("Stopping ANT+ device search")
+    fun stopScan(disconnect: Boolean = false) {
+        Timber.d("Stopping ANT+ device search (disconnect=$disconnect)")
         try {
             _detectedDevices.value = emptyList()
-            disconnect()
-            _isConnected = false
+            if (disconnect) {
+                disconnect()
+                _isConnected = false
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error stopping ANT+ device search")
             throw e

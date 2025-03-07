@@ -148,34 +148,45 @@ class DeviceViewModel(
     }
 
     fun onNewAntDeviceSelected(deviceInfo: AntDeviceInfo) {
-    _scanning.value = false
-    scanJob?.cancel()
+        _scanning.value = false
+        scanJob?.cancel()
 
-    viewModelScope.launch {
-        try {
-            val deviceId = UUID.randomUUID().toString()
-            val newDevice = RemoteDevice(
-                id = deviceId,
-                name = deviceInfo.name,
-                type = RemoteType.ANT,
-                antDeviceId = deviceInfo.deviceNumber,
-                macAddress = deviceInfo.deviceNumber.toString()
-            )
+        viewModelScope.launch {
+            try {
+                // Comprobar si ya existe un dispositivo con el mismo número ANT+
+                val existingDevice = devices.value.find { it.antDeviceId == deviceInfo.deviceNumber }
 
-            repository.addDevice(newDevice)
-            _message.value = DeviceMessage.Success(getString(R.string.remote_registered_successfully))
+                if (existingDevice != null) {
+                    // Si el dispositivo ya existe, simplemente actívalo
+                    _message.value = DeviceMessage.Success(getString(R.string.device_already_exists))
+                    repository.setActiveDevice(existingDevice.id)
+                } else {
+                    // Si no existe, crea un nuevo dispositivo
+                    val deviceId = UUID.randomUUID().toString()
+                    val newDevice = RemoteDevice(
+                        id = deviceId,
+                        name = deviceInfo.name,
+                        type = RemoteType.ANT,
+                        antDeviceId = deviceInfo.deviceNumber,
+                        macAddress = deviceInfo.deviceNumber.toString()
+                    )
 
-            _availableAntDevices.value = _availableAntDevices.value.filter {
-                it.deviceNumber != deviceInfo.deviceNumber
+                    repository.addDevice(newDevice)
+                    _message.value = DeviceMessage.Success(getString(R.string.remote_registered_successfully))
+                    repository.setActiveDevice(deviceId)
+                }
+
+                // Actualiza la lista de dispositivos disponibles
+                _availableAntDevices.value = _availableAntDevices.value.filter {
+                    it.deviceNumber != deviceInfo.deviceNumber
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error adding new ANT+ device")
+                _message.value = DeviceMessage.Error(getString(R.string.error))
             }
-
-            repository.setActiveDevice(deviceId)
-        } catch (e: Exception) {
-            Timber.e(e, "Error adding new ANT+ device")
-            _message.value = DeviceMessage.Error(getString(R.string.error))
         }
     }
-}
+
     fun clearMessage() {
         _message.value = null
     }

@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
         karooSystem.connect { connected ->
             if (connected) {
                 Timber.i("Karoo system service connected")
-                karooSystem.dispatch(RequestAnt(EXTENSION_NAME+"_A"))
+                karooSystem.dispatch(RequestAnt(EXTENSION_NAME))
             }
         }
     }
