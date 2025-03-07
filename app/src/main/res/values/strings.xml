@@ -71,6 +71,7 @@
     <string name="error_activating_device">Error activating device: %1$s</string>
     <string name="error_deleting_device">Error deleting device: %1$s</string>
     <string name="error_clearing_commands">Error clearing commands: %1$s</string>
+    <string name="device_already_exists">This device was already registered. Ignoring</string>
 
     <!-- Double tap configuration -->
     <string name="double_tap_configuration">Double tap configuration</string>

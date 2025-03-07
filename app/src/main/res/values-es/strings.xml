@@ -72,6 +72,7 @@
     <string name="error_activating_device">Error activando dispositivo: %1$s</string>
     <string name="error_deleting_device">Error eliminando dispositivo: %1$s</string>
     <string name="error_clearing_commands">Error borrando comandos: %1$s</string>
+    <string name="device_already_exists">Este dispositivo ya está registrado</string>
 
 
 
