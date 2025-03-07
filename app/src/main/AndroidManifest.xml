@@ -2,7 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <perm
+    <permission
+        android:name="com.enderthor.kremote.PERMISSION_START_CONNECTION"
+        android:protectionLevel="signature" />
 
     <application
         android:name=".KremoteApplication"
@@ -40,7 +42,8 @@
         </service>
 
         <receiver android:name=".receiver.ConnectionServiceReceiver"
-            android:exported="false">
+            android:exported="true"
+            android:permission="com.enderthor.kremote.PERMISSION_START_CONNECTION">
             <intent-filter>
                 <action android:name="com.enderthor.kremote.START_CONNECTION_SERVICE" />
             </intent-filter>
