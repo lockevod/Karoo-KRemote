@@ -20,7 +20,7 @@ const val maxreconnectDelayMs = 60000L // 1 minuto
 const val checkIntervalMs=  120000L // 10 segundos
 const val autoReconnect = true
 const val minReconnectInterval = 2000L
-const val DEFAULT_DOUBLE_TAP_TIMEOUT = 1500L // tiempo máximo entre pulsaciones (ms)
+const val DEFAULT_DOUBLE_TAP_TIMEOUT = 1200L // tiempo máximo entre pulsaciones (ms)
 
 
 @Serializable
@@ -110,9 +110,9 @@ data class RemoteDevice(
             defaultCommands.add(LearnedCommand(command = AntRemoteKey.MENU_DOWN, pressType = PressType.SINGLE, karooKey = KarooKey.TOPRIGHT))
             defaultCommands.add(LearnedCommand(command = AntRemoteKey.LAP, pressType = PressType.SINGLE, karooKey = KarooKey. BOTTOMLEFT))
             defaultCommands.add(LearnedCommand(command = AntRemoteKey.UNRECOGNIZED, pressType = PressType.SINGLE, karooKey = KarooKey.SHOWMAP))
-            defaultCommands.add(LearnedCommand(command = AntRemoteKey.MENU_DOWN, pressType = PressType.DOUBLE, karooKey = KarooKey.TOPRIGHT))
-            defaultCommands.add(LearnedCommand(command = AntRemoteKey.LAP, pressType = PressType.DOUBLE, karooKey = KarooKey. BOTTOMLEFT))
-            defaultCommands.add(LearnedCommand(command = AntRemoteKey.UNRECOGNIZED, pressType = PressType.DOUBLE, karooKey = KarooKey.SHOWMAP))
+            defaultCommands.add(LearnedCommand(command = AntRemoteKey.MENU_DOWN, pressType = PressType.DOUBLE, karooKey = KarooKey.ZOOM_IN))
+            defaultCommands.add(LearnedCommand(command = AntRemoteKey.LAP, pressType = PressType.DOUBLE, karooKey = KarooKey.ZOOM_OUT))
+            defaultCommands.add(LearnedCommand(command = AntRemoteKey.UNRECOGNIZED, pressType = PressType.DOUBLE, karooKey = KarooKey.CONTROLCENTER))
 
             return defaultCommands
         }
