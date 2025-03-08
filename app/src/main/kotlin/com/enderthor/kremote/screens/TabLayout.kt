@@ -81,7 +81,7 @@ fun TabLayout(
                     onDeviceDelete = { device -> deviceViewModel.removeDevice(device.id) },
                     onDeviceClick = { device -> deviceViewModel.activateDevice(device) },
                     onDeviceConfigure = { device -> deviceViewModel.onDeviceConfigureClick(device) },
-                    onNavigateBack = { onKarooEffect(PerformHardwareAction.BottomLeftPress)}
+                    onNavigateBack = { selectedTab = 0}
                 )
             }
         }
