@@ -6,6 +6,7 @@ import com.enderthor.kremote.data.KarooKey
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.data.PressType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +19,7 @@ class ConfigurationViewModel(
 ) : ViewModel() {
 
     private val _devices = MutableStateFlow<List<RemoteDevice>>(emptyList())
-    @Suppress("unused")
+
     val devices: StateFlow<List<RemoteDevice>> = _devices.asStateFlow()
 
     private val _activeDevice = MutableStateFlow<RemoteDevice?>(null)
@@ -29,6 +30,10 @@ class ConfigurationViewModel(
 
     private val _onlyWhileRiding = MutableStateFlow(true)
     val onlyWhileRiding: StateFlow<Boolean> = _onlyWhileRiding.asStateFlow()
+
+    private val _forcedScreenOn = MutableStateFlow(false)
+    val forcedScreenOn: StateFlow<Boolean> = _forcedScreenOn.asStateFlow()
+
 
     init {
         viewModelScope.launch {
@@ -46,18 +51,18 @@ class ConfigurationViewModel(
         viewModelScope.launch {
             repository.currentConfig.collect { config ->
                 _onlyWhileRiding.value = config.globalSettings.onlyWhileRiding
+                _forcedScreenOn.value = config.globalSettings.isForcedScreenOn
             }
         }
     }
 
-   fun assignKeyCodeToCommand(deviceId: String, command: AntRemoteKey, karooKey: KarooKey?) {
+    fun assignKeyCodeToCommand(deviceId: String, command: AntRemoteKey, karooKey: KarooKey?, pressType: PressType) {
         viewModelScope.launch {
             try {
-                repository.assignKeyCodeToCommand(deviceId, command, karooKey)
-                // No necesitamos forzar la actualización, solo mantener la suscripción
+                repository.assignKeyCodeToCommand(deviceId, command, karooKey, pressType)
             } catch (e: Exception) {
                 Timber.e(e, "Error asignando KeyCode al comando")
-                _errorMessage.value = "Error al asignar el comando: ${e.message}"
+                _errorMessage.value = "Error assigning keycode: ${e.message}"
             }
         }
     }
@@ -68,12 +73,49 @@ class ConfigurationViewModel(
                 repository.updateGlobalSetting { it.copy(onlyWhileRiding = enabled) }
             } catch (e: Exception) {
                 Timber.e(e, "Error actualizando la configuración onlyWhileRiding")
-                _errorMessage.value = "Error al actualizar la configuración: ${e.message}"
+                _errorMessage.value = "Error updating configuration: ${e.message}"
             }
         }
     }
 
     fun clearError() {
         _errorMessage.value = null
+    }
+
+    fun updateDoubleTapEnabled(deviceId: String, enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                repository.updateDeviceProperty(deviceId) { device ->
+                    device.copy(enabledDoubleTap = enabled)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error actualizando enabledDoubleTap")
+                _errorMessage.value = "Error updating configuration: ${e.message}"
+            }
+        }
+    }
+
+    fun updateDoubleTapTimeout(deviceId: String, timeout: Long) {
+        viewModelScope.launch {
+            try {
+                repository.updateDeviceProperty(deviceId) { device ->
+                    device.copy(doubleTapTimeout = timeout)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error actualizando doubleTapTimeout")
+                _errorMessage.value = "Error updating configuration: ${e.message}"
+            }
+        }
+    }
+
+    fun updateForcedScreenOn(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                repository.updateGlobalSetting { it.copy(isForcedScreenOn = enabled) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error actualizando la configuración isForcedScreenOn")
+                _errorMessage.value = "Error updating configuration: ${e.message}"
+            }
+        }
     }
 }

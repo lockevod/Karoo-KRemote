@@ -8,6 +8,8 @@ import com.dsi.ant.plugins.antplus.pcc.defines.RequestAccessResult
 import com.dsi.ant.plugins.antplus.pccbase.AntPluginPcc
 import com.dsi.ant.plugins.antplus.pccbase.PccReleaseHandle
 import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.data.DEFAULT_DOUBLE_TAP_TIMEOUT
+import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.data.minReconnectInterval
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +25,8 @@ data class AntDeviceInfo(
 
 class AntManager(
     private val context: Context,
-    private var commandCallback: (AntRemoteKey) -> Unit
+    private var commandCallback: (AntRemoteKey, PressType) -> Unit,
+    private var doubleTapTimeout: Long = DEFAULT_DOUBLE_TAP_TIMEOUT
 ) {
     private var remotePcc: AntPlusGenericControllableDevicePcc? = null
     private var remoteReleaseHandle: PccReleaseHandle<AntPlusGenericControllableDevicePcc?>? = null
@@ -40,7 +43,17 @@ class AntManager(
     private var isConnecting = false
     private var lastConnectionAttempt = 0L
 
+    private var doubleTapDetector: DoubleTapDetector? = null
 
+    init {
+        doubleTapDetector = DoubleTapDetector(doubleTapTimeout) { commandNumber, pressType ->
+            val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
+            antCommand?.let {
+                Timber.d("[ANT] Procesando comando: ${it.label} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+                commandCallback.invoke(it, pressType)
+            }
+        }
+    }
 
     private val mRemoteResultReceiver =
         AntPluginPcc.IPluginAccessResultReceiver<AntPlusGenericControllableDevicePcc> { result: AntPlusGenericControllableDevicePcc?,
@@ -128,7 +141,7 @@ class AntManager(
     fun isConnectedToDevice(deviceNumber: Int): Boolean {
         return _isConnected && remotePcc?.antDeviceNumber == deviceNumber
     }
-    fun setupCommandCallback(callback: (AntRemoteKey) -> Unit) {
+    fun setupCommandCallback(callback: (AntRemoteKey, PressType) -> Unit) {
         Timber.d("Configurando callback para comandos ANT+")
         this.commandCallback = callback
     }
@@ -140,22 +153,23 @@ class AntManager(
 
 
     private val mRemoteCommand =
-            AntPlusGenericControllableDevicePcc.IGenericCommandReceiver { estTimestamp, _, _, _, _, commandNumber ->
-                try {
-                    // Buscar el comando en la lista de AntRemoteKey
+        AntPlusGenericControllableDevicePcc.IGenericCommandReceiver { _, _, _, _, _, commandNumber ->
+            try {
+                Timber.d("[ANT] Comando recibido: $commandNumber (Modo aprendizaje: $learningMode)")
+
+                if (learningMode) {
                     val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
-
-                    Timber.d("[ANT] Comando recibido: ${antCommand?.label ?: commandNumber} (Modo aprendizaje: $learningMode)")
-
                     antCommand?.let {
-                        Timber.d("[ANT] Procesando comando: ${it.label}")
-                        commandCallback.invoke(it)
+                        commandCallback.invoke(it, PressType.SINGLE)
                     }
-                } catch (e: Exception) {
-                    Timber.e(e, "[ANT] Error procesando comando")
+                } else {
+                    doubleTapDetector?.handleCommand(commandNumber)
                 }
-                CommandStatus.PASS
+            } catch (e: Exception) {
+                Timber.e(e, "[ANT] Error procesando comando")
             }
+            CommandStatus.PASS
+        }
 
 
     private val mRemoteDeviceStateChangeReceiver =
@@ -181,15 +195,27 @@ class AntManager(
             }
         }
 
+    fun updateDoubleTapTimeout(timeout: Long) {
+        this.doubleTapTimeout = timeout
+        // Actualizar el doubleTapDetector existente o crear uno nuevo
+        doubleTapDetector?.updateTimeout(timeout) ?: run {
+            doubleTapDetector = DoubleTapDetector(timeout) { commandNumber, pressType ->
+                val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
+                antCommand?.let {
+                    Timber.d("[ANT] Procesando comando: ${it.label} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+                    commandCallback.invoke(it, pressType)
+                }
+            }
+        }
+    }
 
     fun connect(deviceNumber: Int) {
-        // Evitar múltiples intentos simultáneos
+
         if (isConnecting) {
             Timber.d("[ANT] Ya hay un intento de conexión en curso")
             return
         }
 
-        // Evitar reconexiones demasiado frecuentes
         val now = System.currentTimeMillis()
         if (now - lastConnectionAttempt < minReconnectInterval) {
             Timber.d("[ANT] Intento de reconexión demasiado frecuente, ignorando")
@@ -204,10 +230,9 @@ class AntManager(
             try {
                 Timber.d("[ANT] Conectando a dispositivo #$deviceNumber (Modo aprendizaje: $learningMode)")
 
-                // Guardar el estado actual del modo de aprendizaje
+
                 val currentLearningMode = learningMode
 
-                // Solo desconectamos si no estamos ya conectados a este dispositivo
                 if (_isConnected && remotePcc?.antDeviceNumber != deviceNumber) {
                     disconnect()
                 } else if (_isConnected && remotePcc?.antDeviceNumber == deviceNumber) {
@@ -216,10 +241,8 @@ class AntManager(
                     return@runBlocking
                 }
 
-                // Restaurar el estado del modo de aprendizaje
                 learningMode = currentLearningMode
 
-                // Iniciar la nueva conexión
                 remoteReleaseHandle = AntPlusGenericControllableDevicePcc.requestAccess(
                     context,
                     mRemoteResultReceiver,
@@ -246,19 +269,20 @@ class AntManager(
         remotePcc = null
         _isConnected = false
 
-        // Mantener el modo aprendizaje
         if (wasLearning) {
             Timber.d("[ANT] Preservando modo aprendizaje: true")
             learningMode = true
         }
     }
 
-    fun stopScan() {
-        Timber.d("Stopping ANT+ device search")
+    fun stopScan(disconnect: Boolean = false) {
+        Timber.d("Stopping ANT+ device search (disconnect=$disconnect)")
         try {
             _detectedDevices.value = emptyList()
-            disconnect()
-            _isConnected = false
+            if (disconnect) {
+                disconnect()
+                _isConnected = false
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error stopping ANT+ device search")
             throw e
@@ -270,10 +294,9 @@ class AntManager(
         try {
 
             runBlocking(Dispatchers.Main) {
-                // Si ya hay una conexión ANT+, la desconectamos primero
+
                 disconnect()
 
-                // Iniciamos la búsqueda de dispositivos ANT+
                 remoteReleaseHandle = AntPlusGenericControllableDevicePcc.requestAccess(
                     context,
                     mRemoteResultReceiver,

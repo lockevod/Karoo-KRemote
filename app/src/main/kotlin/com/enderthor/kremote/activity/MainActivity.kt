@@ -14,6 +14,8 @@ import com.enderthor.kremote.ant.AntManager
 import com.enderthor.kremote.data.AntRemoteKey
 import com.enderthor.kremote.data.EXTENSION_NAME
 import io.hammerhead.karooext.KarooSystemService
+import com.enderthor.kremote.data.PressType
+import com.enderthor.kremote.extension.KremoteExtension
 import io.hammerhead.karooext.models.RequestAnt
 
 import timber.log.Timber
@@ -36,21 +38,24 @@ class MainActivity : ComponentActivity() {
 
     private fun setupDependencies() {
         repository = RemoteRepository(applicationContext)
-        antManager = AntManager(this) { antRemoteKey ->  // Ahora recibe AntRemoteKey
-            handleAntCommand(antRemoteKey)
-        }
+        antManager = AntManager(
+            context = this,
+            commandCallback = { command: AntRemoteKey, pressType: PressType ->
+                handleAntCommand(command, pressType)
+            }
+        )
         karooSystem = KarooSystemService(applicationContext)
         karooSystem.connect { connected ->
             if (connected) {
                 Timber.i("Karoo system service connected")
-                karooSystem.dispatch(RequestAnt(EXTENSION_NAME+"_A"))
+                karooSystem.dispatch(RequestAnt(EXTENSION_NAME))
             }
         }
     }
 
-    private fun handleAntCommand(command: AntRemoteKey) {
-        Timber.d("ANT+ command received: $command")
-        // Aquí puedes manejar los comandos ANT+ según sea necesario
+    private fun handleAntCommand(command: AntRemoteKey, pressType: PressType) {
+        Timber.d("ANT+ command received: $command and pressType: $pressType")
+        // Handle the received command and pressType here
     }
 
 
@@ -58,7 +63,6 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         antManager.disconnect()
         antManager.cleanup()
-        //karooSystem.dispatch(ReleaseAnt(EXTENSION_NAME))
         karooSystem.disconnect()
         super.onDestroy()
     }
@@ -76,6 +80,9 @@ fun MainScreen(
         TabLayout(
             repository = repository,
             antManager = antManager,
+            onKarooEffect = { effect ->
+                KremoteExtension.getInstance()?.karooSystem?.dispatch(effect)
+            }
         )
     }
 }

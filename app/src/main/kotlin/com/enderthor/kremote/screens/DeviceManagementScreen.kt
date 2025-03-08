@@ -1,5 +1,6 @@
 package com.enderthor.kremote.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,11 +10,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.delay
@@ -22,6 +23,7 @@ import com.enderthor.kremote.data.RemoteType
 import com.enderthor.kremote.ant.AntDeviceInfo
 import com.enderthor.kremote.data.DeviceMessage
 import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.R
 
 @Composable
@@ -44,26 +46,26 @@ fun DeviceItem(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Primera fila: Título
+
             Text(
                 text = device.name,
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Segunda fila: Información y botones
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Lado izquierdo: Comandos aprendidos y estado activo
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "${device.learnedCommands.size} LC",
+                        text = "${device.learnedCommands.count { it.pressType == PressType.SINGLE }} LC",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     if (device.isActive) {
@@ -75,7 +77,7 @@ fun DeviceItem(
                     }
                 }
 
-                // Lado derecho: Botones
+
                 Row {
                     IconButton(onClick = onConfigureClick) {
                         Icon(
@@ -108,145 +110,160 @@ fun DeviceManagementScreen(
     onMessageDismiss: () -> Unit,
     onDeviceDelete: (RemoteDevice) -> Unit,
     onDeviceClick: (RemoteDevice) -> Unit,
-    onDeviceConfigure: (RemoteDevice) -> Unit
+    onDeviceConfigure: (RemoteDevice) -> Unit,
+    onNavigateBack: () -> Unit
 ) {
     var deviceToDelete by remember { mutableStateOf<RemoteDevice?>(null) }
     var selectedType by remember { mutableStateOf<RemoteType>(RemoteType.ANT) }
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            // Selector de tipo
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    FilterChip(
+                        selected = selectedType == RemoteType.ANT,
+                        onClick = { selectedType = RemoteType.ANT },
+                        label = { Text("ANT+") }
+                    )
+                }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        // Selector de tipo
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                FilterChip(
-                    selected = selectedType == RemoteType.ANT,
-                    onClick = { selectedType = RemoteType.ANT },
-                    label = { Text("ANT+") }
-                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onScanClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !scanning
+                ) {
+                    Text(if (scanning) stringResource(R.string.searching) else stringResource(R.string.search_ant))
+                }
+
+                if (scanning) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = onScanClick,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !scanning
-            ) {
-                Text(if (scanning) stringResource(R.string.searching) else stringResource(R.string.search_ant))
+            if (availableAntDevices.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.available_ant_devices),
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
+                items(availableAntDevices) { device ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(4.dp)
+                            .clickable { onNewAntDeviceClick(device) }
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = device.name,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = stringResource(R.string.device_number, device.deviceNumber),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
 
-            if (scanning) {
-                CircularProgressIndicator(
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
 
-        // Dispositivos disponibles
-        if (availableAntDevices.isNotEmpty()) {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = stringResource(R.string.available_ant_devices),
+                    text = stringResource(R.string.paired_devices),
                     style = MaterialTheme.typography.headlineSmall
                 )
-            }
-            items(availableAntDevices) { device ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(4.dp)
-                        .clickable { onNewAntDeviceClick(device) }
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = device.name,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = stringResource(R.string.device_number, device.deviceNumber),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-        }
 
-        // Dispositivos emparejados
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.paired_devices),
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        val filteredDevices = devices.filter { it.type == selectedType }
-        items(filteredDevices) { device ->
-            DeviceItem(
-                device = device,
-                onClick = { onDeviceClick(device) },
-                onDeleteClick = { deviceToDelete = device },
-                onConfigureClick = { onDeviceConfigure(device) }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-    }
-
-    // Diálogos
-    deviceToDelete?.let { device ->
-        AlertDialog(
-            onDismissRequest = { deviceToDelete = null },
-            title = { Text(stringResource(R.string.delete_device_title)) },
-            text = { Text(stringResource(R.string.delete_device_confirmation, device.name)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeviceDelete(device)
-                    deviceToDelete = null
-                }) {
-                    Text(stringResource(R.string.delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deviceToDelete = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
-
-    message?.let { msg ->
-        AlertDialog(
-            onDismissRequest = onMessageDismiss,
-            title = {
-                Text(
-                    when (msg) {
-                        is DeviceMessage.Error -> stringResource(R.string.error)
-                        is DeviceMessage.Success -> stringResource(R.string.information)
-                    }
+            val filteredDevices = devices.filter { it.type == selectedType }
+            items(filteredDevices) { device ->
+                DeviceItem(
+                    device = device,
+                    onClick = { onDeviceClick(device) },
+                    onDeleteClick = { deviceToDelete = device },
+                    onConfigureClick = { onDeviceConfigure(device) }
                 )
-            },
-            text = {
-                Text(
-                    when (msg) {
-                        is DeviceMessage.Error -> msg.message
-                        is DeviceMessage.Success -> msg.message
-                    }
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = onMessageDismiss) {
-                    Text(stringResource(R.string.ok))
-                }
+                Spacer(modifier = Modifier.height(8.dp))
             }
+
+
+        }
+
+
+        deviceToDelete?.let { device ->
+            AlertDialog(
+                onDismissRequest = { deviceToDelete = null },
+                title = { Text(stringResource(R.string.delete_device_title)) },
+                text = { Text(stringResource(R.string.delete_device_confirmation, device.name)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onDeviceDelete(device)
+                        deviceToDelete = null
+                    }) {
+                        Text(stringResource(R.string.delete))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { deviceToDelete = null }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        message?.let { msg ->
+            AlertDialog(
+                onDismissRequest = onMessageDismiss,
+                title = {
+                    Text(
+                        when (msg) {
+                            is DeviceMessage.Error -> stringResource(R.string.error)
+                            is DeviceMessage.Success -> stringResource(R.string.information)
+                        }
+                    )
+                },
+                text = {
+                    Text(
+                        when (msg) {
+                            is DeviceMessage.Error -> msg.message
+                            is DeviceMessage.Success -> msg.message
+                        }
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = onMessageDismiss) {
+                        Text(stringResource(R.string.ok))
+                    }
+                }
+            )
+        }
+        Image(
+            painter = painterResource(id = R.drawable.back),
+            contentDescription = "Atrás",
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(bottom = 16.dp)
+                .size(54.dp)
+                .clickable {
+                    onNavigateBack()
+                }
         )
     }
 }
@@ -263,134 +280,31 @@ fun DeviceCommandsScreen(
     onNavigateBack: () -> Unit,
     onClearAllCommands: () -> Unit
 ) {
-    // Estado para mostrar cuándo se inició el aprendizaje
+
     var learningStartTime by remember { mutableStateOf<Long?>(null) }
 
-    // Actualizar el tiempo de inicio cuando cambia isLearning
+
     LaunchedEffect(isLearning) {
         learningStartTime = if (isLearning) System.currentTimeMillis() else null
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.configure_device, device.name)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back)
-                        )
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(16.dp)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            // Sección de aprendizaje
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        stringResource(R.string.learning_mode),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+    Box(modifier = Modifier.fillMaxSize()) {
 
-                    Text(
-                        text = stringResource(
-                            R.string.status,
-                            if (isLearning) stringResource(R.string.awaiting_signal)
-                            else stringResource(R.string.ready_to_learn)
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isLearning) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    if (isLearning) {
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Mostrar tiempo transcurrido
-                        learningStartTime?.let { startTime ->
-                            val elapsed by produceState(initialValue = 0L, key1 = startTime) {
-                                while (true) {
-                                    value = System.currentTimeMillis() - startTime
-                                    delay(1000)
-                                }
-                            }
-                            Text(
-                                text = stringResource(R.string.elapsed_time, elapsed / 1000),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    } else {
-                        Text(
-                            text = stringResource(R.string.start_learning_instructions),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Botones de control
-                    if (isLearning) {
-                        Button(
-                            onClick = onStopLearning,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Text(stringResource(R.string.stop_learning))
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Button(
-                            onClick = onRestartLearning,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(R.string.restart_learning))
-                        }
-                    } else {
-                        Button(
-                            onClick = onStartLearning,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(R.string.start_learning))
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Button(
-                            onClick = onClearAllCommands,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Text(stringResource(R.string.clear_all_commands))
-                        }
-                    }
-                }
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.configure_device, device.name)) },
+                )
             }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(16.dp)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
 
-            // Nueva sección: Comandos detectados en la sesión actual
-            if (learnedCommands.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -398,100 +312,211 @@ fun DeviceCommandsScreen(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            stringResource(R.string.detected_commands),
+                            stringResource(R.string.learning_mode),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        LazyColumn(
-                            modifier = Modifier.heightIn(max = 200.dp)
+                        Text(
+                            text = stringResource(
+                                R.string.status,
+                                if (isLearning) stringResource(R.string.awaiting_signal)
+                                else stringResource(R.string.ready_to_learn)
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isLearning) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (isLearning) {
+                            LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+
+                            learningStartTime?.let { startTime ->
+                                val elapsed by produceState(initialValue = 0L, key1 = startTime) {
+                                    while (true) {
+                                        value = System.currentTimeMillis() - startTime
+                                        delay(1000)
+                                    }
+                                }
+                                Text(
+                                    text = stringResource(R.string.elapsed_time, elapsed / 1000),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = stringResource(R.string.start_learning_instructions),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+
+                        if (isLearning) {
+                            Button(
+                                onClick = onStopLearning,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text(stringResource(R.string.stop_learning))
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Button(
+                                onClick = onRestartLearning,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(stringResource(R.string.restart_learning))
+                            }
+                        } else {
+                            Button(
+                                onClick = onStartLearning,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(stringResource(R.string.start_learning))
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Button(
+                                onClick = onClearAllCommands,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text(stringResource(R.string.clear_all_commands))
+                            }
+                        }
+                    }
+                }
+
+
+                if (learnedCommands.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
                         ) {
-                            items(learnedCommands) { command ->
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                ) {
-                                    Row(
+                            Text(
+                                stringResource(R.string.detected_commands),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            LazyColumn(
+                                modifier = Modifier.heightIn(max = 200.dp)
+                            ) {
+                                items(learnedCommands) { command ->
+                                    Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(12.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                            .padding(vertical = 4.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                        )
                                     ) {
-                                        Text(
-                                            text = command.label,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                        Text(
-                                            text = "Code: ${command.gCommand}",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = command.label,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                            Text(
+                                                text = "Code: ${command.gCommand}",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Sección de comandos ya guardados
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+                Card(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        stringResource(R.string.saved_commands, device.learnedCommands.size),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    if (device.learnedCommands.isEmpty()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
                         Text(
-                            stringResource(R.string.no_saved_commands),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            stringResource(R.string.saved_commands, device.learnedCommands.count { it.pressType == PressType.SINGLE }),
+                            style = MaterialTheme.typography.titleMedium
                         )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.heightIn(max = 300.dp)
-                        ) {
-                            items(device.learnedCommands) { learnedCommand ->
-                                ListItem(
-                                    leadingContent = {
-                                        Icon(
-                                            imageVector = Icons.Default.Settings,
-                                            contentDescription = null
-                                        )
-                                    },
-                                    headlineContent = {
-                                        Text(
-                                            text = learnedCommand.command.label,
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    },
-                                    supportingContent = {
-                                        Text(
-                                            text = learnedCommand.karooKey?.label ?: "No assigned",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                )
-                                HorizontalDivider()
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (device.learnedCommands.isEmpty()) {
+                            Text(
+                                stringResource(R.string.no_saved_commands),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.heightIn(max = 300.dp)
+                            ) {
+                                val singlePressCommands = device.learnedCommands.filter { it.pressType == PressType.SINGLE }
+
+                                items(singlePressCommands) { learnedCommand ->
+                                    ListItem(
+                                        leadingContent = {
+                                            Icon(
+                                                imageVector = Icons.Default.Settings,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        headlineContent = {
+                                            Text(
+                                                text = learnedCommand.command.label,
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                        },
+                                        supportingContent = {
+                                            Text(
+                                                text =  learnedCommand.karooKey?.let { "Assigned" } ?: "No assigned",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    )
+                                    HorizontalDivider()
+                                }
                             }
                         }
                     }
                 }
             }
         }
+
+        Image(
+            painter = painterResource(id = R.drawable.back),
+            contentDescription = "Back",
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(bottom = 16.dp)
+                .size(54.dp)
+                .clickable {
+                    onNavigateBack()
+                }
+        )
     }
 }
