@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.viewmodel.ConfigurationViewModel
@@ -37,6 +38,8 @@ fun ConfigurationScreen(
     val selectedDevice = devices.find { it.id == selectedDeviceId }
     val onlyWhileRiding by configViewModel.onlyWhileRiding.collectAsState()
     val forcedScreenOn by configViewModel.forcedScreenOn.collectAsState()
+    var showDoubleTapDisclaimer by remember { mutableStateOf(false) }
+    var tempDeviceId by remember { mutableStateOf("") }
 
     val context = LocalContext.current
     val repository = remember { RemoteRepository(context) }
@@ -62,12 +65,12 @@ fun ConfigurationScreen(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
 
                 LearnedCommandsSection(
                     device = device,
-                    repository = repository, // Pasar el repositorio aquí
+                    repository = repository,
                     onKarooKeyAssigned = { command, karooKey, pressType ->
                         configViewModel.assignKeyCodeToCommand(
                             device.id,
@@ -78,7 +81,7 @@ fun ConfigurationScreen(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -90,12 +93,18 @@ fun ConfigurationScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Switch(
                                 checked = device.enabledDoubleTap,
-                                onCheckedChange = { checked ->
-                                    configViewModel.updateDoubleTapEnabled(device.id, checked)
+                                onCheckedChange = { newValue ->
+                                    if (newValue) {
+                                        tempDeviceId = device.id
+                                        showDoubleTapDisclaimer = true
+                                    } else {
+
+                                        configViewModel.updateDoubleTapEnabled(device.id, false)
+                                    }
                                 }
                             )
 
@@ -123,8 +132,8 @@ fun ConfigurationScreen(
                                     val roundedValue = (value / 100f).toInt() * 100L
                                     configViewModel.updateDoubleTapTimeout(device.id, roundedValue)
                                 },
-                                valueRange = 600f..3000f,
-                                steps = 24, // Pasos de 100ms
+                                valueRange = 1000f..2200f,
+                                steps = 24, // 100ms
                                 modifier = Modifier.fillMaxWidth()
                             )
 
@@ -134,10 +143,11 @@ fun ConfigurationScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Card(
                     modifier = Modifier.fillMaxWidth()
@@ -151,7 +161,7 @@ fun ConfigurationScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Switch(
                                 checked = onlyWhileRiding,
@@ -166,7 +176,7 @@ fun ConfigurationScreen(
                             )
                         }
                         Row(
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Switch(
                                 checked = forcedScreenOn,
@@ -181,6 +191,7 @@ fun ConfigurationScreen(
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.height(22.dp))
                 }
 
             } ?: run {
@@ -198,6 +209,43 @@ fun ConfigurationScreen(
                     confirmButton = {
                         TextButton(onClick = { configViewModel.clearError() }) {
                             Text(stringResource(R.string.ok))
+                        }
+                    }
+                )
+            }
+            if (showDoubleTapDisclaimer) {
+                AlertDialog(
+                    onDismissRequest = { showDoubleTapDisclaimer = false },
+                    title = { Text(stringResource(R.string.double_tap_disclaimer_title)) },
+                    text = {
+                        Box(
+                            modifier = Modifier
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = stringResource(R.string.double_tap_disclaimer_message),
+                                textAlign = TextAlign.Justify,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            configViewModel.updateDoubleTapEnabled(tempDeviceId, true)
+                            showDoubleTapDisclaimer = false
+                        },
+                            contentPadding = PaddingValues(
+                                vertical = 4.dp
+                            )) {
+                            Text(stringResource(R.string.accept))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDoubleTapDisclaimer = false },
+                            contentPadding = PaddingValues(
+                                vertical = 4.dp
+                            )) {
+                            Text(stringResource(R.string.cancel))
                         }
                     }
                 )

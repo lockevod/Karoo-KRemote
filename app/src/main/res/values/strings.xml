@@ -76,9 +76,12 @@
     <!-- Double tap configuration -->
     <string name="double_tap_configuration">Double tap configuration</string>
     <string name="enable_double_tap">Enable double tap</string>
-    <string name="double_tap_timeout">Timeout: %1$d ms</string>
-    <string name="lower_values_explanation">Lower values require faster taps</string>
+    <string name="double_tap_timeout">Taps timeout: %1$d ms</string>
+    <string name="lower_values_explanation">Lower require faster taps</string>
     <string name="single_press">Single press:</string>
     <string name="double_press">Double press:</string>
     <string name="no_learned_commands">No learned command. You need to learn all commands first (Remotes screen).</string>
+    <string name="double_tap_disclaimer_title">Warning</string>
+    <string name="double_tap_disclaimer_message">The double tap function may affect the device\'s response as it introduces a waiting time to detect presses.\n\nDouble taps are detected according to the configured time between presses. A minimum of 1100 ms is recommended (less time probably won\'t detect it) and a maximum of 1500 ms for an acceptable response</string>
+    <string name="accept">Accept</string>
 </resources>
