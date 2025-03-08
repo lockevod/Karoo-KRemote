@@ -6,6 +6,7 @@ import io.hammerhead.karooext.models.KarooEffect
 import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
 import io.hammerhead.karooext.models.MarkLap
 import io.hammerhead.karooext.models.PauseRide
+import io.hammerhead.karooext.models.PlayBeepPattern
 import io.hammerhead.karooext.models.ResumeRide
 import io.hammerhead.karooext.models.ShowMapPage
 import io.hammerhead.karooext.models.TurnScreenOff
@@ -34,13 +35,27 @@ sealed class DeviceMessage {
     data class Success(val message: String) : DeviceMessage()
 }
 
+@Serializable
+enum class BellBeepPattern(val displayName: String, val tones: List<PlayBeepPattern.Tone>) {
+    BELL1("Three tones up", listOf(PlayBeepPattern.Tone(4_000, 500), PlayBeepPattern.Tone(5_000, 500), PlayBeepPattern.Tone(6_000, 500))),
+    BELL2("Double high", listOf(
+        PlayBeepPattern.Tone(4_000, 500),
+        PlayBeepPattern.Tone(0, 200),
+        PlayBeepPattern.Tone(5_000, 500),
+        PlayBeepPattern.Tone(0, 200),
+        PlayBeepPattern.Tone(5_000, 500),
+        PlayBeepPattern.Tone(0, 200),
+        PlayBeepPattern.Tone(4_000, 500))
+    ),
+}
+
 
 @Serializable
 enum class KarooKey(val action: KarooEffect, val label: String) {
     BOTTOMRIGHT(PerformHardwareAction.BottomRightPress, "Accept/Navigate In"),
     BOTTOMLEFT(PerformHardwareAction.BottomLeftPress, "Back/Lap"),
     CONTROLCENTER(PerformHardwareAction.ControlCenterComboPress, "Control Center"),
-    DRAWER(PerformHardwareAction.DrawerActionComboPress, "Drawer"),
+    BELL(PlayBeepPattern(BellBeepPattern.BELL1.tones), "Bell"),
     LAP(MarkLap, "Lap"),
     SHOWMAP(ShowMapPage(true), "Map and Zoom In"),
     TOPLEFT(PerformHardwareAction.TopLeftPress, "Page Left"),

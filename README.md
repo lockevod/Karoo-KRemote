@@ -1,6 +1,6 @@
 # KRemote  Extension
 
-KRemote allows to use a Remote with Karoo and perform some actions with it (swipe screens, etc.)
+KRemote allows to use a Remote with Karoo and perform some actions with it (swipe screens, Bell, zoom in, zoom out, etc.)
 
 <a href="https://www.buymeacoffee.com/enderthor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
@@ -35,9 +35,10 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - Kremote works (if only when riding option is enabled) only when you're in Ride app. Please if you want kremote works in all screens, uncheck this option. If you detect some lags, sometimes you can uncheck this option and try if it's work better.
 
 ## Configuration
-You need to configure the remote buttons to perform some actions in Karoo. There is a default configuration if you've a Garmin Remote (or compatible).
-You can configure double tap option. This permits to use double press and use more options with the remote (for example, zoom in double tap in left button, etc). Double tap works fine but introduces a delay (it's necessary to catch double press). The default delay is 1200 ms.
-If you have karoo > 1.535 you can use showmap option also
+- You need to configure the remote buttons to perform some actions in Karoo. There is a default configuration if you've a Garmin Remote (or compatible).
+- You can configure double tap option. This permits to use double press and use more options with the remote (for example, zoom in double tap in left button, etc). Double tap works fine but introduces a delay (it's necessary to catch double press). The default delay is 1200 ms.
+- You can map several actions (mark lap, swipe between screens, zoom in etc and use your Karoo as a BELL)
+- If you have karoo > 1.535 you can use showmap option also
 
 ## Know Bugs
 - Sometimes app isn't working fine, this new release has better support and it's working fine, but you need to know, Karoo function have priority oven kremote actions.
