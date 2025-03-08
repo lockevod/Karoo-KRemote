@@ -35,9 +35,9 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - Kremote works (if only when riding option is enabled) only when you're in Ride app. Please if you want kremote works in all screens, uncheck this option. If you detect some lags, sometimes you can uncheck this option and try if it's work better.
 
 ## Configuration
-You need to configure the remote buttons to perform some actions in Karoo. There is a default configuration if you've a Garmin Remote (or compatible).
-You can configure double tap option. This permits to use double press and use more options with the remote (for example, zoom in double tap in left button, etc). Double tap works fine but introduces a delay (it's necessary to catch double press). The default delay is 1200 ms.
-If you have karoo > 1.535 you can use showmap option also
+- You need to configure the remote buttons to perform some actions in Karoo. There is a default configuration if you've a Garmin Remote (or compatible).
+- You can configure double tap option. This permits to use double press and use more options with the remote (for example, zoom in double tap in left button, etc). Double tap works fine but introduces a delay (it's necessary to catch double press). The default delay is 1200 ms.
+- If you have karoo > 1.535 you can use showmap option also
 
 ## Know Bugs
 - Sometimes app isn't working fine, this new release has better support and it's working fine, but you need to know, Karoo function have priority oven kremote actions.
