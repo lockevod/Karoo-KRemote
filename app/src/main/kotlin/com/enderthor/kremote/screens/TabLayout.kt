@@ -12,12 +12,15 @@ import com.enderthor.kremote.viewmodel.ConfigurationViewModel
 import com.enderthor.kremote.viewmodel.DeviceViewModel
 import android.content.Context
 import androidx.compose.ui.platform.LocalContext
+import io.hammerhead.karooext.models.KarooEffect
+import io.hammerhead.karooext.models.PerformHardwareAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TabLayout(
     antManager: AntManager,
     repository: RemoteRepository,
+    onKarooEffect: (KarooEffect) -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Mapping", "Remotes")
@@ -45,7 +48,7 @@ fun TabLayout(
                 onStopLearning = { deviceViewModel.stopLearning() },
                 onRestartLearning = { deviceViewModel.restartLearning() },
                 onNavigateBack = { deviceViewModel.clearSelectedDevice() },
-                onClearAllCommands = { deviceViewModel.clearAllLearnedCommands() }
+                onClearAllCommands = { deviceViewModel.clearAllLearnedCommands() },
             )
         } ?: run {
 
@@ -64,7 +67,8 @@ fun TabLayout(
                     devices = deviceViewModel.devices.collectAsState().value,
                     activeDevice = configViewModel.activeDevice.collectAsState().value,
                     errorMessage = configViewModel.errorMessage.collectAsState().value,
-                    configViewModel = configViewModel
+                    configViewModel = configViewModel,
+                    onNavigateBack = { onKarooEffect(PerformHardwareAction.BottomLeftPress)}
                 )
                 1 -> DeviceManagementScreen(
                     devices = deviceViewModel.devices.collectAsState().value,
@@ -76,7 +80,8 @@ fun TabLayout(
                     onMessageDismiss = { deviceViewModel.clearMessage() },
                     onDeviceDelete = { device -> deviceViewModel.removeDevice(device.id) },
                     onDeviceClick = { device -> deviceViewModel.activateDevice(device) },
-                    onDeviceConfigure = { device -> deviceViewModel.onDeviceConfigureClick(device) }
+                    onDeviceConfigure = { device -> deviceViewModel.onDeviceConfigureClick(device) },
+                    onNavigateBack = { onKarooEffect(PerformHardwareAction.BottomLeftPress)}
                 )
             }
         }
