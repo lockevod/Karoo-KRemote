@@ -9,6 +9,7 @@ import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteType
 import com.enderthor.kremote.data.DeviceMessage
 import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,14 +59,16 @@ class DeviceViewModel(
             }
         }
 
-        antManager.setupCommandCallback { command ->
+        antManager.setupCommandCallback { command, pressType ->
             if (scanning.value) {
-                onCommandDetected(command)
+                onCommandDetected(command, pressType)
             }
         }
     }
 
     private fun getString(resId: Int): String = appContext.getString(resId)
+    private fun getString(resId: Int, vararg formatArgs: Any): String = appContext.getString(resId, *formatArgs)
+
 
     fun clearSelectedDevice() {
         _selectedDevice.value = null
@@ -82,7 +85,6 @@ class DeviceViewModel(
                     antManager.startDeviceSearch()
                 }
 
-                // Observar los dispositivos detectados durante 30 segundos
                 val startTime = System.currentTimeMillis()
                 while (System.currentTimeMillis() - startTime < 30000) {
                     _availableAntDevices.value = antManager.detectedDevices.value
@@ -107,7 +109,7 @@ class DeviceViewModel(
     fun onDeviceConfigureClick(device: RemoteDevice) {
         _selectedDevice.value = device
 
-        // Conectarse al dispositivo ANT+ si es necesario
+
         viewModelScope.launch {
             try {
                 device.antDeviceId?.let { deviceId ->
@@ -151,20 +153,33 @@ class DeviceViewModel(
 
         viewModelScope.launch {
             try {
-                val deviceId = UUID.randomUUID().toString()
-                val newDevice = RemoteDevice(
-                    id = deviceId,
-                    name = deviceInfo.name,
-                    type = RemoteType.ANT,
-                    antDeviceId = deviceInfo.deviceNumber,
-                    macAddress = deviceInfo.deviceNumber.toString()
-                )
+                // Comprobar si ya existe un dispositivo con el mismo número ANT+
+                val existingDevice = devices.value.find { it.antDeviceId == deviceInfo.deviceNumber }
 
-                repository.addDevice(newDevice)
-                _message.value = DeviceMessage.Success(getString(R.string.remote_registered_successfully))
+                if (existingDevice != null) {
+                    // Si el dispositivo ya existe, simplemente actívalo
+                    _message.value = DeviceMessage.Success(getString(R.string.device_already_exists))
+                    repository.setActiveDevice(existingDevice.id)
+                } else {
+                    // Si no existe, crea un nuevo dispositivo
+                    val deviceId = UUID.randomUUID().toString()
+                    val newDevice = RemoteDevice(
+                        id = deviceId,
+                        name = deviceInfo.name,
+                        type = RemoteType.ANT,
+                        antDeviceId = deviceInfo.deviceNumber,
+                        macAddress = deviceInfo.deviceNumber.toString()
+                    )
 
-                // Asignar como activo al nuevo dispositivo
-                repository.setActiveDevice(deviceId)
+                    repository.addDevice(newDevice)
+                    _message.value = DeviceMessage.Success(getString(R.string.remote_registered_successfully))
+                    repository.setActiveDevice(deviceId)
+                }
+
+                // Actualiza la lista de dispositivos disponibles
+                _availableAntDevices.value = _availableAntDevices.value.filter {
+                    it.deviceNumber != deviceInfo.deviceNumber
+                }
             } catch (e: Exception) {
                 Timber.e(e, "Error adding new ANT+ device")
                 _message.value = DeviceMessage.Error(getString(R.string.error))
@@ -207,7 +222,6 @@ class DeviceViewModel(
         _scanning.value = false
         antManager.setLearningMode(false)
 
-        // Guardar comandos aprendidos
         saveLearnedCommands()
     }
 
@@ -217,17 +231,20 @@ class DeviceViewModel(
         startLearning()
     }
 
-    private fun onCommandDetected(command: AntRemoteKey) {
-        val currentCommands = _learnedCommands.value.toMutableList()
-        if (!currentCommands.contains(command)) {
-            currentCommands.add(command)
-            _learnedCommands.value = currentCommands
+    private fun onCommandDetected(command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
 
-            // Solo guardar en el repositorio si hay un dispositivo seleccionado
+        if (!_learnedCommands.value.contains(command)) {
+            _learnedCommands.value = _learnedCommands.value + command
+
+
             selectedDevice.value?.let { device ->
                 viewModelScope.launch {
                     try {
-                        repository.updateLearnedCommand(device.id, command)
+
+                        repository.updateLearnedCommand(device.id, command, pressType)
+                        _message.value = DeviceMessage.Success(
+                            getString(R.string.command_learned, command.label)
+                        )
                     } catch (e: Exception) {
                         Timber.e(e, "Error saving learned command")
                     }

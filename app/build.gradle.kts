@@ -17,8 +17,8 @@ android {
         applicationId = "com.enderthor.kremote"
         minSdk = 26
         targetSdk = 34
-        versionCode = 202503011
-        versionName = "2.0"
+        versionCode = 202503041
+        versionName = "2.1"
     }
 
     buildTypes {
@@ -89,7 +89,7 @@ dependencies {
     // coroutines
     implementation(libs.kotlinx.coroutines.android)
     // implementation(libs.kotlinx.coroutines.rx2)
-    implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
     // Hilt
