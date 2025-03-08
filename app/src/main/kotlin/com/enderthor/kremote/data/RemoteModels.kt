@@ -15,12 +15,12 @@ import io.hammerhead.karooext.models.ZoomPage
 
 const val EXTENSION_NAME = "kremote"
 const val reconnectAttempts = 10
-const val reconnectDelayMs = 5000L // 5 segundos entre intentos
-const val maxreconnectDelayMs = 60000L // 1 minuto
-const val checkIntervalMs=  120000L // 10 segundos
+const val reconnectDelayMs = 5000L
+const val maxreconnectDelayMs = 60000L
+const val checkIntervalMs=  120000L
 const val autoReconnect = true
 const val minReconnectInterval = 2000L
-const val DEFAULT_DOUBLE_TAP_TIMEOUT = 1200L // tiempo máximo entre pulsaciones (ms)
+const val DEFAULT_DOUBLE_TAP_TIMEOUT = 1200L
 
 
 @Serializable
