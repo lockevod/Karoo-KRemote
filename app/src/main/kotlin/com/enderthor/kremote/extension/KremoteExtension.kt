@@ -43,7 +43,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         instance = this
     }
 
-    private lateinit var karooSystem: KarooSystemService
+    internal lateinit var karooSystem: KarooSystemService
     private lateinit var _antManager: AntManager
     private lateinit var repository: RemoteRepository
     private lateinit var karooAction: KarooAction

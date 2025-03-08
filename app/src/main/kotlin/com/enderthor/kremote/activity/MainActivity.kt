@@ -15,6 +15,7 @@ import com.enderthor.kremote.data.AntRemoteKey
 import com.enderthor.kremote.data.EXTENSION_NAME
 import io.hammerhead.karooext.KarooSystemService
 import com.enderthor.kremote.data.PressType
+import com.enderthor.kremote.extension.KremoteExtension
 import io.hammerhead.karooext.models.RequestAnt
 
 import timber.log.Timber
@@ -62,7 +63,6 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         antManager.disconnect()
         antManager.cleanup()
-        //karooSystem.dispatch(ReleaseAnt(EXTENSION_NAME))
         karooSystem.disconnect()
         super.onDestroy()
     }
@@ -80,6 +80,9 @@ fun MainScreen(
         TabLayout(
             repository = repository,
             antManager = antManager,
+            onKarooEffect = { effect ->
+                KremoteExtension.getInstance()?.karooSystem?.dispatch(effect)
+            }
         )
     }
 }
