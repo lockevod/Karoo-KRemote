@@ -43,6 +43,7 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 ## Know Bugs
 - Sometimes app isn't working fine, this new release has better support and it's working fine, but you need to know, Karoo function have priority oven kremote actions.
 - Sometimes app can't detect the remote, you need to restart the app.. or the Karoo. Restart karoo solve most of the problems (with this app and with anything.. sometimes karoo is slowly if you have several custom apps)
+- Karoo has a buzzer and it doesn't allow to change amplitude, then we only can "play" with frequenzy and duration. Bell sound is complicated with this two only parameters, please if you now howto modelate better, please open an issue ;)
 
 ## Credits, license and  privacy
 
