@@ -4,13 +4,16 @@ import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
 import com.enderthor.kremote.data.AntRemoteKey
 import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.data.RemoteDevice
+import com.enderthor.kremote.data.getLabelString
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.TurnScreenOn
 import io.hammerhead.karooext.models.KarooEffect
+import android.content.Context
 import timber.log.Timber
 
 class KarooAction(
     private val karooSystem: KarooSystemService,
+    private val context: Context,
     private val isServiceConnected: () -> Boolean,
     private val isRiding: () -> Boolean,
     private val onlyWhileRiding: () -> Boolean,
@@ -37,10 +40,10 @@ class KarooAction(
 
             activeDevice()?.let { device ->
                 device.getKarooKey(antRemoteKey.gCommand, pressType)?.let { karooKey ->
-                    Timber.d("Ejecutando acción para ${antRemoteKey.label} (${if (pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"}): ${karooKey.label}")
+                    Timber.d("Ejecutando acción para ${antRemoteKey.getLabelString(context)} (${if (pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"}): ${karooKey.getLabelString(context)}")
                     executeKarooAction(karooKey.action)
                 }
-                    ?: Timber.d("No se encontró tecla asignada para el comando: ${antRemoteKey.label} (${if (pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+                    ?: Timber.d("No se encontró tecla asignada para el comando: ${antRemoteKey.getLabelString(context)} (${if (pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
             }
         } catch (e: Exception) {
             Timber.e(e, "[KRemote] Error en handleAntCommand")

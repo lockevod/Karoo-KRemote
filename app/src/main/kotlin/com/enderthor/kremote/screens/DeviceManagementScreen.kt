@@ -434,7 +434,7 @@ fun DeviceCommandsScreen(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = command.label,
+                                                text = command.getLabel(),
                                                 style = MaterialTheme.typography.bodyMedium
                                             )
                                             Text(
@@ -486,7 +486,7 @@ fun DeviceCommandsScreen(
                                         },
                                         headlineContent = {
                                             Text(
-                                                text = learnedCommand.command.label,
+                                                text = learnedCommand.command.getLabel(),
                                                 style = MaterialTheme.typography.bodyLarge
                                             )
                                         },
