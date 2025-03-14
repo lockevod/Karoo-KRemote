@@ -85,4 +85,35 @@
     <string name="double_tap_disclaimer_title">Warning</string>
     <string name="double_tap_disclaimer_message">La función doble toque puede afectar a la respuesta del dispositivo ya que introduces un tiempo de espera para detectar las pulsaciones.\n\nLos dobles toques se detectan según el tiempo configurado entre pulsaciones. Se recomienda un mínimo de 1100 ms (menos tiempo probablemente no detecte) y un máximo de 1500ms para una respuesta aceptable.</string>
     <string name="accept">Aceptar</string>
+
+    <!-- ANT Remote Keys -->
+    <string name="ant_key_menu_down">Derecha</string>
+    <string name="ant_key_menu_up">Menú Arriba</string>
+    <string name="ant_key_length">Función Abajo</string>
+    <string name="ant_key_menu_back">Menú Atrás</string>
+    <string name="ant_key_menu_select">Seleccionar Menú</string>
+    <string name="ant_key_reset">Reiniciar</string>
+    <string name="ant_key_home">Inicio</string>
+    <string name="ant_key_lap">Vuelta</string>
+    <string name="ant_key_start">Iniciar</string>
+    <string name="ant_key_stop">Detener</string>
+    <string name="ant_key_unrecognized">Arriba</string>
+
+    <!-- Karoo Keys -->
+    <string name="karoo_key_bottomright">Aceptar/Navegar</string>
+    <string name="karoo_key_bottomleft">Atrás/Vuelta</string>
+    <string name="karoo_key_controlcenter">Centro de Control</string>
+    <string name="karoo_key_bell1">Timbre Bajo</string>
+    <string name="karoo_key_bell2">Timbre 1</string>
+    <string name="karoo_key_bell3">Timbre 2</string>
+    <string name="karoo_key_lap">Vuelta</string>
+    <string name="karoo_key_showmap">Mapa y Zoom</string>
+    <string name="karoo_key_topleft">Página Izquierda</string>
+    <string name="karoo_key_topright">Página Derecha</string>
+    <string name="karoo_key_pause">Pausar</string>
+    <string name="karoo_key_resume">Reanudar</string>
+    <string name="karoo_key_turnon">Encender Pantalla</string>
+    <string name="karoo_key_turnoff">Apagar Pantalla</string>
+    <string name="karoo_key_zoomin">Acercar</string>
+    <string name="karoo_key_zoomout">Alejar</string>
 </resources>
