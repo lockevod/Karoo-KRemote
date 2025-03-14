@@ -84,4 +84,35 @@
     <string name="double_tap_disclaimer_title">Warning</string>
     <string name="double_tap_disclaimer_message">The double tap function may affect the device\'s response as it introduces a waiting time to detect presses.\n\nDouble taps are detected according to the configured time between presses. A minimum of 1100 ms is recommended (less time probably won\'t detect it) and a maximum of 1500 ms for an acceptable response</string>
     <string name="accept">Accept</string>
+
+    <!-- ANT Remote Keys -->
+    <string name="ant_key_menu_down">Right</string>
+    <string name="ant_key_menu_up">Menu Up</string>
+    <string name="ant_key_length">Function Down</string>
+    <string name="ant_key_menu_back">Menu Back</string>
+    <string name="ant_key_menu_select">Menu Select</string>
+    <string name="ant_key_reset">Reset</string>
+    <string name="ant_key_home">Home</string>
+    <string name="ant_key_lap">Lap</string>
+    <string name="ant_key_start">Start</string>
+    <string name="ant_key_stop">Stop</string>
+    <string name="ant_key_unrecognized">Up</string>
+
+    <!-- Karoo Keys -->
+    <string name="karoo_key_bottomright">Accept/Navigate In</string>
+    <string name="karoo_key_bottomleft">Back/Lap</string>
+    <string name="karoo_key_controlcenter">Control Center</string>
+    <string name="karoo_key_bell1">Bell Low</string>
+    <string name="karoo_key_bell2">Bell 1</string>
+    <string name="karoo_key_bell3">Bell 2</string>
+    <string name="karoo_key_lap">Lap</string>
+    <string name="karoo_key_showmap">Map and Zoom In</string>
+    <string name="karoo_key_topleft">Page Left</string>
+    <string name="karoo_key_topright">Page Right</string>
+    <string name="karoo_key_pause">Pause Ride</string>
+    <string name="karoo_key_resume">Resume Ride</string>
+    <string name="karoo_key_turnon">Screen On</string>
+    <string name="karoo_key_turnoff">Screen Off</string>
+    <string name="karoo_key_zoomin">Zoom In</string>
+    <string name="karoo_key_zoomout">Zoom Out</string>
 </resources>

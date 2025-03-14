@@ -27,7 +27,24 @@ import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.GlobalSettings
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
 import com.enderthor.kremote.data.PressType
+import com.enderthor.kremote.data.getLabelString
 
+
+
+import io.hammerhead.karooext.models.ActiveRidePage
+import io.hammerhead.karooext.models.ActiveRideProfile
+import io.hammerhead.karooext.models.Bikes
+import io.hammerhead.karooext.models.OnNavigationState
+import io.hammerhead.karooext.models.RideState
+import io.hammerhead.karooext.models.SavedDevices
+
+import kotlinx.coroutines.suspendCancellableCoroutine
+
+
+
+import io.hammerhead.karooext.models.OnGlobalPOIs
+
+import io.hammerhead.karooext.models.UserProfile
 
 
 class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME) {
@@ -57,6 +74,8 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     private var activeDevice: RemoteDevice? = null
     private var globalSettings: GlobalSettings? = null
 
+
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("[KRemote] Extension onCreate - ID: ${System.identityHashCode(this)}")
@@ -66,7 +85,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
 
         _antManager = AntManager(applicationContext, { command, pressType ->
-            Timber.d("[KRemote] Comando ANT recibido en extensión: ${command.label} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+            Timber.d("[KRemote] Comando ANT recibido en extensión: ${command.getLabelString(applicationContext)} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
             extensionScope.launch(Dispatchers.Main) {
                 try {
                     if (::karooAction.isInitialized) {
@@ -87,6 +106,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
                 karooAction = KarooAction(
                     karooSystem,
+                    applicationContext,
                     { isServiceConnected },
                     { isRiding },
                     { globalSettings?.onlyWhileRiding != false },
@@ -106,6 +126,46 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         monitorActiveDeviceChanges()
         startConnectionService()
         initializeRideReceiver()
+        //initializeEvents()
+    }
+
+    private fun initializeEvents() {
+        extensionScope.launch {
+            suspendCancellableCoroutine { cont ->
+                karooSystem.addConsumer { rideState: RideState ->
+                    Timber.w("Ride state changed: $rideState")
+                }
+                karooSystem.addConsumer { navigationState: OnNavigationState ->
+                    Timber.w("Navigation state changed: $navigationState")
+                    Timber.w("Navigation state changed: ${navigationState.state}")
+                }
+                karooSystem.addConsumer { event: OnGlobalPOIs ->
+                    Timber.w("Global POIs changed: $event")
+                    Timber.w("Global POIs changed: ${event.pois}")
+                }
+                karooSystem.addConsumer { event: SavedDevices ->
+                    Timber.w("Saved devices changed: $event")
+                    Timber.w("Saved devices changed: ${event.devices}")
+                }
+                karooSystem.addConsumer { event: Bikes ->
+                    Timber.w("Bikes changed: $event")
+                    Timber.w("Bikes changed: ${event.bikes}")
+                }
+                karooSystem.addConsumer { event: ActiveRideProfile ->
+                    Timber.w("ActiveRideProfile changed: $event")
+                    Timber.w("ActiveRideProfile changed: ${event.profile}")
+                }
+                karooSystem.addConsumer { event: ActiveRidePage ->
+                    Timber.w("ActiveRidePage changed: $event")
+                    Timber.w("ActiveRidePage changed: ${event.page}")
+                }
+
+                karooSystem.addConsumer { user: UserProfile ->
+                    Timber.w("UserProfile changed: $user")
+                }
+
+            }
+        }
     }
 
     private fun connectActiveDevice() {
