@@ -10,6 +10,7 @@ import com.dsi.ant.plugins.antplus.pccbase.PccReleaseHandle
 import com.enderthor.kremote.data.AntRemoteKey
 import com.enderthor.kremote.data.DEFAULT_DOUBLE_TAP_TIMEOUT
 import com.enderthor.kremote.data.PressType
+import com.enderthor.kremote.data.getLabelString
 import com.enderthor.kremote.data.minReconnectInterval
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,7 +50,7 @@ class AntManager(
         doubleTapDetector = DoubleTapDetector(doubleTapTimeout) { commandNumber, pressType ->
             val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
             antCommand?.let {
-                Timber.d("[ANT] Procesando comando: ${it.label} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+                Timber.d("[ANT] Procesando comando: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
                 commandCallback.invoke(it, pressType)
             }
         }
@@ -202,7 +203,7 @@ class AntManager(
             doubleTapDetector = DoubleTapDetector(timeout) { commandNumber, pressType ->
                 val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
                 antCommand?.let {
-                    Timber.d("[ANT] Procesando comando: ${it.label} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+                    Timber.d("[ANT] Procesando comando: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
                     commandCallback.invoke(it, pressType)
                 }
             }

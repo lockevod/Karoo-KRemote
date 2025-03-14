@@ -24,6 +24,7 @@ import com.enderthor.kremote.R
 import com.enderthor.kremote.data.LearnedCommand
 import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.data.RemoteRepository
+import com.enderthor.kremote.data.getLabelString
 
 
 @Composable
@@ -350,15 +351,16 @@ fun CommandAssignmentRow(
     doubleCommand: LearnedCommand?,
     onKarooKeyAssigned: (AntRemoteKey, KarooKey?, PressType) -> Unit
 ) {
+    val context = LocalContext.current
     val noneString = stringResource(R.string.none)
     val options = remember {
         listOf(DropdownOption("null", noneString)) +
-                KarooKey.entries.map { DropdownOption(it.name, it.label) }
+                KarooKey.entries.map { DropdownOption(it.name, it.getLabelString(context)) }
     }
 
     Column {
         Text(
-            text = command.label,
+            text = command.getLabel(),
             style = MaterialTheme.typography.titleSmall
         )
 

@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import android.content.Context
+import com.enderthor.kremote.data.getLabelString
 import java.util.UUID
 
 class DeviceViewModel(
@@ -243,7 +244,7 @@ class DeviceViewModel(
 
                         repository.updateLearnedCommand(device.id, command, pressType)
                         _message.value = DeviceMessage.Success(
-                            getString(R.string.command_learned, command.label)
+                            getString(R.string.command_learned, command.getLabelString(appContext))
                         )
                     } catch (e: Exception) {
                         Timber.e(e, "Error saving learned command")

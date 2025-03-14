@@ -1,11 +1,15 @@
 package com.enderthor.kremote.data
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import kotlinx.serialization.Serializable
 import io.hammerhead.karooext.models.PerformHardwareAction
 import io.hammerhead.karooext.models.KarooEffect
 import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
+import com.enderthor.kremote.R
 import io.hammerhead.karooext.models.MarkLap
 import io.hammerhead.karooext.models.PauseRide
+import io.hammerhead.karooext.models.PlayBeepPattern
 import io.hammerhead.karooext.models.ResumeRide
 import io.hammerhead.karooext.models.ShowMapPage
 import io.hammerhead.karooext.models.TurnScreenOff
@@ -34,38 +38,69 @@ sealed class DeviceMessage {
     data class Success(val message: String) : DeviceMessage()
 }
 
+@Serializable
+enum class BellBeepPattern(val displayName: String, val tones: List<PlayBeepPattern.Tone>) {
+
+    BELL4("Timbre Medium", listOf(
+        PlayBeepPattern.Tone(3_800, 900),
+        PlayBeepPattern.Tone(0, 300),
+        PlayBeepPattern.Tone(3_800, 1000),
+    )),
+    BELL5(
+        "Timbre High", listOf(
+            PlayBeepPattern.Tone(3_550, 900),
+            PlayBeepPattern.Tone(0, 300),
+            PlayBeepPattern.Tone(3_550, 1000),
+        )),
+}
+
 
 @Serializable
-enum class KarooKey(val action: KarooEffect, val label: String) {
-    BOTTOMRIGHT(PerformHardwareAction.BottomRightPress, "Accept/Navigate In"),
-    BOTTOMLEFT(PerformHardwareAction.BottomLeftPress, "Back/Lap"),
-    CONTROLCENTER(PerformHardwareAction.ControlCenterComboPress, "Control Center"),
-    DRAWER(PerformHardwareAction.DrawerActionComboPress, "Drawer"),
-    LAP(MarkLap, "Lap"),
-    SHOWMAP(ShowMapPage(true), "Map and Zoom In"),
-    TOPLEFT(PerformHardwareAction.TopLeftPress, "Page Left"),
-    TOPRIGHT(PerformHardwareAction.TopRightPress, "Page Right"),
-    PAUSE(PauseRide, "Pause Ride"),
-    RESUME(ResumeRide, "Resume Ride"),
-    TURN_ON(TurnScreenOn, "Screen On"),
-    TURN_OFF(TurnScreenOff, "Screen Off"),
-    ZOOM_IN(ZoomPage(true), "Zoom In"),
-    ZOOM_OUT(ZoomPage(false), "Zoom Out"),
+enum class KarooKey(val action: KarooEffect, val labelResId: Int) {
+    BOTTOMRIGHT(PerformHardwareAction.BottomRightPress, R.string.karoo_key_bottomright),
+    BOTTOMLEFT(PerformHardwareAction.BottomLeftPress, R.string.karoo_key_bottomleft),
+    CONTROLCENTER(PerformHardwareAction.ControlCenterComboPress, R.string.karoo_key_controlcenter),
+    BELL2(PlayBeepPattern(BellBeepPattern.BELL4.tones), R.string.karoo_key_bell2),
+    BELL3(PlayBeepPattern(BellBeepPattern.BELL5.tones), R.string.karoo_key_bell3),
+    LAP(MarkLap, R.string.karoo_key_lap),
+    SHOWMAP(ShowMapPage(true), R.string.karoo_key_showmap),
+    TOPLEFT(PerformHardwareAction.TopLeftPress, R.string.karoo_key_topleft),
+    TOPRIGHT(PerformHardwareAction.TopRightPress, R.string.karoo_key_topright),
+    PAUSE(PauseRide, R.string.karoo_key_pause),
+    RESUME(ResumeRide, R.string.karoo_key_resume),
+    TURN_ON(TurnScreenOn, R.string.karoo_key_turnon),
+    TURN_OFF(TurnScreenOff, R.string.karoo_key_turnoff),
+    ZOOM_IN(ZoomPage(true), R.string.karoo_key_zoomin),
+    ZOOM_OUT(ZoomPage(false), R.string.karoo_key_zoomout);
+
+    @Composable
+    fun getLabel(): String = stringResource(id = labelResId)
 }
 
 @Serializable
-enum class AntRemoteKey(val label: String, val gCommand: GenericCommandNumber) {
-    MENU_DOWN("Right", GenericCommandNumber.MENU_DOWN),
-    MENU_UP("Menu Up", GenericCommandNumber.MENU_UP),
-    LENGTH("Function Down", GenericCommandNumber.LENGTH),
-    MENU_BACK("Menu Back", GenericCommandNumber.MENU_BACK),
-    MENU_SELECT("Menu Select", GenericCommandNumber.MENU_SELECT),
-    RESET("Reset", GenericCommandNumber.RESET),
-    HOME("Home", GenericCommandNumber.HOME),
-    LAP("Lap", GenericCommandNumber.LAP),
-    START("Start", GenericCommandNumber.START),
-    STOP("Stop", GenericCommandNumber.STOP),
-    UNRECOGNIZED("Up", GenericCommandNumber.UNRECOGNIZED)
+enum class AntRemoteKey(val labelResId: Int, val gCommand: GenericCommandNumber) {
+    MENU_DOWN(R.string.ant_key_menu_down, GenericCommandNumber.MENU_DOWN),
+    MENU_UP(R.string.ant_key_menu_up, GenericCommandNumber.MENU_UP),
+    LENGTH(R.string.ant_key_length, GenericCommandNumber.LENGTH),
+    MENU_BACK(R.string.ant_key_menu_back, GenericCommandNumber.MENU_BACK),
+    MENU_SELECT(R.string.ant_key_menu_select, GenericCommandNumber.MENU_SELECT),
+    RESET(R.string.ant_key_reset, GenericCommandNumber.RESET),
+    HOME(R.string.ant_key_home, GenericCommandNumber.HOME),
+    LAP(R.string.ant_key_lap, GenericCommandNumber.LAP),
+    START(R.string.ant_key_start, GenericCommandNumber.START),
+    STOP(R.string.ant_key_stop, GenericCommandNumber.STOP),
+    UNRECOGNIZED(R.string.ant_key_unrecognized, GenericCommandNumber.UNRECOGNIZED);
+
+    @Composable
+    fun getLabel(): String = stringResource(id = labelResId)
+}
+
+fun KarooKey.getLabelString(context: android.content.Context): String {
+    return context.getString(labelResId)
+}
+
+fun AntRemoteKey.getLabelString(context: android.content.Context): String {
+    return context.getString(labelResId)
 }
 
 @Serializable
