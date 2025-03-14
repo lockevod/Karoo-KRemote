@@ -15,7 +15,6 @@ import com.enderthor.kremote.data.AntRemoteKey
 import com.enderthor.kremote.data.EXTENSION_NAME
 import io.hammerhead.karooext.KarooSystemService
 import com.enderthor.kremote.data.PressType
-import com.enderthor.kremote.extension.KremoteExtension
 import io.hammerhead.karooext.models.RequestAnt
 
 import timber.log.Timber
@@ -32,6 +31,7 @@ class MainActivity : ComponentActivity() {
             MainScreen(
                 repository = repository,
                 antManager = antManager,
+                karooSystem = karooSystem
             )
         }
     }
@@ -55,7 +55,6 @@ class MainActivity : ComponentActivity() {
 
     private fun handleAntCommand(command: AntRemoteKey, pressType: PressType) {
         Timber.d("ANT+ command received: $command and pressType: $pressType")
-        // Handle the received command and pressType here
     }
 
 
@@ -72,6 +71,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(
     repository: RemoteRepository,
     antManager: AntManager,
+    karooSystem: KarooSystemService,
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -80,9 +80,7 @@ fun MainScreen(
         TabLayout(
             repository = repository,
             antManager = antManager,
-            onKarooEffect = { effect ->
-                KremoteExtension.getInstance()?.karooSystem?.dispatch(effect)
-            }
+            onKarooEffect = { effect -> karooSystem.dispatch(effect) }
         )
     }
 }
