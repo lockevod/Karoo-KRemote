@@ -195,5 +195,4 @@ object DebugLogger {
         }
     }
 
-    fun getLogFile(): File? = logFile
 }

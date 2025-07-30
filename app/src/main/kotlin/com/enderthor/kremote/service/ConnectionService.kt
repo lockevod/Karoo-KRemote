@@ -86,8 +86,8 @@ class ConnectionService : Service() {
                     }
 
                     // NUEVO: Verificar configuración de reconexión automática
-                    val autoReconnect = sharedPrefs.getBoolean("auto_reconnect", true)
-                    DebugLogger.logConnectionEvent(0, "AUTO_RECONNECT_CONFIG", "autoReconnect: $autoReconnect", "ConnectionService")
+                    val autoReconnect = sharedPrefs.getBoolean("auto_reconnect", autoReconnect)
+                    DebugLogger.logConnectionEvent(0, "AUTO_RECONNECT_CONFIG", "autoReconnect: $autoReconnect (default: ${true})", "ConnectionService")
                     Timber.d("[ConnectionService] ⚙️ Configuración autoReconnect: $autoReconnect")
 
                     activeDevices.forEach { device ->
