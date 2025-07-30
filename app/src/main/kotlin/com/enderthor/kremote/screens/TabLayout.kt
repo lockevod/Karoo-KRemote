@@ -77,6 +77,10 @@ fun TabLayout(
                     // Si hay un dispositivo seleccionado para configurar teclas, mostrar pantalla de aprendizaje
                     selectedDevice?.let { device ->
                         val learnedCommands by deviceViewModel.learnedCommands.collectAsState()
+
+                        // Estado para el diálogo de confirmación (dentro del contexto del dispositivo)
+                        var showClearCommandsDialog by remember { mutableStateOf(false) }
+
                         // Pantalla de aprendizaje con scroll
                         Column(
                             modifier = Modifier
@@ -104,6 +108,20 @@ fun TabLayout(
                                 ) {
                                     Text(stringResource(R.string.stop_learning))
                                 }
+
+                                // NUEVO: Botón para borrar comandos aprendidos
+                                Button(
+                                    onClick = {
+                                        // Mostrar diálogo de confirmación antes de borrar
+                                        showClearCommandsDialog = true
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Text(stringResource(R.string.clear_learned_commands))
+                                }
                             }
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -130,6 +148,30 @@ fun TabLayout(
                             ) {
                                 Text(stringResource(R.string.back_to_devices))
                             }
+                        }
+
+                        // Diálogo de confirmación (dentro del contexto del dispositivo)
+                        if (showClearCommandsDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showClearCommandsDialog = false },
+                                title = { Text(stringResource(R.string.clear_learned_commands)) },
+                                text = { Text(stringResource(R.string.clear_commands_confirmation)) },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            deviceViewModel.clearLearnedCommands()
+                                            showClearCommandsDialog = false
+                                        }
+                                    ) {
+                                        Text(stringResource(R.string.ok))
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showClearCommandsDialog = false }) {
+                                        Text(stringResource(R.string.cancel))
+                                    }
+                                }
+                            )
                         }
                     } ?: run {
                         // Lista normal de dispositivos

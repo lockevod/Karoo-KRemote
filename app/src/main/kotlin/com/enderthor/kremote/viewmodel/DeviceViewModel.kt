@@ -228,7 +228,24 @@ class DeviceViewModel(
 
         saveLearnedCommands()
     }
-    
+
+    fun clearLearnedCommands() {
+        selectedDevice.value?.let { device ->
+            viewModelScope.launch {
+                try {
+                    repository.clearDeviceCommands(device.id)
+                    _message.value = DeviceMessage.Success(getString(R.string.commands_cleared))
+                    Timber.d("🗑️ [DeviceViewModel] Comandos aprendidos borrados para dispositivo: ${device.name}")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error clearing learned commands for device: ${device.name}")
+                    _message.value = DeviceMessage.Error(getString(R.string.error_clearing_commands, e.message ?: "Unknown error"))
+                }
+            }
+        } ?: run {
+            _message.value = DeviceMessage.Error(getString(R.string.no_device_selected))
+        }
+    }
+
     // NUEVO: Función para escuchar comandos desde la extensión
     private fun startCommandListener() {
         viewModelScope.launch {

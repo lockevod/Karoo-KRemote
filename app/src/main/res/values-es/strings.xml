@@ -38,6 +38,9 @@
     <string name="restart_learning">Reiniciar Aprendizaje</string>
     <string name="start_learning">Iniciar Aprendizaje</string>
     <string name="clear_all_commands">Borrar Todos los Comandos</string>
+    <string name="clear_learned_commands">Borrar Comandos Aprendidos</string>
+    <string name="clear_commands_confirmation">¿Estás seguro de que deseas borrar todos los comandos aprendidos para este dispositivo? Esta acción no se puede deshacer.</string>
+    <string name="commands_cleared">Comandos borrados exitosamente</string>
     <string name="detected_commands">Comandos Detectados en esta Sesión</string>
     <string name="command_code">Código: %1$s</string>
     <string name="saved_commands">Comandos Guardados (%1$d)</string>

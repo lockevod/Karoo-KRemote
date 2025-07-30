@@ -37,6 +37,9 @@
     <string name="restart_learning">Restart Learning</string>
     <string name="start_learning">Start Learning</string>
     <string name="clear_all_commands">Clear All Commands</string>
+    <string name="clear_learned_commands">Clear Learned Commands</string>
+    <string name="clear_commands_confirmation">Are you sure you want to clear all learned commands for this device? This action cannot be undone.</string>
+    <string name="commands_cleared">Commands cleared successfully</string>
     <string name="detected_commands">Commands Detected in this Session</string>
     <string name="command_code">Code: %1$s</string>
     <string name="saved_commands">Saved Commands (%1$d)</string>
