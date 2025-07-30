@@ -1,21 +1,25 @@
 package com.enderthor.kremote.viewmodel
 
-import android.content.Context
-import android.content.Intent
-import androidx.core.content.FileProvider
+
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.enderthor.kremote.utils.DebugLogger
 import com.enderthor.kremote.utils.ReconnectionManagerSingleton
 import com.enderthor.kremote.utils.ConnectionState
+import com.enderthor.kremote.data.RemoteRepository
+import com.enderthor.kremote.data.RemoteDevice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 
-class DebugViewModel : ViewModel() {
+class DebugViewModel(
+    private val repository: RemoteRepository
+) : ViewModel() {
 
     private val _isDebugEnabled = MutableStateFlow(DebugLogger.isEnabled())
     val isDebugEnabled: StateFlow<Boolean> = _isDebugEnabled.asStateFlow()
@@ -23,21 +27,63 @@ class DebugViewModel : ViewModel() {
     private val _logContent = MutableStateFlow("")
     val logContent: StateFlow<String> = _logContent.asStateFlow()
 
-    // Usar el singleton en lugar de recibir ReconnectionManager como parámetro
-    val connectionStates = ReconnectionManagerSingleton.getInstance()?.connectionStates
+    // Estados de conexión del ReconnectionManager
+    private val reconnectionManagerStates = ReconnectionManagerSingleton.getInstance()?.connectionStates
         ?: MutableStateFlow<Map<Int, ConnectionState>>(emptyMap()).asStateFlow()
 
+    // Dispositivos registrados desde el repositorio
+    private val _registeredDevices = MutableStateFlow<List<RemoteDevice>>(emptyList())
+    val registeredDevices: StateFlow<List<RemoteDevice>> = _registeredDevices.asStateFlow()
+
+    // Combinar ambos estados para mostrar información completa
+    val connectionStates = combine(
+        reconnectionManagerStates,
+        _registeredDevices
+    ) { managerStates, devices ->
+        // Si tenemos estados del ReconnectionManager, usarlos
+        managerStates.ifEmpty {
+            // Si no hay estados del manager, crear estados simulados basados en dispositivos registrados
+            devices.associate { device ->
+                val deviceId = device.antDeviceId ?: 0
+                deviceId to ConnectionState(
+                    deviceNumber = deviceId,
+                    isConnected = true, // Asumimos conectado si el dispositivo está registrado
+                    isReconnecting = false,
+                    lastConnectionAttempt = System.currentTimeMillis(),
+                    reconnectAttempts = 0,
+                    lastError = null
+                )
+            }
+        }
+    }
+
     init {
+        // Cargar dispositivos registrados
+        viewModelScope.launch {
+            repository.getDevices().collect { devices ->
+                _registeredDevices.value = devices
+                DebugLogger.logConnectionEvent(0, "DEVICES_LOADED", "Loaded ${devices.size} registered devices: ${devices.map { "${it.name}(#${it.antDeviceId})" }}", "DebugViewModel")
+            }
+        }
+
         refreshLog()
 
-        // DIAGNÓSTICO: Verificar si el singleton está disponible
+        // DIAGNÓSTICO EXTENDIDO: Verificar estado completo del singleton
         val reconnectionManager = ReconnectionManagerSingleton.getInstance()
         if (reconnectionManager != null) {
             DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton found", "DebugViewModel")
             Timber.d("[DebugViewModel] ReconnectionManager singleton encontrado")
+
+            // NUEVO: Verificar si hay estados de conexión activos
+            viewModelScope.launch {
+                reconnectionManager.connectionStates.collect { states ->
+                    DebugLogger.logConnectionEvent(0, "CONNECTION_STATES_UPDATE", "States count: ${states.size}, devices: ${states.keys.toList()}", "DebugViewModel")
+                    Timber.d("[DebugViewModel] Estados de conexión actualizados: ${states.size} dispositivos monitoreados")
+                }
+            }
         } else {
-            DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton is NULL", "DebugViewModel")
-            Timber.w("[DebugViewModel] ReconnectionManager singleton es NULL - no se podrán mostrar estados de conexión")
+            DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton is NULL - usando datos del repositorio", "DebugViewModel")
+            Timber.w("[DebugViewModel] ReconnectionManager singleton es NULL - mostrando dispositivos registrados en su lugar")
         }
     }
 
@@ -78,38 +124,7 @@ class DebugViewModel : ViewModel() {
         }
     }
 
-    fun exportLog(context: Context) {
-        viewModelScope.launch {
-            try {
-                val logFile = DebugLogger.getLogFile()
-                if (logFile?.exists() == true) {
-                    val uri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        logFile
-                    )
 
-                    val shareIntent = Intent().apply {
-                        action = Intent.ACTION_SEND
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        putExtra(Intent.EXTRA_SUBJECT, "Kremote Debug Log")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-
-                    val chooser = Intent.createChooser(shareIntent, "Exportar log de debug")
-                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(chooser)
-
-                    DebugLogger.logConnectionEvent(0, "LOG_EXPORTED", "Debug log exported by user")
-                } else {
-                    Timber.w("No log file available for export")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error exporting log")
-            }
-        }
-    }
 
 
     fun forceReconnect(deviceId: Int) {

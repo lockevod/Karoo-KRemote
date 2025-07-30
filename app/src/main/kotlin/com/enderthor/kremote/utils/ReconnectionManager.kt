@@ -5,6 +5,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import timber.log.Timber
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -40,10 +41,12 @@ class ReconnectionManager(
     }
 
     fun startMonitoring(deviceNumber: Int) {
-        DebugLogger.logConnectionEvent(deviceNumber, "START_MONITORING")
+        DebugLogger.logConnectionEvent(deviceNumber, "START_MONITORING", "Iniciando monitoreo para dispositivo #$deviceNumber", "ReconnectionManager")
+        Timber.d("[ReconnectionManager] 🔍 Iniciando monitoreo para dispositivo #$deviceNumber")
 
         // Cancelar monitoring anterior si existe
         monitoringJobs[deviceNumber]?.cancel()
+        DebugLogger.logConnectionEvent(deviceNumber, "PREVIOUS_MONITORING_CANCELLED", "Cancelado monitoreo anterior si existía", "ReconnectionManager")
 
         // Inicializar estado usando caché del PerformanceOptimizer
         val initialState = PerformanceOptimizer.getCachedOrCreate("connection_state_$deviceNumber") {
@@ -57,25 +60,34 @@ class ReconnectionManager(
         }
 
         updateConnectionState(deviceNumber) { initialState }
+        DebugLogger.logConnectionEvent(deviceNumber, "INITIAL_STATE_SET", "Estado inicial establecido: $initialState", "ReconnectionManager")
 
         monitoringJobs[deviceNumber] = scope.launch {
+            DebugLogger.logConnectionEvent(deviceNumber, "MONITORING_LOOP_STARTED", "Bucle de monitoreo iniciado", "ReconnectionManager")
+            Timber.d("[ReconnectionManager] 🔄 Bucle de monitoreo iniciado para dispositivo #$deviceNumber")
+
             while (isActive) {
                 try {
                     // NUEVO: Usar sistema de heartbeat inteligente
                     val shouldVerify = PerformanceOptimizer.shouldVerifyConnection(deviceNumber)
+                    DebugLogger.logConnectionEvent(deviceNumber, "HEARTBEAT_CHECK", "shouldVerify: $shouldVerify", "ReconnectionManager")
 
                     if (shouldVerify) {
                         val isConnected = antManager.isConnectedToDevice(deviceNumber)
                         val currentState = _connectionStates.value[deviceNumber]
 
+                        DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_VERIFICATION", "isConnected: $isConnected, currentState: $currentState", "ReconnectionManager")
+
                         if (currentState != null) {
                             if (!isConnected && currentState.isConnected && !currentState.isReconnecting) {
                                 // Conexión perdida, iniciar reconexión
                                 DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_LOST", "Starting reconnection process")
+                                Timber.w("[ReconnectionManager] 🔴 Conexión perdida para dispositivo #$deviceNumber - iniciando reconexión")
                                 startReconnection(deviceNumber)
                             } else if (isConnected && !currentState.isConnected) {
                                 // Conexión recuperada
                                 DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_RECOVERED")
+                                Timber.i("[ReconnectionManager] 🟢 Conexión recuperada para dispositivo #$deviceNumber")
                                 PerformanceOptimizer.recordDeviceReconnection(deviceNumber)
                                 updateConnectionState(deviceNumber) {
                                     it.copy(
@@ -93,14 +105,22 @@ class ReconnectionManager(
 
                     // NUEVO: Usar intervalo adaptativo en lugar de delay fijo
                     val optimalInterval = PerformanceOptimizer.getOptimalVerificationInterval(deviceNumber)
+                    DebugLogger.logConnectionEvent(deviceNumber, "MONITORING_INTERVAL", "Próxima verificación en ${optimalInterval}ms", "ReconnectionManager")
                     delay(optimalInterval)
 
                 } catch (e: Exception) {
                     DebugLogger.logError("MONITORING", "Error monitoring device $deviceNumber", e)
+                    Timber.e(e, "[ReconnectionManager] ❌ Error monitoreando dispositivo #$deviceNumber")
                     delay(connectionCheckInterval)
                 }
             }
+
+            DebugLogger.logConnectionEvent(deviceNumber, "MONITORING_LOOP_ENDED", "Bucle de monitoreo terminado", "ReconnectionManager")
+            Timber.d("[ReconnectionManager] 🛑 Bucle de monitoreo terminado para dispositivo #$deviceNumber")
         }
+
+        DebugLogger.logConnectionEvent(deviceNumber, "MONITORING_JOB_CREATED", "Job de monitoreo creado y almacenado", "ReconnectionManager")
+        Timber.d("[ReconnectionManager] ✅ Monitoreo configurado correctamente para dispositivo #$deviceNumber")
     }
 
     private fun startReconnection(deviceNumber: Int) {

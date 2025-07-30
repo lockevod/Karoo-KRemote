@@ -14,19 +14,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.enderthor.kremote.utils.PerformanceOptimizer
 import com.enderthor.kremote.utils.ReconnectionManagerSingleton
 import com.enderthor.kremote.utils.DebugLogger
+import com.enderthor.kremote.utils.ConnectionState
 import com.enderthor.kremote.viewmodel.DebugViewModel
+import com.enderthor.kremote.data.RemoteRepository
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DebugScreen(
-    viewModel: DebugViewModel = viewModel()
+    repository: RemoteRepository,
+    viewModel: DebugViewModel = viewModel { DebugViewModel(repository) }
 ) {
 
     val scope = rememberCoroutineScope()
 
     val isDebugEnabled by viewModel.isDebugEnabled.collectAsState()
-    val connectionStates by viewModel.connectionStates.collectAsState()
+    val connectionStates: Map<Int, ConnectionState> by viewModel.connectionStates.collectAsState(initial = emptyMap())
 
     // DIAGNÓSTICO: Verificar estado del singleton cada vez que se abre la pantalla
     LaunchedEffect(isDebugEnabled) {
@@ -190,7 +193,74 @@ fun DebugScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // NUEVO: Información de diagnóstico
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                Text(
+                                    text = "🔍 Diagnóstico del Sistema",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+
+                                val reconnectionManager = ReconnectionManagerSingleton.getInstance()
+                                Text(
+                                    text = if (reconnectionManager != null) {
+                                        "✅ ReconnectionManager: Disponible"
+                                    } else {
+                                        "❌ ReconnectionManager: NULL - El servicio puede no estar ejecutándose"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+
+                                Text(
+                                    text = "💡 Si el ReconnectionManager es NULL, significa que el ConnectionService no se ha iniciado o ha fallado.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
                     } else {
+                        // NUEVO: Indicador de fuente de datos
+                        val reconnectionManager = ReconnectionManagerSingleton.getInstance()
+                        val isRealMonitoring = reconnectionManager != null
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isRealMonitoring)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.tertiaryContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (isRealMonitoring) "🟢 MONITOREO REAL ACTIVO" else "🟡 ESTADOS SIMULADOS",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (!isRealMonitoring) {
+                                    Text(
+                                        text = "Solo muestra dispositivos registrados",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+
                         connectionStates.forEach { (deviceId, state) ->
                             Card(
                                 modifier = Modifier

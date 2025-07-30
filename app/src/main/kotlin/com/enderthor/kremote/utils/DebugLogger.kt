@@ -171,7 +171,28 @@ object DebugLogger {
     }
 
     fun clearLog() {
-        logFile?.delete()
+        try {
+            logFile?.let { file ->
+                if (file.exists()) {
+                    // Vaciar el contenido del archivo en lugar de borrarlo
+                    file.writeText("")
+
+                    // Escribir un mensaje de confirmación
+                    val clearMessage = "\n=== LOG LIMPIADO ===\n" +
+                            "Tiempo: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}\n" +
+                            "Archivo: ${file.absolutePath}\n\n"
+                    file.appendText(clearMessage)
+
+                    Timber.d("[DebugLogger] ✅ Log limpiado correctamente")
+                } else {
+                    Timber.w("[DebugLogger] ⚠️ Archivo de log no existe, no se puede limpiar")
+                }
+            } ?: run {
+                Timber.w("[DebugLogger] ⚠️ LogFile es null, no se puede limpiar")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "[DebugLogger] ❌ Error limpiando el log")
+        }
     }
 
     fun getLogFile(): File? = logFile
