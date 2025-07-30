@@ -1,6 +1,8 @@
 package com.enderthor.kremote.viewmodel
 
-
+import android.content.Context
+import android.content.Intent
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.enderthor.kremote.utils.DebugLogger
@@ -76,6 +78,38 @@ class DebugViewModel : ViewModel() {
         }
     }
 
+    fun exportLog(context: Context) {
+        viewModelScope.launch {
+            try {
+                val logFile = DebugLogger.getLogFile()
+                if (logFile?.exists() == true) {
+                    val uri = FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        logFile
+                    )
+
+                    val shareIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        putExtra(Intent.EXTRA_SUBJECT, "Kremote Debug Log")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+
+                    val chooser = Intent.createChooser(shareIntent, "Exportar log de debug")
+                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(chooser)
+
+                    DebugLogger.logConnectionEvent(0, "LOG_EXPORTED", "Debug log exported by user")
+                } else {
+                    Timber.w("No log file available for export")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error exporting log")
+            }
+        }
+    }
 
 
     fun forceReconnect(deviceId: Int) {
