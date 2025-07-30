@@ -13,6 +13,7 @@
     <!-- Tab Layout -->
     <string name="tab_mapping">Mapeo</string>
     <string name="tab_remotes">Controles</string>
+    <string name="tab_debug">Debug</string>
 
     <!-- Device Management Screen -->
     <string name="configure_commands">Configurar Comandos</string>
@@ -116,4 +117,11 @@
     <string name="karoo_key_turnoff">Apagar Pantalla</string>
     <string name="karoo_key_zoomin">Acercar</string>
     <string name="karoo_key_zoomout">Alejar</string>
+
+    <!-- Learning Strings -->
+    <string name="learning_title">Aprendiendo teclas para: %1$s</string>
+    <string name="learning_instructions">Presiona los botones del mando para configurarlos...</string>
+    <string name="commands_detected">Comandos detectados:</string>
+    <string name="waiting_commands">🎯 Esperando comandos...</string>
+    <string name="back_to_devices">← Volver a dispositivos</string>
 </resources>
