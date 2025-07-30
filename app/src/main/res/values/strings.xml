@@ -10,8 +10,8 @@
     <string name="back">Back</string>
 
     <!-- Tab Layout -->
-    <string name="tab_mapping">Mapping</string>
-    <string name="tab_remotes">Remotes</string>
+    <string name="tab_mapping">Map</string>
+    <string name="tab_remotes">Remote</string>
     <string name="tab_debug">Debug</string>
 
     <!-- Device Management Screen -->
@@ -126,4 +126,31 @@
     <string name="commands_detected">Commands detected:</string>
     <string name="waiting_commands">🎯 Waiting for commands...</string>
     <string name="back_to_devices">← Back to devices</string>
+
+    <!-- Debug Screen -->
+    <string name="debug_performance_optimizations">Performance Optimizations</string>
+    <string name="debug_optimizations_enabled">Optimizations enabled</string>
+    <string name="debug_clear_caches">Clear Caches</string>
+    <string name="debug_logging_title">Debug Logging</string>
+    <string name="debug_logging_enabled">Debug logging enabled</string>
+    <string name="debug_logging_active">✅ Logging active - Events are saved to file</string>
+    <string name="debug_logging_inactive">❌ Logging disabled - Events are not saved</string>
+    <string name="debug_logging_warning">⚠️ Logging consumes resources. Disable when not needed.</string>
+    <string name="debug_clear_log">Clear Log</string>
+    <string name="debug_connection_status">Connection Status</string>
+    <string name="debug_no_devices_monitored">No devices monitored. Make sure you have an ANT+ device connected and active.</string>
+    <string name="debug_system_diagnosis">🔍 System Diagnosis</string>
+    <string name="debug_reconnection_manager_available">✅ ReconnectionManager: Available</string>
+    <string name="debug_reconnection_manager_null">❌ ReconnectionManager: NULL - Service may not be running</string>
+    <string name="debug_reconnection_manager_explanation">💡 If ReconnectionManager is NULL, it means ConnectionService has not started or failed.</string>
+    <string name="debug_real_monitoring_active">🟢 REAL MONITORING ACTIVE</string>
+    <string name="debug_simulated_states">🟡 SIMULATED STATES</string>
+    <string name="debug_shows_registered_devices">Only shows registered devices</string>
+    <string name="debug_device_number">Device #%1$d</string>
+    <string name="debug_device_status">Status: </string>
+    <string name="debug_device_connected">✅ Connected</string>
+    <string name="debug_device_reconnecting">🔄 Reconnecting (%1$d)</string>
+    <string name="debug_device_disconnected">❌ Disconnected</string>
+    <string name="debug_device_error">Error: %1$s</string>
+    <string name="debug_force_reconnection">Force Reconnection</string>
 </resources>
