@@ -25,7 +25,7 @@ class DebugViewModel(
     val isDebugEnabled: StateFlow<Boolean> = _isDebugEnabled.asStateFlow()
 
     private val _logContent = MutableStateFlow("")
-    val logContent: StateFlow<String> = _logContent.asStateFlow()
+
 
     // Estados de conexión del ReconnectionManager
     private val reconnectionManagerStates = ReconnectionManagerSingleton.getInstance()?.connectionStates
@@ -33,7 +33,7 @@ class DebugViewModel(
 
     // Dispositivos registrados desde el repositorio
     private val _registeredDevices = MutableStateFlow<List<RemoteDevice>>(emptyList())
-    val registeredDevices: StateFlow<List<RemoteDevice>> = _registeredDevices.asStateFlow()
+
 
     // Combinar ambos estados para mostrar información completa
     val connectionStates = combine(

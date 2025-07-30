@@ -128,6 +128,31 @@ class RemoteRepository(private val context: Context) {
         }
     }
 
+    suspend fun clearDeviceCommands(deviceId: String) {
+        try {
+            context.dataStore.edit { preferences ->
+                val current = getCurrentConfig()
+                val updatedDevices = current.devices.map { device ->
+                    if (device.id == deviceId) {
+                        device.copy(learnedCommands = mutableListOf())
+                    } else {
+                        device
+                    }
+                }
+
+                preferences[settingsKey] = Json.encodeToString(
+                    GlobalConfig.serializer(),
+                    current.copy(devices = updatedDevices)
+                )
+
+                Timber.d("🗑️ [RemoteRepository] Comandos aprendidos borrados para dispositivo: $deviceId")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error clearing device commands")
+            throw e
+        }
+    }
+
    suspend fun updateLearnedCommand(deviceId: String, command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
         try {
             context.dataStore.edit { preferences ->
@@ -161,30 +186,7 @@ class RemoteRepository(private val context: Context) {
         }
     }
 
-    suspend fun clearLearnedCommands(deviceId: String) {
-        try {
-            context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
-                val updatedDevices = current.devices.map { device ->
-                    if (device.id == deviceId) {
-                        device.copy(learnedCommands = mutableListOf())
-                    } else {
-                        device
-                    }
-                }
-
-                preferences[settingsKey] = Json.encodeToString(
-                    GlobalConfig.serializer(),
-                    current.copy(devices = updatedDevices)
-                )
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error borrando comandos aprendidos")
-            throw e
-        }
-    }
-
-   suspend fun assignKeyCodeToCommand(
+    suspend fun assignKeyCodeToCommand(
         deviceId: String,
         command: AntRemoteKey,
         karooKey: KarooKey?,
