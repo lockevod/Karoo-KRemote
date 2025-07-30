@@ -84,7 +84,14 @@ fun DebugScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = PerformanceOptimizer.getFormattedStats(),
+                    text = PerformanceOptimizer.getFormattedStats(
+                        optimizationsStatus = stringResource(R.string.debug_optimizations_status),
+                        enabledStatus = stringResource(R.string.debug_optimizations_enabled_status),
+                        disabledStatus = stringResource(R.string.debug_optimizations_disabled_status),
+                        commandCacheLabel = stringResource(R.string.debug_command_cache),
+                        connectionCacheLabel = stringResource(R.string.debug_connection_cache),
+                        coroutinePoolLabel = stringResource(R.string.debug_coroutine_pool)
+                    ),
                     fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.bodyMedium
                 )

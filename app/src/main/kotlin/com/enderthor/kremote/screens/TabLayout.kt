@@ -108,20 +108,6 @@ fun TabLayout(
                                 ) {
                                     Text(stringResource(R.string.stop_learning))
                                 }
-
-                                // NUEVO: Botón para borrar comandos aprendidos
-                                Button(
-                                    onClick = {
-                                        // Mostrar diálogo de confirmación antes de borrar
-                                        showClearCommandsDialog = true
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.error
-                                    )
-                                ) {
-                                    Text(stringResource(R.string.clear_learned_commands))
-                                }
                             }
 
                             Spacer(modifier = Modifier.height(16.dp))

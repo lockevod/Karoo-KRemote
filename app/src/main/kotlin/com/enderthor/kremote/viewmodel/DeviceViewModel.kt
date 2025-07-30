@@ -53,6 +53,12 @@ class DeviceViewModel(
     val learnedCommands: StateFlow<List<AntRemoteKey>> = _learnedCommands.asStateFlow()
 
     private var scanJob: Job? = null
+    private var learningTimeoutJob: Job? = null // NUEVO: Job para timeout automático
+
+    // NUEVO: Constante para timeout de learning mode
+    private companion object {
+        const val LEARNING_TIMEOUT_MS = 30_000L // 30 segundos
+    }
 
     init {
         viewModelScope.launch {
@@ -211,6 +217,9 @@ class DeviceViewModel(
         
         // NUEVO: Iniciar monitoreo de comandos desde la extensión
         startCommandListener()
+
+        // NUEVO: Iniciar job para timeout automático
+        startLearningTimeout()
     }
 
     fun stopLearning() {
@@ -229,6 +238,9 @@ class DeviceViewModel(
         Timber.d("🎓 [DeviceViewModel] Modo aprendizaje DESACTIVADO y sincronizado con extensión")
 
         saveLearnedCommands()
+
+        // NUEVO: Cancelar job de timeout si está activo
+        learningTimeoutJob?.cancel()
     }
 
     fun clearLearnedCommands() {
@@ -320,6 +332,19 @@ class DeviceViewModel(
                     Timber.e(e, "Error saving learned commands")
                     _message.value = DeviceMessage.Error(getString(R.string.error))
                 }
+            }
+        }
+    }
+
+    // NUEVO: Función para iniciar el job de timeout
+    private fun startLearningTimeout() {
+        learningTimeoutJob = viewModelScope.launch {
+            delay(LEARNING_TIMEOUT_MS)
+
+            // Si aún estamos en modo de aprendizaje, detenerlo automáticamente
+            if (_scanning.value) {
+                Timber.d("⏰ [DeviceViewModel] Timeout alcanzado, deteniendo modo aprendizaje automáticamente")
+                stopLearning()
             }
         }
     }
