@@ -194,6 +194,7 @@ class DeviceViewModel(
     }
 
     fun startLearning() {
+        Timber.d("🎓 [DeviceViewModel] INICIO - startLearning() llamado")
         _scanning.value = true
         _learnedCommands.value = emptyList()
 
@@ -213,6 +214,7 @@ class DeviceViewModel(
     }
 
     fun stopLearning() {
+        Timber.d("🎓 [DeviceViewModel] INICIO - stopLearning() llamado")
         _scanning.value = false
 
         // Desactivar en la instancia local
