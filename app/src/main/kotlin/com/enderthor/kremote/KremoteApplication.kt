@@ -7,7 +7,6 @@ import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.DEBUG_LOGGING_ENABLED
 import com.enderthor.kremote.utils.DebugLogger
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
-import com.enderthor.kremote.service.ConnectionService
 import timber.log.Timber
 import timber.log.Timber.DebugTree
 import timber.log.Timber.Forest.plant
@@ -63,24 +62,16 @@ class KremoteApplication : Application() {
 
     private fun startConnectionService() {
         try {
-            DebugLogger.logConnectionEvent(0, "APP_START_SERVICE", "Attempting to start ConnectionService directly", "KremoteApplication")
-            Timber.d("[KremoteApplication] Iniciando ConnectionService directamente")
+            DebugLogger.logConnectionEvent(0, "APP_START_SERVICE", "Attempting to start ConnectionService via broadcast", "KremoteApplication")
+            Timber.d("[KremoteApplication] Enviando broadcast para iniciar ConnectionService")
 
-            // NUEVO: Iniciar el servicio directamente en lugar de usar broadcast
-            val serviceIntent = Intent(this, ConnectionService::class.java)
+            val intent = Intent("com.enderthor.kremote.START_CONNECTION_SERVICE")
+            intent.putExtra(ConnectionServiceReceiver.EXTRA_IS_EXTENSION, false)
+            // ARREGLADO: Usar el permiso requerido por el receiver
+            sendBroadcast(intent, "com.enderthor.kremote.PERMISSION_START_CONNECTION")
 
-            try {
-                startForegroundService(serviceIntent)
-                DebugLogger.logConnectionEvent(0, "SERVICE_STARTED_DIRECT", "Foreground service started successfully", "KremoteApplication")
-                Timber.d("[KremoteApplication] ConnectionService iniciado directamente")
-            } catch (e: Exception) {
-                // Fallback al método anterior (broadcast) si el directo falla
-                DebugLogger.logConnectionEvent(0, "FALLBACK_TO_BROADCAST", "Direct start failed, using broadcast", "KremoteApplication")
-                val intent = Intent("com.enderthor.kremote.START_CONNECTION_SERVICE")
-                intent.putExtra(ConnectionServiceReceiver.EXTRA_IS_EXTENSION, false)
-                sendBroadcast(intent, "com.enderthor.kremote.PERMISSION_START_CONNECTION")
-                DebugLogger.logConnectionEvent(0, "BROADCAST_SENT", "Broadcast sent as fallback", "KremoteApplication")
-            }
+            DebugLogger.logConnectionEvent(0, "BROADCAST_SENT", "Broadcast sent successfully with permission", "KremoteApplication")
+            Timber.d("[KremoteApplication] Broadcast enviado correctamente con permiso")
         } catch (e: Exception) {
             DebugLogger.logError("APP", "Error starting ConnectionService", e, "KremoteApplication")
             Timber.e(e, "Error starting ConnectionService")
