@@ -30,8 +30,7 @@ fun ConfigurationScreen(
     devices: List<RemoteDevice>,
     activeDevice: RemoteDevice?,
     errorMessage: String?,
-    configViewModel: ConfigurationViewModel,
-    onNavigateBack: () -> Unit
+    configViewModel: ConfigurationViewModel
 ) {
     var selectedDeviceId by remember { mutableStateOf(activeDevice?.id) }
     val selectedDevice = devices.find { it.id == selectedDeviceId }

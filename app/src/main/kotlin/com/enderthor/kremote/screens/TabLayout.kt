@@ -18,15 +18,14 @@ import com.enderthor.kremote.viewmodel.DeviceViewModel
 import android.content.Context
 import androidx.compose.ui.platform.LocalContext
 import com.enderthor.kremote.R
-import io.hammerhead.karooext.models.PerformHardwareAction
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TabLayout(
     antManager: AntManager,
-    repository: RemoteRepository,
-    onKarooEffect: (io.hammerhead.karooext.models.KarooEffect) -> Unit = {}
+    repository: RemoteRepository
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf(
@@ -71,12 +70,7 @@ fun TabLayout(
                         devices = devices,
                         activeDevice = devices.firstOrNull { it.isActive },
                         errorMessage = (message as? com.enderthor.kremote.data.DeviceMessage.Error)?.message,
-                        configViewModel = configViewModel,
-                        onNavigateBack = {
-                            // Cambiar a pestaña Dispositivos y luego dispatch efecto Karoo
-                            selectedTab = 1
-                            onKarooEffect(PerformHardwareAction.TopLeftPress)
-                        }
+                        configViewModel = configViewModel
                     )
                 }
                 1 -> {
@@ -158,13 +152,12 @@ fun TabLayout(
                             onDeviceConfigure = { device ->
                                 // CORRECTO: Seleccionar dispositivo para configurar teclas (NO cambiar pestaña)
                                 deviceViewModel.onDeviceConfigureClick(device)
-                            },
-                            onNavigateBack = { /* No action needed for main screen */ }
+                            }
                         )
                     }
                 }
                 2 -> {
-                    DebugScreen()
+                    DebugScreen(repository = repository)
                 }
             }
         }

@@ -51,27 +51,44 @@ class ConnectionService : Service() {
             return START_NOT_STICKY
         }
 
+        // NUEVO: Obtener SharedPreferences para configuración
+        val sharedPrefs = getSharedPreferences("app_preferences", MODE_PRIVATE)
+
         // Inicializar el gestor de reconexión usando el singleton
         val reconnectionManager = ReconnectionManagerSingleton.initialize(kremoteExtension.antManager, serviceScope)
 
-        // DIAGNÓSTICO: Verificar inicialización
+        // DIAGNÓSTICO EXTENDIDO: Verificar inicialización completa
         DebugLogger.logConnectionEvent(0, "SINGLETON_INITIALIZED", "ReconnectionManager singleton created", "ConnectionService")
-        Timber.d("[ConnectionService] ReconnectionManager singleton inicializado correctamente")
+        DebugLogger.logConnectionEvent(0, "SERVICE_START_COMMAND", "ConnectionService onStartCommand ejecutado - intent: ${intent?.action}, flags: $flags, startId: $startId", "ConnectionService")
+        Timber.d("[ConnectionService] 🚀 ReconnectionManager singleton inicializado correctamente")
+        Timber.d("[ConnectionService] 📱 Servicio iniciado con intent: ${intent?.action}")
 
         job = serviceScope.launch {
             try {
+                DebugLogger.logConnectionEvent(0, "SERVICE_JOB_STARTED", "Job principal del servicio iniciado", "ConnectionService")
+
                 // Usar throttling para cargar configuración
                 PerformanceOptimizer.throttledExecution("load_config", 1000L) {
+                    DebugLogger.logConnectionEvent(0, "LOADING_CONFIG", "Cargando configuración de dispositivos", "ConnectionService")
                     val config = repository.currentConfig.first()
                     val activeDevices = config.devices.filter { it.isActive }
 
-                    DebugLogger.logConnectionEvent(0, "ACTIVE_DEVICES_FOUND", "Count: ${activeDevices.size}")
-                    Timber.d("[ConnectionService] Dispositivos activos: ${activeDevices.size}")
+                    DebugLogger.logConnectionEvent(0, "ACTIVE_DEVICES_FOUND", "Count: ${activeDevices.size}, devices: ${activeDevices.map { "${it.name}(#${it.antDeviceId})" }}", "ConnectionService")
+                    Timber.d("[ConnectionService] 📋 Dispositivos activos encontrados: ${activeDevices.size}")
+                    activeDevices.forEach { device ->
+                        Timber.d("[ConnectionService] - ${device.name} (ANT ID: ${device.antDeviceId})")
+                    }
 
                     if (activeDevices.isEmpty()) {
                         DebugLogger.logConnectionEvent(0, "NO_ACTIVE_DEVICES", "No active devices found - monitoring will not start", "ConnectionService")
-                        Timber.w("[ConnectionService] No hay dispositivos activos - el monitoreo no se iniciará")
+                        Timber.w("[ConnectionService] ⚠️ No hay dispositivos activos - el monitoreo no se iniciará")
+                        return@throttledExecution
                     }
+
+                    // NUEVO: Verificar configuración de reconexión automática
+                    val autoReconnect = sharedPrefs.getBoolean("auto_reconnect", true)
+                    DebugLogger.logConnectionEvent(0, "AUTO_RECONNECT_CONFIG", "autoReconnect: $autoReconnect", "ConnectionService")
+                    Timber.d("[ConnectionService] ⚙️ Configuración autoReconnect: $autoReconnect")
 
                     activeDevices.forEach { device ->
                         device.macAddress?.toInt()?.let { deviceId ->

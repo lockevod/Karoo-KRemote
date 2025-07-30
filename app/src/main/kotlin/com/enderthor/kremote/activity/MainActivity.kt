@@ -7,9 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import com.enderthor.kremote.screens.TabLayout
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.ant.AntManager
@@ -72,8 +70,7 @@ fun MainScreen(
     repository: RemoteRepository,
     antManager: AntManager
 ) {
-    val context = LocalContext.current
-    val karooSystem = remember { KarooSystemService(context) }
+
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -81,16 +78,7 @@ fun MainScreen(
     ) {
         TabLayout(
             repository = repository,
-            antManager = antManager,
-            onKarooEffect = { effect ->
-                // Ejecutar las acciones de Karoo cuando se necesiten
-                try {
-                    karooSystem.dispatch(effect)
-                    Timber.d("Ejecutando acción Karoo: $effect")
-                } catch (e: Exception) {
-                    Timber.e(e, "Error ejecutando acción Karoo: $effect")
-                }
-            }
+            antManager = antManager
         )
     }
 }
