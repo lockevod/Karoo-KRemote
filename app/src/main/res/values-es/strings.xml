@@ -132,6 +132,12 @@
     <string name="debug_performance_optimizations">Optimizaciones de Rendimiento</string>
     <string name="debug_optimizations_enabled">Optimizaciones habilitadas</string>
     <string name="debug_clear_caches">Limpiar Cachés</string>
+    <string name="debug_optimizations_status">🔧 Optimizaciones: %1$s</string>
+    <string name="debug_optimizations_enabled_status">✅ Habilitadas</string>
+    <string name="debug_optimizations_disabled_status">❌ Deshabilitadas</string>
+    <string name="debug_command_cache">📦 Caché de comandos: %1$d objetos</string>
+    <string name="debug_connection_cache">🔗 Caché de conexiones: %1$d entradas</string>
+    <string name="debug_coroutine_pool">⚡ Pool de corrutinas: Limitado a 2 threads</string>
     <string name="debug_logging_title">Logging de Debug</string>
     <string name="debug_logging_enabled">Debug logging habilitado</string>
     <string name="debug_logging_active">✅ Logging activado - Los eventos se guardan en archivo</string>
