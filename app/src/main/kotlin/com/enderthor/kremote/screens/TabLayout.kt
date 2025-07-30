@@ -137,6 +137,20 @@ fun TabLayout(
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
+
+                                // NUEVO: Botón para borrar comandos aprendidos (después de mostrar comandos)
+                                Button(
+                                    onClick = {
+                                        showClearCommandsDialog = true
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Text(stringResource(R.string.clear_learned_commands))
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
                             } else if (scanning) {
                                 Text(stringResource(R.string.waiting_commands), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
                                 Spacer(modifier = Modifier.height(16.dp))
