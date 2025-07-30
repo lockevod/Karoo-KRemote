@@ -139,12 +139,12 @@ class RemoteRepository(private val context: Context) {
                         device
                     }
                 }
-
+                
                 preferences[settingsKey] = Json.encodeToString(
                     GlobalConfig.serializer(),
                     current.copy(devices = updatedDevices)
                 )
-
+                
                 Timber.d("🗑️ [RemoteRepository] Comandos aprendidos borrados para dispositivo: $deviceId")
             }
         } catch (e: Exception) {
