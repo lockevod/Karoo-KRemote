@@ -12,6 +12,7 @@
     <!-- Tab Layout -->
     <string name="tab_mapping">Mapping</string>
     <string name="tab_remotes">Remotes</string>
+    <string name="tab_debug">Debug</string>
 
     <!-- Device Management Screen -->
     <string name="configure_commands">Configure Commands</string>
@@ -115,4 +116,11 @@
     <string name="karoo_key_turnoff">Screen Off</string>
     <string name="karoo_key_zoomin">Zoom In</string>
     <string name="karoo_key_zoomout">Zoom Out</string>
+
+    <!-- Learning Strings -->
+    <string name="learning_title">Learning keys for: %1$s</string>
+    <string name="learning_instructions">Press remote buttons to configure them...</string>
+    <string name="commands_detected">Commands detected:</string>
+    <string name="waiting_commands">🎯 Waiting for commands...</string>
+    <string name="back_to_devices">← Back to devices</string>
 </resources>

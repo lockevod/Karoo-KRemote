@@ -2,6 +2,7 @@ package com.enderthor.kremote.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.core.content.edit
 import com.enderthor.kremote.ant.AntDeviceInfo
 import com.enderthor.kremote.ant.AntManager
 import com.enderthor.kremote.data.RemoteDevice
@@ -195,48 +196,81 @@ class DeviceViewModel(
     fun startLearning() {
         _scanning.value = true
         _learnedCommands.value = emptyList()
-        selectedDevice.value?.let { device ->
-            try {
-                device.antDeviceId?.let { deviceId ->
-                    antManager.setLearningMode(true)
-                    viewModelScope.launch(Dispatchers.IO) {
-                        try {
-                            antManager.connect(deviceId)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error connecting to ANT+ device for learning")
-                            withContext(Dispatchers.Main) {
-                                _scanning.value = false
-                                _message.value = DeviceMessage.Error(getString(R.string.error))
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                _scanning.value = false
-                Timber.e(e, "Error starting learning mode")
-                _message.value = DeviceMessage.Error(getString(R.string.error))
-            }
+
+        // Activar en la instancia local de AntManager
+        antManager.setLearningMode(true)
+
+        // NUEVO: Sincronizar con la extensión usando SharedPreferences
+        val sharedPrefs = appContext.getSharedPreferences("kremote_state", Context.MODE_PRIVATE)
+        sharedPrefs.edit {
+            putBoolean("learning_mode", true)
         }
+
+        Timber.d("🎓 [DeviceViewModel] Modo aprendizaje ACTIVADO y sincronizado con extensión")
+        
+        // NUEVO: Iniciar monitoreo de comandos desde la extensión
+        startCommandListener()
     }
 
     fun stopLearning() {
         _scanning.value = false
+
+        // Desactivar en la instancia local
         antManager.setLearningMode(false)
+
+        // NUEVO: Sincronizar con la extensión
+        val sharedPrefs = appContext.getSharedPreferences("kremote_state", Context.MODE_PRIVATE)
+        sharedPrefs.edit {
+            putBoolean("learning_mode", false)
+        }
+
+        Timber.d("🎓 [DeviceViewModel] Modo aprendizaje DESACTIVADO y sincronizado con extensión")
 
         saveLearnedCommands()
     }
-
-    fun restartLearning() {
-        stopLearning()
-        _learnedCommands.value = emptyList()
-        startLearning()
+    
+    // NUEVO: Función para escuchar comandos desde la extensión
+    private fun startCommandListener() {
+        viewModelScope.launch {
+            val sharedPrefsCommands = appContext.getSharedPreferences("kremote_learned_commands", Context.MODE_PRIVATE)
+            var lastTimestamp = 0L
+            
+            while (_scanning.value) {
+                try {
+                    val currentTimestamp = sharedPrefsCommands.getLong("timestamp", 0L)
+                    
+                    if (currentTimestamp > lastTimestamp) {
+                        val commandName = sharedPrefsCommands.getString("last_command", null)
+                        val pressTypeName = sharedPrefsCommands.getString("last_press_type", "SINGLE")
+                        
+                        if (!commandName.isNullOrEmpty() && !pressTypeName.isNullOrEmpty()) {
+                            try {
+                                val command = AntRemoteKey.valueOf(commandName)
+                                val pressType = PressType.valueOf(pressTypeName)
+                                
+                                Timber.d("📥 [DeviceViewModel] Comando recibido desde extensión: $commandName ($pressTypeName)")
+                                onCommandDetected(command, pressType)
+                                
+                                lastTimestamp = currentTimestamp
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error procesando comando recibido: $commandName")
+                            }
+                        }
+                    }
+                    
+                    delay(500) // Verificar cada 500ms
+                } catch (e: Exception) {
+                    Timber.e(e, "Error en listener de comandos")
+                    delay(1000)
+                }
+            }
+        }
     }
 
     private fun onCommandDetected(command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
 
         if (!_learnedCommands.value.contains(command)) {
             _learnedCommands.value = _learnedCommands.value + command
-
 
             selectedDevice.value?.let { device ->
                 viewModelScope.launch {
@@ -246,6 +280,7 @@ class DeviceViewModel(
                         _message.value = DeviceMessage.Success(
                             getString(R.string.command_learned, command.getLabelString(appContext))
                         )
+                        Timber.d("✅ [DeviceViewModel] Comando aprendido guardado: %s (%s)", command.name, pressType.name)
                     } catch (e: Exception) {
                         Timber.e(e, "Error saving learned command")
                     }
@@ -260,24 +295,10 @@ class DeviceViewModel(
                 try {
                     for (command in _learnedCommands.value) {
                         repository.updateLearnedCommand(device.id, command)
+                        Timber.d("💾 [DeviceViewModel] Comando aprendido persisted: %s", command.name)
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Error saving learned commands")
-                    _message.value = DeviceMessage.Error(getString(R.string.error))
-                }
-            }
-        }
-    }
-
-    fun clearAllLearnedCommands() {
-        selectedDevice.value?.let { device ->
-            viewModelScope.launch {
-                try {
-                    repository.clearLearnedCommands(device.id)
-                    _learnedCommands.value = emptyList()
-                    _message.value = DeviceMessage.Success(getString(R.string.all_commands_cleared))
-                } catch (e: Exception) {
-                    Timber.e(e, "Error clearing learned commands")
                     _message.value = DeviceMessage.Error(getString(R.string.error))
                 }
             }

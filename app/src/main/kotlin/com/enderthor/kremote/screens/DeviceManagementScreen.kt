@@ -1,6 +1,6 @@
 package com.enderthor.kremote.screens
 
-import androidx.compose.foundation.Image
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,7 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.delay
@@ -114,7 +114,7 @@ fun DeviceManagementScreen(
     onNavigateBack: () -> Unit
 ) {
     var deviceToDelete by remember { mutableStateOf<RemoteDevice?>(null) }
-    var selectedType by remember { mutableStateOf<RemoteType>(RemoteType.ANT) }
+    var selectedType by remember { mutableStateOf(RemoteType.ANT) }
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
@@ -254,17 +254,6 @@ fun DeviceManagementScreen(
                 }
             )
         }
-        Image(
-            painter = painterResource(id = R.drawable.back),
-            contentDescription = "Atrás",
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(bottom = 16.dp)
-                .size(54.dp)
-                .clickable {
-                    onNavigateBack()
-                }
-        )
     }
 }
 
@@ -506,17 +495,5 @@ fun DeviceCommandsScreen(
                 }
             }
         }
-
-        Image(
-            painter = painterResource(id = R.drawable.back),
-            contentDescription = "Back",
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(bottom = 16.dp)
-                .size(54.dp)
-                .clickable {
-                    onNavigateBack()
-                }
-        )
     }
 }
