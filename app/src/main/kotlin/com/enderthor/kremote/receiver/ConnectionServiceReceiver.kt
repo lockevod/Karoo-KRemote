@@ -22,20 +22,11 @@ class ConnectionServiceReceiver : BroadcastReceiver() {
 
         try {
             if (isExtension) {
-                // Desde la extensión (contexto del sistema), podemos iniciar servicios normalmente
                 DebugLogger.logConnectionEvent(0, "STARTING_SERVICE", "Starting as regular service (extension mode)", "ConnectionServiceReceiver")
                 context.startService(serviceIntent)
             } else {
-                // Desde la app, usar JobScheduler o WorkManager para evitar restricciones de background
-                // Por ahora, intentar iniciar como foreground solo si no hay restricciones
-                try {
-                    DebugLogger.logConnectionEvent(0, "STARTING_FOREGROUND_SERVICE", "Starting as foreground service (app mode)", "ConnectionServiceReceiver")
-                    context.startForegroundService(serviceIntent)
-                } catch (e: IllegalStateException) {
-                    // Si falla por restricciones de background, iniciar como servicio regular
-                    DebugLogger.logConnectionEvent(0, "FALLBACK_SERVICE", "Fallback to regular service due to background restrictions", "ConnectionServiceReceiver")
-                    context.startService(serviceIntent)
-                }
+                DebugLogger.logConnectionEvent(0, "STARTING_FOREGROUND_SERVICE", "Starting as foreground service (app mode)", "ConnectionServiceReceiver")
+                context.startForegroundService(serviceIntent)
             }
             Timber.d("[ConnectionServiceReceiver] Servicio iniciado correctamente")
         } catch (e: Exception) {
