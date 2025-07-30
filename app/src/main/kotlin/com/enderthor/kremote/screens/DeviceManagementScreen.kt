@@ -110,8 +110,7 @@ fun DeviceManagementScreen(
     onMessageDismiss: () -> Unit,
     onDeviceDelete: (RemoteDevice) -> Unit,
     onDeviceClick: (RemoteDevice) -> Unit,
-    onDeviceConfigure: (RemoteDevice) -> Unit,
-    onNavigateBack: () -> Unit
+    onDeviceConfigure: (RemoteDevice) -> Unit
 ) {
     var deviceToDelete by remember { mutableStateOf<RemoteDevice?>(null) }
     var selectedType by remember { mutableStateOf(RemoteType.ANT) }
@@ -266,7 +265,6 @@ fun DeviceCommandsScreen(
     onStartLearning: () -> Unit,
     onStopLearning: () -> Unit,
     onRestartLearning: () -> Unit,
-    onNavigateBack: () -> Unit,
     onClearAllCommands: () -> Unit
 ) {
 
