@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.enderthor.kremote.screens.TabLayout
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.ant.AntManager
@@ -16,7 +18,6 @@ import com.enderthor.kremote.data.EXTENSION_NAME
 import io.hammerhead.karooext.KarooSystemService
 import com.enderthor.kremote.data.PressType
 import io.hammerhead.karooext.models.RequestAnt
-
 import timber.log.Timber
 
 class MainActivity : ComponentActivity() {
@@ -30,8 +31,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MainScreen(
                 repository = repository,
-                antManager = antManager,
-                karooSystem = karooSystem
+                antManager = antManager
             )
         }
     }
@@ -70,9 +70,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     repository: RemoteRepository,
-    antManager: AntManager,
-    karooSystem: KarooSystemService,
+    antManager: AntManager
 ) {
+    val context = LocalContext.current
+    val karooSystem = remember { KarooSystemService(context) }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -80,7 +82,15 @@ fun MainScreen(
         TabLayout(
             repository = repository,
             antManager = antManager,
-            onKarooEffect = { effect -> karooSystem.dispatch(effect) }
+            onKarooEffect = { effect ->
+                // Ejecutar las acciones de Karoo cuando se necesiten
+                try {
+                    karooSystem.dispatch(effect)
+                    Timber.d("Ejecutando acción Karoo: $effect")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error ejecutando acción Karoo: $effect")
+                }
+            }
         )
     }
 }

@@ -1,8 +1,7 @@
 // Kotlin
 package com.enderthor.kremote.screens
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 
 import com.enderthor.kremote.data.RemoteDevice
@@ -47,7 +45,6 @@ fun ConfigurationScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -221,6 +218,7 @@ fun ConfigurationScreen(
                     text = {
                         Box(
                             modifier = Modifier
+                                .heightIn(max = 200.dp)
                                 .verticalScroll(rememberScrollState())
                         ) {
                             Text(
@@ -253,17 +251,6 @@ fun ConfigurationScreen(
             }
 
         }
-        Image(
-            painter = painterResource(id = R.drawable.back),
-            contentDescription = "Back",
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(bottom = 16.dp)
-                .size(54.dp)
-                .clickable {
-                    onNavigateBack()
-                }
-        )
     }
 }
 
