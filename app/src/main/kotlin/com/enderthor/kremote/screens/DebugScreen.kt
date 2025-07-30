@@ -7,7 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -17,6 +17,7 @@ import com.enderthor.kremote.utils.DebugLogger
 import com.enderthor.kremote.utils.ConnectionState
 import com.enderthor.kremote.viewmodel.DebugViewModel
 import com.enderthor.kremote.data.RemoteRepository
+import com.enderthor.kremote.R
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,7 +58,7 @@ fun DebugScreen(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Optimizaciones de Rendimiento",
+                    text = stringResource(R.string.debug_performance_optimizations),
                     style = MaterialTheme.typography.headlineSmall
                 )
 
@@ -69,7 +70,7 @@ fun DebugScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Optimizaciones habilitadas",
+                        text = stringResource(R.string.debug_optimizations_enabled),
                         modifier = Modifier.weight(1f)
                     )
                     Switch(
@@ -95,7 +96,7 @@ fun DebugScreen(
                         PerformanceOptimizer.clearCaches()
                     }
                 ) {
-                    Text("Limpiar Cachés")
+                    Text(stringResource(R.string.debug_clear_caches))
                 }
             }
         }
@@ -110,7 +111,7 @@ fun DebugScreen(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Logging de Debug",
+                    text = stringResource(R.string.debug_logging_title),
                     style = MaterialTheme.typography.headlineSmall
                 )
 
@@ -121,7 +122,7 @@ fun DebugScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Debug logging habilitado",
+                        text = stringResource(R.string.debug_logging_enabled),
                         modifier = Modifier.weight(1f)
                     )
                     Switch(
@@ -138,9 +139,9 @@ fun DebugScreen(
 
                 Text(
                     text = if (isDebugEnabled) {
-                        "✅ Logging activado - Los eventos se guardan en archivo"
+                        stringResource(R.string.debug_logging_active)
                     } else {
-                        "❌ Logging desactivado - No se guardan eventos"
+                        stringResource(R.string.debug_logging_inactive)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (isDebugEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -150,7 +151,7 @@ fun DebugScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "⚠️ El logging consume recursos. Desactivar cuando no sea necesario.",
+                        text = stringResource(R.string.debug_logging_warning),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -164,7 +165,7 @@ fun DebugScreen(
                             }
                         }
                     ) {
-                        Text("Limpiar Log")
+                        Text(stringResource(R.string.debug_clear_log))
                     }
                 }
             }
@@ -181,7 +182,7 @@ fun DebugScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Estado de Conexiones",
+                        text = stringResource(R.string.debug_connection_status),
                         style = MaterialTheme.typography.headlineSmall
                     )
 
@@ -189,7 +190,7 @@ fun DebugScreen(
 
                     if (connectionStates.isEmpty()) {
                         Text(
-                            text = "No hay dispositivos monitoreados. Asegúrate de tener un dispositivo ANT+ conectado y activo.",
+                            text = stringResource(R.string.debug_no_devices_monitored),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -207,7 +208,7 @@ fun DebugScreen(
                                 modifier = Modifier.padding(12.dp)
                             ) {
                                 Text(
-                                    text = "🔍 Diagnóstico del Sistema",
+                                    text = stringResource(R.string.debug_system_diagnosis),
                                     style = MaterialTheme.typography.titleSmall,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
@@ -215,15 +216,15 @@ fun DebugScreen(
                                 val reconnectionManager = ReconnectionManagerSingleton.getInstance()
                                 Text(
                                     text = if (reconnectionManager != null) {
-                                        "✅ ReconnectionManager: Disponible"
+                                        stringResource(R.string.debug_reconnection_manager_available)
                                     } else {
-                                        "❌ ReconnectionManager: NULL - El servicio puede no estar ejecutándose"
+                                        stringResource(R.string.debug_reconnection_manager_null)
                                     },
                                     style = MaterialTheme.typography.bodySmall
                                 )
 
                                 Text(
-                                    text = "💡 Si el ReconnectionManager es NULL, significa que el ConnectionService no se ha iniciado o ha fallado.",
+                                    text = stringResource(R.string.debug_reconnection_manager_explanation),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
@@ -248,13 +249,17 @@ fun DebugScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (isRealMonitoring) "🟢 MONITOREO REAL ACTIVO" else "🟡 ESTADOS SIMULADOS",
+                                    text = if (isRealMonitoring) {
+                                        stringResource(R.string.debug_real_monitoring_active)
+                                    } else {
+                                        stringResource(R.string.debug_simulated_states)
+                                    },
                                     style = MaterialTheme.typography.labelMedium,
                                     modifier = Modifier.weight(1f)
                                 )
                                 if (!isRealMonitoring) {
                                     Text(
-                                        text = "Solo muestra dispositivos registrados",
+                                        text = stringResource(R.string.debug_shows_registered_devices),
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                 }
@@ -277,17 +282,17 @@ fun DebugScreen(
                                     modifier = Modifier.padding(12.dp)
                                 ) {
                                     Text(
-                                        text = "Dispositivo #$deviceId",
+                                        text = stringResource(R.string.debug_device_number, deviceId),
                                         style = MaterialTheme.typography.titleMedium
                                     )
 
                                     Row {
-                                        Text("Estado: ")
+                                        Text(stringResource(R.string.debug_device_status))
                                         Text(
                                             text = when {
-                                                state.isConnected -> "✅ Conectado"
-                                                state.isReconnecting -> "🔄 Reconectando (${state.reconnectAttempts})"
-                                                else -> "❌ Desconectado"
+                                                state.isConnected -> stringResource(R.string.debug_device_connected)
+                                                state.isReconnecting -> stringResource(R.string.debug_device_reconnecting, state.reconnectAttempts)
+                                                else -> stringResource(R.string.debug_device_disconnected)
                                             },
                                             color = when {
                                                 state.isConnected -> MaterialTheme.colorScheme.primary
@@ -299,7 +304,7 @@ fun DebugScreen(
 
                                     if (state.lastError != null) {
                                         Text(
-                                            text = "Error: ${state.lastError}",
+                                            text = stringResource(R.string.debug_device_error, state.lastError),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.error
                                         )
@@ -314,7 +319,7 @@ fun DebugScreen(
                                             },
                                             modifier = Modifier.padding(top = 8.dp)
                                         ) {
-                                            Text("Forzar Reconexión")
+                                            Text(stringResource(R.string.debug_force_reconnection))
                                         }
                                     }
                                 }
