@@ -128,13 +128,20 @@ object PerformanceOptimizer {
     /**
      * Obtiene estadísticas formateadas para mostrar en UI
      */
-    fun getFormattedStats(): String {
+    fun getFormattedStats(
+        optimizationsStatus: String,
+        enabledStatus: String,
+        disabledStatus: String,
+        commandCacheLabel: String,
+        connectionCacheLabel: String,
+        coroutinePoolLabel: String
+    ): String {
         val stats = getStats()
         return buildString {
-            appendLine("🔧 Optimizaciones: ${if (stats["isEnabled"] as Boolean) "✅ Habilitadas" else "❌ Deshabilitadas"}")
-            appendLine("📦 Caché de comandos: ${stats["commandCacheSize"]} objetos")
-            appendLine("🔗 Caché de conexiones: ${stats["connectionStateCacheSize"]} entradas")
-            appendLine("⚡ Pool de corrutinas: Limitado a 2 threads")
+            appendLine(optimizationsStatus.format(if (stats["isEnabled"] as Boolean) enabledStatus else disabledStatus))
+            appendLine(commandCacheLabel.format(stats["commandCacheSize"]))
+            appendLine(connectionCacheLabel.format(stats["connectionStateCacheSize"]))
+            appendLine(coroutinePoolLabel)
         }
     }
 
