@@ -2,7 +2,7 @@ package com.enderthor.kremote.extension
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.content.Context.MODE_PRIVATE
+
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
@@ -149,7 +149,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     applicationContext,
                     { isServiceConnected },
                     { isRiding },
-                    { globalSettings?.onlyWhileRiding != false },
+                    { globalSettings?.onlyWhileRiding ?: false },
                     { globalSettings?.isForcedScreenOn != false},
                     { activeDevice }
                 )
