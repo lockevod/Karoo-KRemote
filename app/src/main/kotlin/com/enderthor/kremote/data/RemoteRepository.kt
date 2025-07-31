@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.enderthor.kremote.utils.DebugLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -155,19 +156,52 @@ class RemoteRepository(private val context: Context) {
 
    suspend fun updateLearnedCommand(deviceId: String, command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
         try {
+            DebugLogger.logConnectionEvent(
+                deviceNumber = 0,
+                event = "DB_UPDATE_START",
+                details = "Updating learned command: $command ($pressType) for device $deviceId",
+                source = "RemoteRepository"
+            )
+
             context.dataStore.edit { preferences ->
                 val current = getCurrentConfig()
                 val updatedDevices = current.devices.map { device ->
                     if (device.id == deviceId) {
-
                         val commandExists = device.learnedCommands.any {
                             it.command == command && it.pressType == pressType
                         }
 
                         if (!commandExists) {
                             val newCommand = LearnedCommand(command = command, pressType = pressType)
-                            device.copy(learnedCommands = (device.learnedCommands + newCommand).toMutableList())
+                            val updatedCommands = (device.learnedCommands + newCommand).toMutableList()
+
+                            DebugLogger.logConnectionEvent(
+                                deviceNumber = device.antDeviceId ?: 0,
+                                event = "DB_COMMAND_ADDED",
+                                details = "Added new command: $command ($pressType). Total commands for ${device.name}: ${updatedCommands.size}",
+                                source = "RemoteRepository"
+                            )
+
+                            // Log detallado de todos los comandos del dispositivo
+                            DebugLogger.logConnectionEvent(
+                                deviceNumber = device.antDeviceId ?: 0,
+                                event = "DB_DEVICE_COMMANDS",
+                                details = "All commands for ${device.name}: ${
+                                    updatedCommands.joinToString(
+                                        ", "
+                                    ) { "${it.command.name}(${it.pressType})" }
+                                }",
+                                source = "RemoteRepository"
+                            )
+
+                            device.copy(learnedCommands = updatedCommands)
                         } else {
+                            DebugLogger.logConnectionEvent(
+                                deviceNumber = device.antDeviceId ?: 0,
+                                event = "DB_COMMAND_EXISTS",
+                                details = "Command already exists: $command ($pressType) for device ${device.name}",
+                                source = "RemoteRepository"
+                            )
                             device
                         }
                     } else {
@@ -175,9 +209,17 @@ class RemoteRepository(private val context: Context) {
                     }
                 }
 
+                val updatedConfig = current.copy(devices = updatedDevices)
                 preferences[settingsKey] = Json.encodeToString(
                     GlobalConfig.serializer(),
-                    current.copy(devices = updatedDevices)
+                    updatedConfig
+                )
+
+                DebugLogger.logConnectionEvent(
+                    deviceNumber = 0,
+                    event = "DB_CONFIG_SAVED",
+                    details = "Configuration saved to DataStore. Total devices: ${updatedConfig.devices.size}",
+                    source = "RemoteRepository"
                 )
             }
         } catch (e: Exception) {
@@ -193,6 +235,13 @@ class RemoteRepository(private val context: Context) {
         pressType: PressType
     ) {
         try {
+            DebugLogger.logConnectionEvent(
+                deviceNumber = 0,
+                event = "DB_MAPPING_START",
+                details = "Assigning mapping: $command ($pressType) -> ${karooKey?.action?.let { it::class.simpleName } ?: "UNASSIGNED"} for device $deviceId",
+                source = "RemoteRepository"
+            )
+
             context.dataStore.edit { preferences ->
                 val current = getCurrentConfig()
                 val updatedConfig = current.copy(
@@ -207,23 +256,59 @@ class RemoteRepository(private val context: Context) {
 
                             if (existingCommandIndex >= 0) {
                                 // Actualizar comando existente
+                                val oldMapping = updatedCommands[existingCommandIndex].karooKey?.action?.let { it::class.simpleName } ?: "UNASSIGNED"
                                 updatedCommands[existingCommandIndex] = updatedCommands[existingCommandIndex].copy(karooKey = karooKey)
+
+                                DebugLogger.logConnectionEvent(
+                                    deviceNumber = device.antDeviceId ?: 0,
+                                    event = "DB_MAPPING_UPDATED",
+                                    details = "Updated mapping for ${device.name}: $command ($pressType) changed from $oldMapping to ${karooKey?.action?.let { it::class.simpleName } ?: "UNASSIGNED"}",
+                                    source = "RemoteRepository"
+                                )
                             } else {
                                 // Añadir nuevo comando
                                 updatedCommands.add(LearnedCommand(command = command, pressType = pressType, karooKey = karooKey))
+
+                                DebugLogger.logConnectionEvent(
+                                    deviceNumber = device.antDeviceId ?: 0,
+                                    event = "DB_MAPPING_ADDED",
+                                    details = "Added new mapping for ${device.name}: $command ($pressType) -> ${karooKey?.action?.let { it::class.simpleName } ?: "UNASSIGNED"}",
+                                    source = "RemoteRepository"
+                                )
                             }
+
+                            // Log final de todas las configuraciones del dispositivo
+                            DebugLogger.logConnectionEvent(
+                                deviceNumber = device.antDeviceId ?: 0,
+                                event = "DB_DEVICE_MAPPINGS",
+                                details = "All mappings for ${device.name}: ${
+                                    updatedCommands.joinToString(
+                                        ", "
+                                    ) { "${it.command.name}(${it.pressType}) -> ${it.karooKey?.action?.let { action -> action::class.simpleName } ?: "UNASSIGNED"}" }
+                                }",
+                                source = "RemoteRepository"
+                            )
 
                             device.copy(learnedCommands = updatedCommands)
                         } else device
                     }
                 )
+
                 preferences[settingsKey] = Json.encodeToString(
                     GlobalConfig.serializer(),
                     updatedConfig
                 )
+
+                DebugLogger.logConnectionEvent(
+                    deviceNumber = 0,
+                    event = "DB_MAPPING_CONFIG_SAVED",
+                    details = "Mapping configuration saved to DataStore successfully",
+                    source = "RemoteRepository"
+                )
             }
         } catch (e: Exception) {
             Timber.e(e, "Error asignando KeyCode al comando")
+            DebugLogger.logError("DB_MAPPING", "Error assigning mapping: $command ($pressType) -> ${karooKey?.action?.let { it::class.simpleName }}", e, "RemoteRepository")
             throw e
         }
     }
