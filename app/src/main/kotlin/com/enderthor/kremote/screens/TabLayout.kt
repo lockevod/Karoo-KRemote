@@ -12,7 +12,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.enderthor.kremote.ant.AntManager
+import com.enderthor.kremote.components.ExtensionStatusBanner
 import com.enderthor.kremote.data.RemoteRepository
+import com.enderthor.kremote.extension.KremoteExtension
 import com.enderthor.kremote.viewmodel.ConfigurationViewModel
 import com.enderthor.kremote.viewmodel.DeviceViewModel
 import android.content.Context
@@ -27,7 +29,7 @@ fun TabLayout(
     antManager: AntManager,
     repository: RemoteRepository
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(1) } // Cambiar de 0 (Map) a 1 (Remote)
     val tabs = listOf(
         stringResource(R.string.tab_mapping),
         stringResource(R.string.tab_remotes),
@@ -50,6 +52,9 @@ fun TabLayout(
     val message by deviceViewModel.message.collectAsState()
     val selectedDevice by deviceViewModel.selectedDevice.collectAsState()
 
+    // NUEVO: Verificar estado de la extensión para mostrar banner
+    val isExtensionAvailable = remember { KremoteExtension.getInstance() != null }
+
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTab) {
             tabs.forEachIndexed { index, title ->
@@ -60,6 +65,10 @@ fun TabLayout(
                 )
             }
         }
+
+        // NUEVO: Mostrar banner de advertencia si la extensión no está disponible
+        ExtensionStatusBanner(isExtensionAvailable = isExtensionAvailable)
+
         // Contenedor con altura fija para manejar scroll interno
         Box(modifier = Modifier.weight(1f)) {
             when (selectedTab) {

@@ -20,15 +20,16 @@ class ConnectionServiceReceiver : BroadcastReceiver() {
         val serviceIntent = Intent(context, ConnectionService::class.java)
         val isExtension = intent.getBooleanExtra(EXTRA_IS_EXTENSION, false)
 
+        // NUEVO: Pasar el parámetro is_extension al servicio
+        serviceIntent.putExtra("is_extension", isExtension)
+
         try {
-            if (isExtension) {
-                DebugLogger.logConnectionEvent(0, "STARTING_SERVICE", "Starting as regular service (extension mode)", "ConnectionServiceReceiver")
-                context.startService(serviceIntent)
-            } else {
-                DebugLogger.logConnectionEvent(0, "STARTING_FOREGROUND_SERVICE", "Starting as foreground service (app mode)", "ConnectionServiceReceiver")
-                context.startForegroundService(serviceIntent)
-            }
-            Timber.d("[ConnectionServiceReceiver] Servicio iniciado correctamente")
+            // CAMBIO: Siempre usar startForegroundService para evitar problemas
+            // El servicio se encargará internamente de manejar la diferencia
+            DebugLogger.logConnectionEvent(0, "STARTING_FOREGROUND_SERVICE", "Starting as foreground service (mode: ${if (isExtension) "extension" else "app"})", "ConnectionServiceReceiver")
+            context.startForegroundService(serviceIntent)
+
+            Timber.d("[ConnectionServiceReceiver] Servicio iniciado correctamente en modo ${if (isExtension) "extensión" else "app"}")
         } catch (e: Exception) {
             DebugLogger.logError("RECEIVER", "Error starting service", e, "ConnectionServiceReceiver")
             Timber.e(e, "Error starting service")
