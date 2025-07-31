@@ -25,9 +25,18 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 
 **It's mandatory to reset the Karoo after the installation (shutdown and start again).**
 
+## Important Notice
+
+⚠️ **If you see a warning that the extension is not available**, this can happen when:
+- Installing the extension for the first time
+- Reinstalling the extension
+- System loading issues
+
+**Solution:** Simply restart your Karoo device. The extension will load correctly after the restart.
+
 ## Instructions
 
-- This release adds the possibility to add multiple remotes. 
+- This release adds the possibility to add multiple remotes.
 - It's mandatory to scan your remote first. When you've the remote added (Remotes screen -> Scan -> push over your remote), you can scan for commands from your remote.
 - If you have a garmin remote, you don't need to scan/learn commands (if you use other Ant remote it's mandatory)
 - Then you need to go to Conf screen, select your remote and map Remotes commands to Karoo actions.
@@ -44,7 +53,7 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 
 ### 🚀 Intelligent Heartbeat System
 - **Automatic Riding Detection**: KRemote automatically detects when you start/stop a ride on your Karoo
-- **Adaptive Connection Monitoring**: 
+- **Adaptive Connection Monitoring**:
   - During riding: More frequent connection checks (every 5 minutes) for critical reliability
   - Normal use: Relaxed monitoring (every 10-15 minutes) to preserve battery
 - **Real-time ANT+ Events**: Instant detection of connection/disconnection events from the hardware
@@ -52,7 +61,7 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 
 ### 🔧 Advanced Debug System
 - **Debug Screen**: Access via the main menu to monitor connection status and system performance
-- **Intelligent Logging**: 
+- **Intelligent Logging**:
   - Automatic timeout after 24 hours to protect performance
   - Persistent between app restarts (with auto-disable protection)
   - Smart log rotation to prevent large files (5MB limit with backup)
