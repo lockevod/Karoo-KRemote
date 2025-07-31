@@ -122,9 +122,9 @@
 
     <!-- Learning Strings -->
     <string name="learning_title">Learning keys for: %1$s</string>
-    <string name="learning_instructions">Press remote buttons to configure them...</string>
+    <string name="learning_instructions">Press remote buttons to configure them.</string>
     <string name="commands_detected">Commands detected:</string>
-    <string name="waiting_commands">🎯 Waiting for commands...</string>
+    <string name="waiting_commands">🎯 Waiting for commands.</string>
     <string name="back_to_devices">← Back to devices</string>
 
     <!-- Debug Screen -->
@@ -159,4 +159,9 @@
     <string name="debug_device_disconnected">❌ Disconnected</string>
     <string name="debug_device_error">Error: %1$s</string>
     <string name="debug_force_reconnection">Force Reconnection</string>
+
+    <!-- Extension Status -->
+    <string name="extension_not_available">Extension not available</string>
+    <string name="extension_restart_karoo">Restart your Karoo device</string>
+    <string name="extension_warning_message">⚠️ %1$s. %2$s.</string>
 </resources>
