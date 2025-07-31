@@ -18,7 +18,7 @@ class KremoteApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        val forceDebug = true
+        val forceDebug = false
 
         if (BuildConfig.DEBUG || forceDebug) {
             plant(object : DebugTree() {
