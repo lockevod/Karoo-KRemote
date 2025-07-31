@@ -48,6 +48,7 @@ import io.hammerhead.karooext.models.OnGlobalPOIs
 
 import io.hammerhead.karooext.models.UserProfile
 import androidx.core.content.edit
+import com.enderthor.kremote.utils.PerformanceOptimizer
 
 
 class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME) {
@@ -278,7 +279,32 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     private fun initializeRideReceiver() {
         rideReceiver = KarooRideReceiver { isRideActive ->
             Timber.d("Ride state changed: active = $isRideActive")
+            DebugLogger.logConnectionEvent(
+                deviceNumber = 0,
+                event = "RIDE_STATE_CHANGED",
+                details = "Ride active: $isRideActive (previous: $isRiding)",
+                source = "KremoteExtension"
+            )
             isRiding = isRideActive
+            
+            // NUEVO: Notificar al sistema de heartbeat del cambio de estado de riding
+            PerformanceOptimizer.setRidingState(isRideActive)
+
+            // Log adicional para verificar configuraciones relacionadas
+            extensionScope.launch {
+                try {
+                    val currentConfig = repository.currentConfig.first()
+                    val onlyWhileRiding = currentConfig.globalSettings.onlyWhileRiding
+                    DebugLogger.logConnectionEvent(
+                        deviceNumber = 0,
+                        event = "RIDE_CONFIG_CHECK",
+                        details = "OnlyWhileRiding setting: $onlyWhileRiding, Current riding state: $isRideActive, Heartbeat mode: ${if (isRideActive) "CRITICAL" else "NORMAL"}",
+                        source = "KremoteExtension"
+                    )
+                } catch (e: Exception) {
+                    Timber.e(e, "Error getting current config for ride state logging")
+                }
+            }
         }
 
         rideReceiver?.let { receiver ->
@@ -332,10 +358,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             extensionScope.cancel()
 
         } catch (e: Exception) {
-            Timber.e(e, "Error during extension destruction")
-        }
-        finally {
-            super.onDestroy()
+            Timber.e(e, "Error during onDestroy")
         }
     }
 }

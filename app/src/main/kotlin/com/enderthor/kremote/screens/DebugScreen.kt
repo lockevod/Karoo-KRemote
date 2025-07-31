@@ -163,6 +163,16 @@ fun DebugScreen(
                         color = MaterialTheme.colorScheme.error
                     )
 
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Mostrar información detallada del debug usando getDebugInfo()
+                    Text(
+                        text = DebugLogger.getDebugInfo(),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     TextButton(

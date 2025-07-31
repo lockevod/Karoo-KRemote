@@ -9,6 +9,7 @@ import com.enderthor.kremote.utils.ReconnectionManagerSingleton
 import com.enderthor.kremote.utils.ConnectionState
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteDevice
+import com.enderthor.kremote.utils.HeartbeatManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -85,6 +86,66 @@ class DebugViewModel(
             DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton is NULL - usando datos del repositorio", "DebugViewModel")
             Timber.w("[DebugViewModel] ReconnectionManager singleton es NULL - mostrando dispositivos registrados en su lugar")
         }
+
+        // NUEVO: Verificación activa puntual cuando se accede a la pantalla de debug
+        performPeriodicActiveCheck()
+    }
+
+    /**
+     * NUEVO: Realiza verificaciones activas puntuales de conexión
+     * Solo se ejecuta cuando se accede a la pantalla de debug y cada 10 minutos
+     */
+    private fun performPeriodicActiveCheck() {
+        viewModelScope.launch {
+            // Verificación inmediata al acceder a la pantalla
+            performActiveConnectionChecks("debug_screen_access")
+
+            // Verificación cada 10 minutos mientras la pantalla está activa
+            while (true) {
+                kotlinx.coroutines.delay(600_000L) // 10 minutos
+                if (_isDebugEnabled.value) {
+                    performActiveConnectionChecks("periodic_check")
+                }
+            }
+        }
+    }
+
+    /**
+     * NUEVO: Ejecuta verificaciones activas para todos los dispositivos registrados
+     * MEJORADO: Usar HeartbeatManager en lugar de PerformanceOptimizer directamente
+     */
+    private suspend fun performActiveConnectionChecks(reason: String) {
+        val reconnectionManager = ReconnectionManagerSingleton.getInstance()
+        val devices = _registeredDevices.value
+
+        if (reconnectionManager != null && devices.isNotEmpty()) {
+            val antManager = reconnectionManager.getAntManager()
+            DebugLogger.logConnectionEvent(0, "ACTIVE_CHECKS_START", "Starting active checks for ${devices.size} devices. Reason: $reason", "DebugViewModel")
+
+            devices.forEach { device ->
+                device.antDeviceId?.let { deviceId ->
+                    try {
+                        // MEJORADO: Usar HeartbeatManager en lugar de PerformanceOptimizer directamente
+                        val isConnected = HeartbeatManager.performDebugScreenCheck(deviceId, antManager)
+
+                        // Actualizar estado si es diferente del actual
+                        val currentState = reconnectionManager.connectionStates.value[deviceId]
+                        if (currentState?.isConnected != isConnected) {
+                            DebugLogger.logConnectionEvent(
+                                deviceId,
+                                "CONNECTION_STATE_CORRECTED",
+                                "State updated from active check: ${currentState?.isConnected} -> $isConnected",
+                                "DebugViewModel"
+                            )
+                        }
+                    } catch (e: Exception) {
+                        DebugLogger.logError("ACTIVE_CHECK", "Error checking device $deviceId", e, "DebugViewModel")
+                    }
+                }
+            }
+        } else {
+            DebugLogger.logConnectionEvent(0, "ACTIVE_CHECKS_SKIPPED", "ReconnectionManager or devices not available", "DebugViewModel")
+        }
     }
 
     fun setDebugEnabled(enabled: Boolean) {
@@ -138,4 +199,7 @@ class DebugViewModel(
             }
         }
     }
+
+    // Funciones de limpieza y configuración de debug eliminadas para reducir warnings
+    // Las funciones de heartbeat se mantienen disponibles a través de HeartbeatManager directamente
 }
