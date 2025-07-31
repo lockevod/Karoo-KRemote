@@ -14,7 +14,7 @@ object DebugLogger {
     private var isDebugEnabled = false
     private var logFile: File? = null
     private var contextRef: WeakReference<Context>? = null
-
+    
     // Configuración de timeout automático para debug (24 horas)
     private const val DEBUG_AUTO_DISABLE_TIMEOUT = 24 * 60 * 60 * 1000L // 24 horas en ms
     private const val PREFS_NAME = "kremote_debug_prefs"
@@ -24,13 +24,13 @@ object DebugLogger {
     fun initialize(context: Context, enabled: Boolean = false) {
         // Usar ApplicationContext para evitar memory leaks
         this.contextRef = WeakReference(context.applicationContext)
-
+        
         // Verificar si hay preferencia guardada y si no ha expirado
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val savedEnabled = prefs.getBoolean(PREF_DEBUG_ENABLED, false)
         val enabledTime = prefs.getLong(PREF_DEBUG_ENABLED_TIME, 0L)
         val currentTime = System.currentTimeMillis()
-
+        
         // Si el debug estaba habilitado pero ha pasado el timeout, deshabilitarlo
         isDebugEnabled = if (savedEnabled && (currentTime - enabledTime) < DEBUG_AUTO_DISABLE_TIMEOUT) {
             Timber.w("Debug logging restored from previous session (${(currentTime - enabledTime) / (60 * 60 * 1000)}h ago)")
@@ -43,14 +43,14 @@ object DebugLogger {
             }
             enabled // Usar valor por defecto
         }
-
+        
         createLogFileIfNeeded()
     }
 
     fun setEnabled(enabled: Boolean) {
         val context = contextRef?.get()
         isDebugEnabled = enabled
-
+        
         if (context != null) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             if (enabled) {
@@ -71,23 +71,23 @@ object DebugLogger {
             }
         }
     }
-
+    
     /**
      * Obtiene información sobre el estado de debug y cuándo expira
      */
     fun getDebugInfo(): String {
         if (!isDebugEnabled) return "Debug: DISABLED"
-
+        
         val context = contextRef?.get() ?: return "Debug: ENABLED (no context)"
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val enabledTime = prefs.getLong(PREF_DEBUG_ENABLED_TIME, 0L)
-
+        
         if (enabledTime == 0L) return "Debug: ENABLED (session only)"
-
+        
         val currentTime = System.currentTimeMillis()
         val elapsedHours = (currentTime - enabledTime) / (60 * 60 * 1000)
         val remainingHours = 24 - elapsedHours
-
+        
         return "Debug: ENABLED (${remainingHours}h remaining until auto-disable)"
     }
 
@@ -114,11 +114,11 @@ object DebugLogger {
                         if (backupFile.exists()) {
                             backupFile.delete() // Borrar backup anterior si existe
                         }
-
+                        
                         // Mover el archivo actual como backup
                         file.renameTo(backupFile)
                         Timber.d("Rotated large log file to: ${backupFile.absolutePath}")
-
+                        
                         // Crear nuevo archivo limpio
                         file.createNewFile()
                         Timber.d("Created fresh log file: ${file.absolutePath}")

@@ -160,4 +160,9 @@
     <string name="debug_device_disconnected">❌ Desconectado</string>
     <string name="debug_device_error">Error: %1$s</string>
     <string name="debug_force_reconnection">Forzar Reconexión</string>
+
+    <!-- Extension Status -->
+    <string name="extension_not_available">Extensión no disponible</string>
+    <string name="extension_restart_karoo">Reinicia tu dispositivo Karoo</string>
+    <string name="extension_warning_message">⚠️ %1$s. %2$s.</string>
 </resources>
