@@ -41,15 +41,16 @@ sealed class DeviceMessage {
 }
 
 @Serializable
-enum class BellBeepPattern(val displayName: String, val tones: List<PlayBeepPattern.Tone>) {
+enum class BellBeepPattern(val tones: List<PlayBeepPattern.Tone>) {
 
-    BELL4("Timbre Medium", listOf(
+    BELL4(
+        listOf(
         PlayBeepPattern.Tone(3_800, 900),
         PlayBeepPattern.Tone(0, 300),
         PlayBeepPattern.Tone(3_800, 1000),
     )),
     BELL5(
-        "Timbre High", listOf(
+        listOf(
             PlayBeepPattern.Tone(3_550, 900),
             PlayBeepPattern.Tone(0, 300),
             PlayBeepPattern.Tone(3_550, 1000),

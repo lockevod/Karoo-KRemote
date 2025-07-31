@@ -28,6 +28,9 @@ class ReconnectionManager(
     private val reconnectionJobs = mutableMapOf<Int, Job>()
     private val monitoringJobs = mutableMapOf<Int, Job>()
 
+    // NUEVO: Acceso público al AntManager para heartbeat
+    fun getAntManager(): AntManager = antManager
+
     // Configuración mejorada con PerformanceOptimizer
     private val baseReconnectDelay = 2000L
     private val maxReconnectDelay = 30000L
@@ -36,8 +39,8 @@ class ReconnectionManager(
     private val connectionTimeout = 15000L
 
     init {
-        // Inicializar limpieza periódica de PerformanceOptimizer
-        PerformanceOptimizer.schedulePeriodicCleanup(scope)
+        // MEJORADO: Inicializar limpieza periódica usando HeartbeatManager
+        HeartbeatManager.setupPeriodicCleanup(scope)
     }
 
     fun startMonitoring(deviceNumber: Int) {
@@ -47,6 +50,46 @@ class ReconnectionManager(
         // Cancelar monitoring anterior si existe
         monitoringJobs[deviceNumber]?.cancel()
         DebugLogger.logConnectionEvent(deviceNumber, "PREVIOUS_MONITORING_CANCELLED", "Cancelado monitoreo anterior si existía", "ReconnectionManager")
+
+        // MEJORADO: Registrar listener para eventos ANT+ reales (Opción B)
+        val antEventListener: (Boolean) -> Unit = { isConnected ->
+            scope.launch {
+                val currentState = _connectionStates.value[deviceNumber]
+                if (currentState != null && currentState.isConnected != isConnected) {
+                    DebugLogger.logConnectionEvent(
+                        deviceNumber,
+                        "ANT_REAL_EVENT_PROCESSED",
+                        "Real ANT+ event processed by ReconnectionManager: $isConnected",
+                        "ReconnectionManager"
+                    )
+
+                    if (isConnected) {
+                        // Conexión recuperada por evento real ANT+
+                        updateConnectionState(deviceNumber) {
+                            it.copy(
+                                isConnected = true,
+                                isReconnecting = false,
+                                reconnectAttempts = 0,
+                                lastError = null
+                            )
+                        }
+                        // Cancelar intentos de reconexión
+                        reconnectionJobs[deviceNumber]?.cancel()
+                    } else {
+                        // Desconexión detectada por evento real ANT+
+                        updateConnectionState(deviceNumber) {
+                            it.copy(isConnected = false)
+                        }
+                        // Solo iniciar reconexión si no estamos ya reconectando
+                        if (!currentState.isReconnecting) {
+                            startReconnection(deviceNumber)
+                        }
+                    }
+                }
+            }
+        }
+
+        HeartbeatManager.registerConnectionListener(deviceNumber, antEventListener)
 
         // Inicializar estado usando caché del PerformanceOptimizer
         val initialState = PerformanceOptimizer.getCachedOrCreate("connection_state_$deviceNumber") {
@@ -68,12 +111,13 @@ class ReconnectionManager(
 
             while (isActive) {
                 try {
-                    // NUEVO: Usar sistema de heartbeat inteligente
-                    val shouldVerify = PerformanceOptimizer.shouldVerifyConnection(deviceNumber)
+                    // MEJORADO: Usar HeartbeatManager para verificación inteligente
+                    val shouldVerify = HeartbeatManager.shouldVerifyConnection(deviceNumber)
                     DebugLogger.logConnectionEvent(deviceNumber, "HEARTBEAT_CHECK", "shouldVerify: $shouldVerify", "ReconnectionManager")
 
                     if (shouldVerify) {
-                        val isConnected = antManager.isConnectedToDevice(deviceNumber)
+                        // OPCIÓN C: Usar verificación UI inteligente con caché
+                        val isConnected = HeartbeatManager.performUICheck(deviceNumber, antManager, "reconnection_manager")
                         val currentState = _connectionStates.value[deviceNumber]
 
                         DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_VERIFICATION", "isConnected: $isConnected, currentState: $currentState", "ReconnectionManager")
@@ -101,9 +145,25 @@ class ReconnectionManager(
                                 reconnectionJobs[deviceNumber]?.cancel()
                             }
                         }
+                    } else {
+                        // Si no necesitamos verificar, pero tenemos estado conocido de eventos ANT+, usarlo
+                        val lastKnownState = HeartbeatManager.getLastKnownState(deviceNumber)
+                        if (lastKnownState != null) {
+                            val currentState = _connectionStates.value[deviceNumber]
+                            if (currentState != null && currentState.isConnected != lastKnownState) {
+                                DebugLogger.logConnectionEvent(
+                                    deviceNumber,
+                                    "STATE_SYNC_FROM_ANT_EVENTS",
+                                    "Syncing state from ANT+ events: $lastKnownState"
+                                )
+                                updateConnectionState(deviceNumber) {
+                                    it.copy(isConnected = lastKnownState)
+                                }
+                            }
+                        }
                     }
 
-                    // NUEVO: Usar intervalo adaptativo en lugar de delay fijo
+                    // MEJORADO: Usar intervalo adaptativo del HeartbeatManager
                     val optimalInterval = PerformanceOptimizer.getOptimalVerificationInterval(deviceNumber)
                     DebugLogger.logConnectionEvent(deviceNumber, "MONITORING_INTERVAL", "Próxima verificación en ${optimalInterval}ms", "ReconnectionManager")
                     delay(optimalInterval)

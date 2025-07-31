@@ -10,6 +10,7 @@ import com.enderthor.kremote.data.DEBUG_LOGGING_ENABLED
 import com.enderthor.kremote.utils.DebugLogger
 import com.enderthor.kremote.utils.ReconnectionManagerSingleton
 import com.enderthor.kremote.utils.PerformanceOptimizer
+import com.enderthor.kremote.utils.HeartbeatManager
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -101,15 +102,18 @@ class ConnectionService : Service() {
                                     key = "connect_$deviceId",
                                     minIntervalMs = 2000L
                                 ) {
+                                    DebugLogger.logConnectionEvent(deviceId, "ANT_CONNECT_START", "Calling antManager.connect($deviceId)", "ConnectionService")
                                     kremoteExtension.antManager.connect(deviceId)
+                                    DebugLogger.logConnectionEvent(deviceId, "ANT_CONNECT_COMPLETE", "antManager.connect() completed", "ConnectionService")
 
                                     if (autoReconnect) {
                                         // Usar el nuevo sistema de reconexión mejorado
-                                        DebugLogger.logConnectionEvent(deviceId, "STARTING_MONITORING", "Initiating device monitoring", "ConnectionService")
+                                        DebugLogger.logConnectionEvent(deviceId, "STARTING_MONITORING", "Initiating device monitoring with ReconnectionManager", "ConnectionService")
                                         reconnectionManager.startMonitoring(deviceId)
+                                        DebugLogger.logConnectionEvent(deviceId, "MONITORING_ACTIVE", "Device monitoring started successfully", "ConnectionService")
                                         Timber.d("[ConnectionService] Monitoreo iniciado para dispositivo #$deviceId")
                                     } else {
-                                        DebugLogger.logConnectionEvent(deviceId, "MONITORING_DISABLED", "autoReconnect is false", "ConnectionService")
+                                        DebugLogger.logConnectionEvent(deviceId, "MONITORING_DISABLED", "autoReconnect is false - monitoring skipped", "ConnectionService")
                                     }
                                 }
                             } catch (e: Exception) {
@@ -137,8 +141,8 @@ class ConnectionService : Service() {
 
         job?.cancel()
 
-        // Limpiar recursos del sistema de heartbeat
-        PerformanceOptimizer.clearHeartbeatCaches()
+        // MEJORADO: Usar HeartbeatManager.cleanup() en lugar de solo clearHeartbeatCaches()
+        HeartbeatManager.cleanup()
 
         // Destruir el singleton del ReconnectionManager
         ReconnectionManagerSingleton.destroy()
