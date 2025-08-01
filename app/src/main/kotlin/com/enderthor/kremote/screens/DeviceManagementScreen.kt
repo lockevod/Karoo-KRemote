@@ -115,7 +115,7 @@ fun DeviceManagementScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Selector de tipo
+            // Type selector
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

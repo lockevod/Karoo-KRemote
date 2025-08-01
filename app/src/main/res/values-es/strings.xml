@@ -120,6 +120,8 @@
     <string name="karoo_key_turnoff">Apagar Pantalla</string>
     <string name="karoo_key_zoomin">Acercar</string>
     <string name="karoo_key_zoomout">Alejar</string>
+    <string name="karoo_key_zoomin_fast">Acercar Rápido (3x)</string>
+    <string name="karoo_key_zoomout_fast">Alejar Rápido (3x)</string>
 
     <!-- Learning Strings -->
     <string name="learning_title">Aprendiendo teclas para: %1$s</string>

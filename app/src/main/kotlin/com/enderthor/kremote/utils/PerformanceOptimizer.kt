@@ -15,38 +15,38 @@ object PerformanceOptimizer {
     private val _isOptimizationEnabled = MutableStateFlow(true)
     val isOptimizationEnabled: StateFlow<Boolean> = _isOptimizationEnabled.asStateFlow()
 
-    // Pool de corrutinas reutilizables para operaciones frecuentes
+    // Pool couroutines for quick operations
     @OptIn(ExperimentalCoroutinesApi::class)
     private val quickOperationDispatcher = Dispatchers.Default.limitedParallelism(2)
 
-    // Caché para evitar recrear objetos frecuentemente
+    // Cache to avoid recreating objects frequently
     private val commandCache = ConcurrentHashMap<String, Any>()
     private val connectionStateCache = ConcurrentHashMap<Int, Long>()
 
-    // OPCIÓN A: Sistema de heartbeat puntual (simple y eficiente)
+    // OPTION A: Simple and efficient punctual heartbeat system
     private val deviceActivityCache = ConcurrentHashMap<Int, Long>()
 
-    // OPCIÓN B: Sistema de detección de eventos ANT+ reales
+    // OPTION B: Real ANT+ event detection system
     private val antEventListeners = ConcurrentHashMap<Int, MutableList<(Boolean) -> Unit>>()
     private val lastKnownConnectionState = ConcurrentHashMap<Int, Boolean>()
 
-    // OPCIÓN C: Verificación inteligente solo para UI
+    // OPTION C: Smart verification only for UI
     private val uiVerificationRequests = ConcurrentHashMap<String, Long>()
 
-    // NUEVO: Detección automática de estado de "riding" desde KremoteExtension
+    // NEW: Automatic riding state detection from KremoteExtension
     private val _isRiding = MutableStateFlow(false)
-    // Exponer isRiding como propiedad pública para que se pueda usar desde otras clases
+    // Expose isRiding as public property so it can be used from other classes
 
 
-    // Configuración simple del heartbeat puntual
-    private const val NO_ACTIVITY_THRESHOLD_MS = 120000L // 2 minutos sin actividad
-    private const val HIGH_INACTIVITY_CHECK_INTERVAL_MS = 600000L // 10 minutos para inactividad alta
-    private const val DEBUG_SCREEN_CHECK_TIMEOUT_MS = 5000L // 5 segundos timeout para check de pantalla debug
+    // Simple punctual heartbeat configuration
+    private const val NO_ACTIVITY_THRESHOLD_MS = 120000L // 2 minutes without activity
+    private const val HIGH_INACTIVITY_CHECK_INTERVAL_MS = 600000L // 10 minutes for high inactivity
+    private const val DEBUG_SCREEN_CHECK_TIMEOUT_MS = 5000L // 5 seconds timeout for debug screen check
 
-    // NUEVO: Configuración diferente según estado de riding
-    private const val RIDING_HEARTBEAT_TIMEOUT_MS = 3000L // 3 segundos timeout cuando está en riding (CRÍTICO)
-    private const val NORMAL_HEARTBEAT_TIMEOUT_MS = 5000L // 5 segundos timeout cuando NO está en riding
-    private const val UI_VERIFICATION_CACHE_MS = 30000L // 30 segundos de caché para verificaciones de UI
+    // NEW: Different configuration based on riding state
+    private const val RIDING_HEARTBEAT_TIMEOUT_MS = 3000L // 3 seconds timeout when in riding (CRITICAL)
+    private const val NORMAL_HEARTBEAT_TIMEOUT_MS = 5000L // 5 seconds timeout when NOT in riding
+    private const val UI_VERIFICATION_CACHE_MS = 30000L // 30 seconds cache for UI verifications
 
     fun setOptimizationEnabled(enabled: Boolean) {
         _isOptimizationEnabled.value = enabled
@@ -101,16 +101,16 @@ object PerformanceOptimizer {
     }
 
     /**
-     * Optimiza el delay dinámicamente basado en la carga del sistema
+     * Optimizes delay dynamically based on system load
      */
     fun getOptimizedDelay(baseDelay: Long, loadFactor: Float = 1.0f): Long {
         if (!_isOptimizationEnabled.value) {
             return baseDelay
         }
 
-        // Ajustar el delay basado en la carga del sistema
+        // Adjust delay based on system load
         val adjustedDelay = (baseDelay * loadFactor).toLong()
-        return min(adjustedDelay, baseDelay * 2) // Máximo 2x el delay base
+        return min(adjustedDelay, baseDelay * 2) // Maximum 2x the base delay
     }
 
     /**

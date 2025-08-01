@@ -50,14 +50,14 @@ class RemoteRepository(private val context: Context) {
         return try {
             val preferences = context.dataStore.data.first()
             val configString = preferences[settingsKey]
-            Timber.d("Config actual leída: $configString")
+            Timber.d("Current config read: $configString")
             if (configString != null) {
                 Json.decodeFromString(configString)
             } else {
                 GlobalConfig()
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error leyendo configuración")
+            Timber.e(e, "Error reading configuration")
             throw e
         }
     }
@@ -67,7 +67,7 @@ class RemoteRepository(private val context: Context) {
         try {
             context.dataStore.edit { preferences ->
                 val currentConfig = getCurrentConfig()
-                Timber.d("Config actual antes de añadir: $currentConfig")
+                Timber.d("Current config before adding: $currentConfig")
 
                 val updatedDevices = currentConfig.devices + device
                 val updatedConfig = currentConfig.copy(devices = updatedDevices)
@@ -77,10 +77,10 @@ class RemoteRepository(private val context: Context) {
                     updatedConfig
                 )
 
-                Timber.d("Config actualizada después de añadir: $updatedConfig")
+                Timber.d("Updated config after adding: $updatedConfig")
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error añadiendo dispositivo al DataStore")
+            Timber.e(e, "Error adding device to DataStore")
             throw e
         }
     }
@@ -146,10 +146,10 @@ class RemoteRepository(private val context: Context) {
                     current.copy(devices = updatedDevices)
                 )
                 
-                Timber.d("🗑️ [RemoteRepository] Comandos aprendidos borrados para dispositivo: $deviceId")
+                Timber.d("🗑️ [RemoteRepository] Learned commands cleared for device: $deviceId")
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error clearing device commands")
+            Timber.e(e, "Error updating learned command")
             throw e
         }
     }
@@ -223,7 +223,7 @@ class RemoteRepository(private val context: Context) {
                 )
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error actualizando comando aprendido")
+            Timber.e(e, "Error updating learned command")
             throw e
         }
     }
@@ -266,7 +266,7 @@ class RemoteRepository(private val context: Context) {
                                     source = "RemoteRepository"
                                 )
                             } else {
-                                // Añadir nuevo comando
+                                // Add new command
                                 updatedCommands.add(LearnedCommand(command = command, pressType = pressType, karooKey = karooKey))
 
                                 DebugLogger.logConnectionEvent(
@@ -307,7 +307,7 @@ class RemoteRepository(private val context: Context) {
                 )
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error asignando KeyCode al comando")
+            Timber.e(e, "Error assign KeyCode to command")
             DebugLogger.logError("DB_MAPPING", "Error assigning mapping: $command ($pressType) -> ${karooKey?.action?.let { it::class.simpleName }}", e, "RemoteRepository")
             throw e
         }
@@ -330,7 +330,7 @@ class RemoteRepository(private val context: Context) {
                 )
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error actualizando propiedad del dispositivo")
+            Timber.e(e, "Error updating device property")
             throw e
         }
     }
@@ -347,7 +347,7 @@ class RemoteRepository(private val context: Context) {
                 )
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error actualizando configuración global")
+            Timber.e(e, "Error updating global configuration")
             throw e
         }
     }

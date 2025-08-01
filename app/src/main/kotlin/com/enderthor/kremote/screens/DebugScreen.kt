@@ -110,7 +110,7 @@ fun DebugScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // === SISTEMA DE DEBUG LOGGING ===
+        // === DEBUG LOGGING SYSTEM ===
         Card(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -165,7 +165,7 @@ fun DebugScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Mostrar información detallada del debug usando getDebugInfo()
+                    // Show detailed debug information using getDebugInfo()
                     Text(
                         text = DebugLogger.getDebugInfo(),
                         style = MaterialTheme.typography.bodySmall,
@@ -190,7 +190,7 @@ fun DebugScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // === ESTADO DE CONEXIONES (SOLO SI DEBUG HABILITADO) ===
+        // === CONNECTION STATUS (ONLY IF DEBUG ENABLED) ===
         if (isDebugEnabled) {
             Card(
                 modifier = Modifier.fillMaxWidth()

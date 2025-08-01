@@ -22,11 +22,11 @@ const val autoReconnect = true
 const val minReconnectInterval = 2000L
 const val DEFAULT_DOUBLE_TAP_TIMEOUT = 1200L
 
-// Configuración de debug logging
+// Debug logging configuration
 const val DEBUG_LOGGING_ENABLED = false
 
-// Optimizaciones de rendimiento
-const val COMMAND_PROCESSING_DELAY_MS = 50L // Delay mínimo entre comandos
+// Performance optimizations
+const val COMMAND_PROCESSING_DELAY_MS = 50L // Minimum delay between commands
 
 
 @Serializable
@@ -74,7 +74,9 @@ enum class KarooKey(val action: KarooEffect, val labelResId: Int) {
     TURN_ON(TurnScreenOn, R.string.karoo_key_turnon),
     TURN_OFF(TurnScreenOff, R.string.karoo_key_turnoff),
     ZOOM_IN(ZoomPage(true), R.string.karoo_key_zoomin),
-    ZOOM_OUT(ZoomPage(false), R.string.karoo_key_zoomout);
+    ZOOM_OUT(ZoomPage(false), R.string.karoo_key_zoomout),
+    ZOOM_IN_FAST(ZoomPage(true), R.string.karoo_key_zoomin_fast),
+    ZOOM_OUT_FAST(ZoomPage(false), R.string.karoo_key_zoomout_fast);
 
 }
 

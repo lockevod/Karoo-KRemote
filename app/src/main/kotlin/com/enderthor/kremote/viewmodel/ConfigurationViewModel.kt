@@ -70,7 +70,7 @@ class ConfigurationViewModel(
             try {
                 repository.updateGlobalSetting { it.copy(onlyWhileRiding = enabled) }
             } catch (e: Exception) {
-                Timber.e(e, "Error actualizando la configuración onlyWhileRiding")
+                Timber.e(e, "Error updating onlyWhileRiding configuration")
                 _errorMessage.value = "Error updating configuration: ${e.message}"
             }
         }
@@ -87,7 +87,7 @@ class ConfigurationViewModel(
                     device.copy(enabledDoubleTap = enabled)
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error actualizando enabledDoubleTap")
+                Timber.e(e, "Error updating enabledDoubleTap configuration")
                 _errorMessage.value = "Error updating configuration: ${e.message}"
             }
         }
@@ -100,7 +100,7 @@ class ConfigurationViewModel(
                     device.copy(doubleTapTimeout = timeout)
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error actualizando doubleTapTimeout")
+                Timber.e(e, "Error updating doubleTapTimeout configuration")
                 _errorMessage.value = "Error updating configuration: ${e.message}"
             }
         }
@@ -111,7 +111,7 @@ class ConfigurationViewModel(
             try {
                 repository.updateGlobalSetting { it.copy(isForcedScreenOn = enabled) }
             } catch (e: Exception) {
-                Timber.e(e, "Error actualizando la configuración isForcedScreenOn")
+                Timber.e(e, "Error updating isForcedScreenOn configuration")
                 _errorMessage.value = "Error updating configuration: ${e.message}"
             }
         }

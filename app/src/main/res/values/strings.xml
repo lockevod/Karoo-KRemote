@@ -119,6 +119,8 @@
     <string name="karoo_key_turnoff">Screen Off</string>
     <string name="karoo_key_zoomin">Zoom In</string>
     <string name="karoo_key_zoomout">Zoom Out</string>
+    <string name="karoo_key_zoomin_fast">Fast Zoom In (3x)</string>
+    <string name="karoo_key_zoomout_fast">Fast Zoom Out (3x)</string>
 
     <!-- Learning Strings -->
     <string name="learning_title">Learning keys for: %1$s</string>

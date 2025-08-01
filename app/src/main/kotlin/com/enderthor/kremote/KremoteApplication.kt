@@ -51,7 +51,7 @@ class KremoteApplication : Application() {
         }
         Timber.d("KREMOTE APP START")
 
-        // Inicializar DebugLogger en la aplicación principal
+        // Initialize DebugLogger in the main application
         DebugLogger.initialize(applicationContext, DEBUG_LOGGING_ENABLED)
 
         repository = RemoteRepository(applicationContext)
@@ -63,15 +63,15 @@ class KremoteApplication : Application() {
     private fun startConnectionService() {
         try {
             DebugLogger.logConnectionEvent(0, "APP_START_SERVICE", "Attempting to start ConnectionService via broadcast", "KremoteApplication")
-            Timber.d("[KremoteApplication] Enviando broadcast para iniciar ConnectionService")
+            Timber.d("[KremoteApplication] Sending broadcast to start ConnectionService")
 
             val intent = Intent("com.enderthor.kremote.START_CONNECTION_SERVICE")
             intent.putExtra(ConnectionServiceReceiver.EXTRA_IS_EXTENSION, false)
-            // ARREGLADO: Usar el permiso requerido por el receiver
+            // FIXED: Use the required permission for the receiver
             sendBroadcast(intent, "com.enderthor.kremote.PERMISSION_START_CONNECTION")
 
             DebugLogger.logConnectionEvent(0, "BROADCAST_SENT", "Broadcast sent successfully with permission", "KremoteApplication")
-            Timber.d("[KremoteApplication] Broadcast enviado correctamente con permiso")
+            Timber.d("[KremoteApplication] Broadcast sent correctly with permission")
         } catch (e: Exception) {
             DebugLogger.logError("APP", "Error starting ConnectionService", e, "KremoteApplication")
             Timber.e(e, "Error starting ConnectionService")
