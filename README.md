@@ -49,6 +49,18 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - You can map several actions (mark lap, swipe between screens, zoom in etc and use your Karoo as a BELL)
 - If you have karoo > 1.535 you can use showmap option also
 
+## Enroll new remote
+- If you want to enroll a new remote, you can do it in the Remotes screen
+- You can add multiple remotes, but only one remote can be active at the same time
+- To enroll a new remote, go to the Remotes screen and select "Scan". Then, press any button on your remote to start the scanning process. Once detected,add the remote.
+- After adding, if you have a Garmin remote, you can skip the command learning step. For other remotes, you need to learn the commands by pressing the buttons on your remote while the app is in learning mode.
+- You can learn commands if you go to remote configure screen (push wheel in active remote. It's near trash symbol). 
+- Then you have to select "Learn Commands" and press the buttons on your remote to map them to Karoo actions.
+- You can also delete all learned commands and start again if you want to reset the remote configuration.
+- Then you have to go to Map Screen and select the remote you want to use (only if you have multiple remotes added).
+- Then you can map actions with the remote buttons and active some options (like double tap, only with riding, etc).
+- If you have problems you can go to Debug screen and enable debug logging. This will help you to see what is happening in the app and if there are any issues with the remote connection or commands.Please repeat the process and send me the log.
+
 ## New Features & Performance Improvements
 
 ### 🚀 Intelligent Heartbeat System
