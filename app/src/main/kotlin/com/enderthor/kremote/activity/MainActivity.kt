@@ -16,7 +16,6 @@ import com.enderthor.kremote.data.EXTENSION_NAME
 import io.hammerhead.karooext.KarooSystemService
 import com.enderthor.kremote.data.PressType
 import io.hammerhead.karooext.models.RequestAnt
-
 import timber.log.Timber
 
 class MainActivity : ComponentActivity() {
@@ -30,8 +29,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MainScreen(
                 repository = repository,
-                antManager = antManager,
-                karooSystem = karooSystem
+                antManager = antManager
             )
         }
     }
@@ -70,17 +68,17 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     repository: RemoteRepository,
-    antManager: AntManager,
-    karooSystem: KarooSystemService,
+    antManager: AntManager
 ) {
+
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
         TabLayout(
             repository = repository,
-            antManager = antManager,
-            onKarooEffect = { effect -> karooSystem.dispatch(effect) }
+            antManager = antManager
         )
     }
 }

@@ -2,6 +2,7 @@ package com.enderthor.kremote.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.core.content.edit
 import com.enderthor.kremote.ant.AntDeviceInfo
 import com.enderthor.kremote.ant.AntManager
 import com.enderthor.kremote.data.RemoteDevice
@@ -23,6 +24,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import android.content.Context
 import com.enderthor.kremote.data.getLabelString
+import com.enderthor.kremote.utils.DebugLogger
 import java.util.UUID
 
 class DeviceViewModel(
@@ -52,6 +54,12 @@ class DeviceViewModel(
     val learnedCommands: StateFlow<List<AntRemoteKey>> = _learnedCommands.asStateFlow()
 
     private var scanJob: Job? = null
+    private var learningTimeoutJob: Job? = null // NUEVO: Job para timeout automático
+
+    // NUEVO: Constante para timeout de learning mode
+    private companion object {
+        const val LEARNING_TIMEOUT_MS = 30_000L // 30 segundos
+    }
 
     init {
         viewModelScope.launch {
@@ -151,6 +159,7 @@ class DeviceViewModel(
     fun onNewAntDeviceSelected(deviceInfo: AntDeviceInfo) {
         _scanning.value = false
         scanJob?.cancel()
+        DebugLogger.logDeviceDetection(deviceInfo.deviceNumber, deviceInfo.name, "DeviceViewModel")
 
         viewModelScope.launch {
             try {
@@ -159,6 +168,12 @@ class DeviceViewModel(
 
                 if (existingDevice != null) {
                     // Si el dispositivo ya existe, simplemente actívalo
+                    DebugLogger.logConnectionEvent(
+                        deviceNumber = deviceInfo.deviceNumber,
+                        event = "DEVICE_ALREADY_EXISTS",
+                        details = "Device ${deviceInfo.name} already registered, activating existing device",
+                        source = "DeviceViewModel"
+                    )
                     _message.value = DeviceMessage.Success(getString(R.string.device_already_exists))
                     repository.setActiveDevice(existingDevice.id)
                 } else {
@@ -172,9 +187,23 @@ class DeviceViewModel(
                         macAddress = deviceInfo.deviceNumber.toString()
                     )
 
+                    DebugLogger.logConnectionEvent(
+                        deviceNumber = deviceInfo.deviceNumber,
+                        event = "NEW_DEVICE_REGISTERED",
+                        details = "Registering new ANT+ device: ${deviceInfo.name} with ID: $deviceId",
+                        source = "DeviceViewModel"
+                    )
+
                     repository.addDevice(newDevice)
                     _message.value = DeviceMessage.Success(getString(R.string.remote_registered_successfully))
                     repository.setActiveDevice(deviceId)
+
+                    DebugLogger.logConnectionEvent(
+                        deviceNumber = deviceInfo.deviceNumber,
+                        event = "DEVICE_ACTIVATED",
+                        details = "New device ${deviceInfo.name} registered and activated successfully",
+                        source = "DeviceViewModel"
+                    )
                 }
 
                 // Actualiza la lista de dispositivos disponibles
@@ -183,6 +212,7 @@ class DeviceViewModel(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error adding new ANT+ device")
+                DebugLogger.logError("DEVICE_REGISTRATION", "Failed to register device: ${deviceInfo.name}", e, "DeviceViewModel")
                 _message.value = DeviceMessage.Error(getString(R.string.error))
             }
         }
@@ -193,64 +223,158 @@ class DeviceViewModel(
     }
 
     fun startLearning() {
+        Timber.d("🎓 [DeviceViewModel] INICIO - startLearning() llamado")
+        DebugLogger.logConnectionEvent(0, "LEARNING_MODE_START", "Learning mode activated for device: ${selectedDevice.value?.name}", "DeviceViewModel")
+        
         _scanning.value = true
         _learnedCommands.value = emptyList()
+
+        // Activar en la instancia local de AntManager
+        antManager.setLearningMode(true)
+
+        // NUEVO: Sincronizar con la extensión usando SharedPreferences
+        val sharedPrefs = appContext.getSharedPreferences("kremote_state", Context.MODE_PRIVATE)
+        sharedPrefs.edit {
+            putBoolean("learning_mode", true)
+        }
+
+        Timber.d("🎓 [DeviceViewModel] Modo aprendizaje ACTIVADO y sincronizado con extensión")
+        DebugLogger.logConnectionEvent(0, "LEARNING_MODE_SYNC", "Learning mode synchronized with extension via SharedPrefs", "DeviceViewModel")
+        
+        // NUEVO: Iniciar monitoreo de comandos desde la extensión
+        startCommandListener()
+
+        // NUEVO: Iniciar job para timeout automático
+        startLearningTimeout()
+        DebugLogger.logConnectionEvent(0, "LEARNING_TIMEOUT_SET", "Auto-stop timeout set to 30 seconds", "DeviceViewModel")
+    }
+
+    fun stopLearning() {
+        Timber.d("🎓 [DeviceViewModel] INICIO - stopLearning() llamado")
+        DebugLogger.logConnectionEvent(0, "LEARNING_MODE_STOP", "Learning mode deactivated. Learned commands: ${_learnedCommands.value.size}", "DeviceViewModel")
+        
+        _scanning.value = false
+
+        // Desactivar en la instancia local
+        antManager.setLearningMode(false)
+
+        // NUEVO: Sincronizar con la extensión
+        val sharedPrefs = appContext.getSharedPreferences("kremote_state", Context.MODE_PRIVATE)
+        sharedPrefs.edit {
+            putBoolean("learning_mode", false)
+        }
+
+        Timber.d("🎓 [DeviceViewModel] Modo aprendizaje DESACTIVADO y sincronizado con extensión")
+        DebugLogger.logConnectionEvent(0, "LEARNING_MODE_DEACTIVATED", "Learning deactivated and synced with extension", "DeviceViewModel")
+
+        saveLearnedCommands()
+
+        // NUEVO: Cancelar job de timeout si está activo
+        learningTimeoutJob?.cancel()
+        DebugLogger.logConnectionEvent(0, "LEARNING_TIMEOUT_CANCELLED", "Auto-timeout job cancelled", "DeviceViewModel")
+    }
+
+    fun clearLearnedCommands() {
         selectedDevice.value?.let { device ->
-            try {
-                device.antDeviceId?.let { deviceId ->
-                    antManager.setLearningMode(true)
-                    viewModelScope.launch(Dispatchers.IO) {
-                        try {
-                            antManager.connect(deviceId)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error connecting to ANT+ device for learning")
-                            withContext(Dispatchers.Main) {
-                                _scanning.value = false
-                                _message.value = DeviceMessage.Error(getString(R.string.error))
+            viewModelScope.launch {
+                try {
+                    repository.clearDeviceCommands(device.id)
+                    _message.value = DeviceMessage.Success(getString(R.string.commands_cleared))
+                    Timber.d("🗑️ [DeviceViewModel] Comandos aprendidos borrados para dispositivo: ${device.name}")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error clearing learned commands for device: ${device.name}")
+                    _message.value = DeviceMessage.Error(getString(R.string.error_clearing_commands, e.message ?: "Unknown error"))
+                }
+            }
+        } ?: run {
+            _message.value = DeviceMessage.Error(getString(R.string.no_device_selected))
+        }
+    }
+
+    // NUEVO: Función para escuchar comandos desde la extensión
+    private fun startCommandListener() {
+        viewModelScope.launch {
+            val sharedPrefsCommands = appContext.getSharedPreferences("kremote_learned_commands", Context.MODE_PRIVATE)
+            var lastTimestamp = 0L
+            
+            while (_scanning.value) {
+                try {
+                    val currentTimestamp = sharedPrefsCommands.getLong("timestamp", 0L)
+                    
+                    if (currentTimestamp > lastTimestamp) {
+                        val commandName = sharedPrefsCommands.getString("last_command", null)
+                        val pressTypeName = sharedPrefsCommands.getString("last_press_type", "SINGLE")
+                        
+                        if (!commandName.isNullOrEmpty() && !pressTypeName.isNullOrEmpty()) {
+                            try {
+                                val command = AntRemoteKey.valueOf(commandName)
+                                val pressType = PressType.valueOf(pressTypeName)
+                                
+                                Timber.d("📥 [DeviceViewModel] Comando recibido desde extensión: $commandName ($pressTypeName)")
+                                onCommandDetected(command, pressType)
+                                
+                                lastTimestamp = currentTimestamp
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error procesando comando recibido: $commandName")
                             }
                         }
                     }
+                    
+                    delay(500) // Verificar cada 500ms
+                } catch (e: Exception) {
+                    Timber.e(e, "Error en listener de comandos")
+                    delay(1000)
                 }
-            } catch (e: Exception) {
-                _scanning.value = false
-                Timber.e(e, "Error starting learning mode")
-                _message.value = DeviceMessage.Error(getString(R.string.error))
             }
         }
     }
 
-    fun stopLearning() {
-        _scanning.value = false
-        antManager.setLearningMode(false)
-
-        saveLearnedCommands()
-    }
-
-    fun restartLearning() {
-        stopLearning()
-        _learnedCommands.value = emptyList()
-        startLearning()
-    }
-
     private fun onCommandDetected(command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
+        DebugLogger.logKeyEvent(
+            deviceNumber = selectedDevice.value?.antDeviceId ?: 0,
+            command = command.name,
+            pressType = pressType.name,
+            processed = true,
+            source = "DeviceViewModel"
+        )
 
         if (!_learnedCommands.value.contains(command)) {
             _learnedCommands.value = _learnedCommands.value + command
-
+            DebugLogger.logConnectionEvent(
+                deviceNumber = selectedDevice.value?.antDeviceId ?: 0,
+                event = "COMMAND_LEARNED",
+                details = "New command learned: ${command.name} (${pressType.name}). Total commands: ${_learnedCommands.value.size}",
+                source = "DeviceViewModel"
+            )
 
             selectedDevice.value?.let { device ->
                 viewModelScope.launch {
                     try {
-
                         repository.updateLearnedCommand(device.id, command, pressType)
                         _message.value = DeviceMessage.Success(
                             getString(R.string.command_learned, command.getLabelString(appContext))
                         )
+                        Timber.d("✅ [DeviceViewModel] Comando aprendido guardado: %s (%s)", command.name, pressType.name)
+                        DebugLogger.logConnectionEvent(
+                            deviceNumber = device.antDeviceId ?: 0,
+                            event = "COMMAND_SAVED_TO_DB",
+                            details = "Command ${command.name} saved to database for device ${device.name}",
+                            source = "DeviceViewModel"
+                        )
                     } catch (e: Exception) {
                         Timber.e(e, "Error saving learned command")
+                        DebugLogger.logError("LEARNING", "Failed to save learned command: ${command.name}", e, "DeviceViewModel")
                     }
                 }
             }
+        } else {
+            DebugLogger.logKeyEvent(
+                deviceNumber = selectedDevice.value?.antDeviceId ?: 0,
+                command = command.name,
+                pressType = pressType.name,
+                processed = false,
+                source = "DeviceViewModel"
+            )
         }
     }
 
@@ -260,6 +384,7 @@ class DeviceViewModel(
                 try {
                     for (command in _learnedCommands.value) {
                         repository.updateLearnedCommand(device.id, command)
+                        Timber.d("💾 [DeviceViewModel] Comando aprendido persisted: %s", command.name)
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Error saving learned commands")
@@ -269,17 +394,21 @@ class DeviceViewModel(
         }
     }
 
-    fun clearAllLearnedCommands() {
-        selectedDevice.value?.let { device ->
-            viewModelScope.launch {
-                try {
-                    repository.clearLearnedCommands(device.id)
-                    _learnedCommands.value = emptyList()
-                    _message.value = DeviceMessage.Success(getString(R.string.all_commands_cleared))
-                } catch (e: Exception) {
-                    Timber.e(e, "Error clearing learned commands")
-                    _message.value = DeviceMessage.Error(getString(R.string.error))
-                }
+    // NUEVO: Función para iniciar el job de timeout
+    private fun startLearningTimeout() {
+        learningTimeoutJob = viewModelScope.launch {
+            delay(LEARNING_TIMEOUT_MS)
+
+            // Si aún estamos en modo de aprendizaje, detenerlo automáticamente
+            if (_scanning.value) {
+                Timber.d("⏰ [DeviceViewModel] Timeout alcanzado, deteniendo modo aprendizaje automáticamente")
+                DebugLogger.logConnectionEvent(
+                    deviceNumber = 0,
+                    event = "LEARNING_TIMEOUT_REACHED",
+                    details = "Learning mode auto-stopped after 30 seconds. Commands learned: ${_learnedCommands.value.size}",
+                    source = "DeviceViewModel"
+                )
+                stopLearning()
             }
         }
     }

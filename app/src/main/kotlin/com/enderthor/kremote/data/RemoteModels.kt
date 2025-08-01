@@ -18,13 +18,15 @@ import io.hammerhead.karooext.models.ZoomPage
 
 
 const val EXTENSION_NAME = "kremote"
-const val reconnectAttempts = 10
-const val reconnectDelayMs = 5000L
-const val maxreconnectDelayMs = 60000L
-const val checkIntervalMs=  120000L
 const val autoReconnect = true
 const val minReconnectInterval = 2000L
 const val DEFAULT_DOUBLE_TAP_TIMEOUT = 1200L
+
+// Configuración de debug logging
+const val DEBUG_LOGGING_ENABLED = false
+
+// Optimizaciones de rendimiento
+const val COMMAND_PROCESSING_DELAY_MS = 50L // Delay mínimo entre comandos
 
 
 @Serializable
@@ -39,15 +41,16 @@ sealed class DeviceMessage {
 }
 
 @Serializable
-enum class BellBeepPattern(val displayName: String, val tones: List<PlayBeepPattern.Tone>) {
+enum class BellBeepPattern(val tones: List<PlayBeepPattern.Tone>) {
 
-    BELL4("Timbre Medium", listOf(
+    BELL4(
+        listOf(
         PlayBeepPattern.Tone(3_800, 900),
         PlayBeepPattern.Tone(0, 300),
         PlayBeepPattern.Tone(3_800, 1000),
     )),
     BELL5(
-        "Timbre High", listOf(
+        listOf(
             PlayBeepPattern.Tone(3_550, 900),
             PlayBeepPattern.Tone(0, 300),
             PlayBeepPattern.Tone(3_550, 1000),
@@ -73,8 +76,6 @@ enum class KarooKey(val action: KarooEffect, val labelResId: Int) {
     ZOOM_IN(ZoomPage(true), R.string.karoo_key_zoomin),
     ZOOM_OUT(ZoomPage(false), R.string.karoo_key_zoomout);
 
-    @Composable
-    fun getLabel(): String = stringResource(id = labelResId)
 }
 
 @Serializable
@@ -165,4 +166,3 @@ data class GlobalSettings(
     val onlyWhileRiding: Boolean = true,
     val isForcedScreenOn: Boolean = false,
 )
-

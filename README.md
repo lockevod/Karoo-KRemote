@@ -1,4 +1,4 @@
-# KRemote  Extension
+# KRemote Extension
 
 KRemote allows to use a Remote with Karoo and perform some actions with it (swipe screens, Bell, zoom in, zoom out, etc.)
 
@@ -25,9 +25,18 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 
 **It's mandatory to reset the Karoo after the installation (shutdown and start again).**
 
+## Important Notice
+
+⚠️ **If you see a warning that the extension is not available**, this can happen when:
+- Installing the extension for the first time
+- Reinstalling the extension
+- System loading issues
+
+**Solution:** Simply restart your Karoo device. The extension will load correctly after the restart.
+
 ## Instructions
 
-- This release adds the possibility to add multiple remotes. 
+- This release adds the possibility to add multiple remotes.
 - It's mandatory to scan your remote first. When you've the remote added (Remotes screen -> Scan -> push over your remote), you can scan for commands from your remote.
 - If you have a garmin remote, you don't need to scan/learn commands (if you use other Ant remote it's mandatory)
 - Then you need to go to Conf screen, select your remote and map Remotes commands to Karoo actions.
@@ -40,20 +49,114 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - You can map several actions (mark lap, swipe between screens, zoom in etc and use your Karoo as a BELL)
 - If you have karoo > 1.535 you can use showmap option also
 
+## Enroll new remote
+- If you want to enroll a new remote, you can do it in the Remotes screen
+- You can add multiple remotes, but only one remote can be active at the same time
+- To enroll a new remote, go to the Remotes screen and select "Scan". Then, press any button on your remote to start the scanning process. Once detected,add the remote.
+- After adding, if you have a Garmin remote, you can skip the command learning step. For other remotes, you need to learn the commands by pressing the buttons on your remote while the app is in learning mode.
+- You can learn commands if you go to remote configure screen (push wheel in active remote. It's near trash symbol). 
+- Then you have to select "Learn Commands" and press the buttons on your remote to map them to Karoo actions.
+- You can also delete all learned commands and start again if you want to reset the remote configuration.
+- Then you have to go to Map Screen and select the remote you want to use (only if you have multiple remotes added).
+- Then you can map actions with the remote buttons and active some options (like double tap, only with riding, etc).
+- If you have problems you can go to Debug screen and enable debug logging. This will help you to see what is happening in the app and if there are any issues with the remote connection or commands.Please repeat the process and send me the log.
+
+## New Features & Performance Improvements
+
+### 🚀 Intelligent Heartbeat System
+- **Automatic Riding Detection**: KRemote automatically detects when you start/stop a ride on your Karoo
+- **Adaptive Connection Monitoring**:
+  - During riding: More frequent connection checks (every 5 minutes) for critical reliability
+  - Normal use: Relaxed monitoring (every 10-15 minutes) to preserve battery
+- **Real-time ANT+ Events**: Instant detection of connection/disconnection events from the hardware
+- **Smart Reconnection**: Automatic reconnection with exponential backoff if connection is lost
+
+### 🔧 Advanced Debug System
+- **Debug Screen**: Access via the main menu to monitor connection status and system performance
+- **Intelligent Logging**:
+  - Automatic timeout after 24 hours to protect performance
+  - Persistent between app restarts (with auto-disable protection)
+  - Smart log rotation to prevent large files (5MB limit with backup)
+- **Real-time Connection Monitoring**: See live status of all connected ANT+ devices
+- **Performance Optimization Controls**: Enable/disable various optimizations and view cache statistics
+
+### 📁 Debug Log Files
+Debug logs are saved directly in the app's root directory:
+- **Location**: `/Android/data/com.enderthor.kremote/files/kremote_debug.log`
+- **Backup**: Previous session logs are preserved as `kremote_debug_previous.log`
+- **Access**: Files can be accessed via file manager or ADB for troubleshooting
+
+### 🛡️ Performance Optimizations
+- **Smart Caching**: Reduces redundant connection checks and ANT+ operations
+- **Memory Management**: Automatic cleanup of unused resources and expired data
+- **Battery Optimization**: Intelligent intervals based on usage context (riding vs. idle)
+- **Connection State Tracking**: Maintains device state without constant polling
+
+### 🔄 Enhanced Reconnection Management
+- **Visual Feedback**: Debug screen shows connection status with color-coded indicators:
+  - 🟢 Green: Connected and working
+  - 🟡 Orange: Reconnecting (shows attempt number)
+  - 🔴 Red: Disconnected (shows last error)
+- **Manual Override**: Force reconnection button available during reconnection attempts
+- **Detailed Error Information**: Shows specific connection errors for troubleshooting
+
+### 📊 Debug Screen Features
+To access the Debug Screen: **Main Menu → Debug**
+
+**Performance Optimizations Section** (Always visible):
+- Toggle performance optimizations on/off
+- View cache statistics and memory usage
+- Clear caches manually
+- Monitor coroutine pool status
+
+**Debug Logging Section**:
+- Enable/disable debug logging with 24-hour auto-timeout
+- View remaining time until auto-disable
+- Performance impact warnings
+- Clear log files
+- Real-time debug information display
+
+**Connection Status Section** (When debug enabled):
+- Live monitoring of all ANT+ devices
+- Connection state with timestamps
+- Error messages and reconnection attempts
+- Force reconnection controls
+- System diagnostics information
+
+### 🎯 Smart Connection Management
+- **Context-Aware**: Different behavior during rides vs. normal use
+- **Event-Driven**: Responds instantly to real ANT+ hardware events
+- **Predictive**: Uses activity patterns to optimize checking intervals
+- **Self-Healing**: Automatic recovery from connection issues without user intervention
+
+## Troubleshooting
+
+### Connection Issues
+1. **Check Debug Screen**: Go to Main Menu → Debug to see real-time connection status
+2. **Enable Debug Logging**: Turn on debug logging to capture detailed connection information
+3. **Review Log Files**: Access log files in `/Android/data/com.enderthor.kremote/files/`
+You can use ADB to pull logs for analysis (or a file manager)
+4. **Force Reconnection**: Use the "Force Reconnection" button in Debug screen if needed
+
+### Performance Issues
+1. **Check Optimizations**: Ensure Performance Optimizations are enabled in Debug screen
+2. **Review Cache Usage**: Monitor cache statistics to ensure proper memory management
+3. **Disable Debug Logging**: Turn off debug logging if not needed (impacts performance)
+4. **Clear Caches**: Use "Clear Caches" button to free up memory
+
+### Debug Log Analysis
+Debug logs contain detailed information about:
+- Connection events and state changes
+- ANT+ hardware events and responses
+- Reconnection attempts and results
+- Performance optimization activities
+- Error messages with timestamps
+
 ## Know Bugs
 - Sometimes app isn't working fine, this new release has better support and it's working fine, but you need to know, Karoo function have priority oven kremote actions.
-- Sometimes app can't detect the remote, you need to restart the app.. or the Karoo. Restart karoo solve most of the problems (with this app and with anything.. sometimes karoo is slowly if you have several custom apps)
-- Karoo has a buzzer and it doesn't allow to change amplitude, then we only can "play" with frequenzy and duration. Bell sound is complicated with this two only parameters, please if you now howto modelate better, please open an issue ;)
 
-## Credits, license and  privacy
-
-- Made possible by the generous usage terms of timklge (apache 2.0). He has a great development and I use part of his code to create this extension.
-  https://github.com/timklge?tab=repositories
-- This app use ANT library from ANT+ (please review their copyright and conditions). If you want to compile you need to download antpluginlib_3-9-0.aar  and place in lib directory. You can download from ANT+ repositories
-- SRAM and Hammerhead coypyright are describer in Karoo file.
-- Credits and copyright. Please respect license and specific parts licencsers (icons, etc). If you use this app you're agree.
-- KRemote doesn't save or share any information for it's use, but it use firebase crashlytics service only for crashes in app (and firebase use this crash information). I only use this information to prevent new crashes in the app. Please if you isn't agree with Firebase use (this conditions are in firebase web and can change, please read it), please you cannot use app. If you use it you are agree with all conditions and copyrights.
-
-## Links
-
-[karoo-ext source](https://github.com/hammerheadnav/karoo-ext)
+## Technical Notes
+- **Automatic Riding Detection**: Uses Karoo's native riding state broadcasts
+- **Debug Auto-Timeout**: Debug logging automatically disables after 24 hours to prevent performance impact
+- **Connection Monitoring**: Adaptive intervals based on riding state and recent device activity
+- **Log Rotation**: Automatic backup and rotation of log files to prevent storage issues
