@@ -12,7 +12,8 @@
 
     <!-- Tab Layout -->
     <string name="tab_mapping">Mapeo</string>
-    <string name="tab_remotes">Controles</string>
+    <string name="tab_remotes">Remote</string>
+    <string name="tab_debug">Debug</string>
 
     <!-- Device Management Screen -->
     <string name="configure_commands">Configurar Comandos</string>
@@ -37,6 +38,9 @@
     <string name="restart_learning">Reiniciar Aprendizaje</string>
     <string name="start_learning">Iniciar Aprendizaje</string>
     <string name="clear_all_commands">Borrar Todos los Comandos</string>
+    <string name="clear_learned_commands">Borrar Comandos Aprendidos</string>
+    <string name="clear_commands_confirmation">¿Estás seguro de que deseas borrar todos los comandos aprendidos para este dispositivo? Esta acción no se puede deshacer.</string>
+    <string name="commands_cleared">Comandos borrados exitosamente</string>
     <string name="detected_commands">Comandos Detectados en esta Sesión</string>
     <string name="command_code">Código: %1$s</string>
     <string name="saved_commands">Comandos Guardados (%1$d)</string>
@@ -116,4 +120,49 @@
     <string name="karoo_key_turnoff">Apagar Pantalla</string>
     <string name="karoo_key_zoomin">Acercar</string>
     <string name="karoo_key_zoomout">Alejar</string>
+
+    <!-- Learning Strings -->
+    <string name="learning_title">Aprendiendo teclas para: %1$s</string>
+    <string name="learning_instructions">Presiona los botones del mando para configurarlos…</string>
+    <string name="commands_detected">Comandos detectados:</string>
+    <string name="waiting_commands">🎯 Esperando comandos</string>
+    <string name="back_to_devices">← Volver a dispositivos</string>
+
+    <!-- Debug Screen -->
+    <string name="debug_performance_optimizations">Optimizaciones de Rendimiento</string>
+    <string name="debug_optimizations_enabled">Optimizaciones habilitadas</string>
+    <string name="debug_clear_caches">Limpiar Cachés</string>
+    <string name="debug_optimizations_status">🔧 Optimizaciones: %1$s</string>
+    <string name="debug_optimizations_enabled_status">✅ Habilitadas</string>
+    <string name="debug_optimizations_disabled_status">❌ Deshabilitadas</string>
+    <string name="debug_command_cache">📦 Caché de comandos: %1$d objetos</string>
+    <string name="debug_connection_cache">🔗 Caché de conexiones: %1$d entradas</string>
+    <string name="debug_coroutine_pool">⚡ Pool de corrutinas: Limitado a 2 threads</string>
+    <string name="debug_logging_title">Logging de Debug</string>
+    <string name="debug_logging_enabled">Debug logging habilitado</string>
+    <string name="debug_logging_active">✅ Logging activado - Los eventos se guardan en archivo</string>
+    <string name="debug_logging_inactive">❌ Logging desactivado - No se guardan eventos</string>
+    <string name="debug_logging_warning">⚠️ El logging consume recursos. Desactivar cuando no sea necesario.</string>
+    <string name="debug_clear_log">Limpiar Log</string>
+    <string name="debug_connection_status">Estado de Conexiones</string>
+    <string name="debug_no_devices_monitored">No hay dispositivos monitoreados. Asegúrate de tener un dispositivo ANT+ conectado y activo.</string>
+    <string name="debug_system_diagnosis">🔍 Diagnóstico del Sistema</string>
+    <string name="debug_reconnection_manager_available">✅ ReconnectionManager: Disponible</string>
+    <string name="debug_reconnection_manager_null">❌ ReconnectionManager: NULL - El servicio puede no estar ejecutándose</string>
+    <string name="debug_reconnection_manager_explanation">💡 Si el ReconnectionManager es NULL, significa que el ConnectionService no se ha iniciado o ha fallado.</string>
+    <string name="debug_real_monitoring_active">🟢 MONITOREO REAL ACTIVO</string>
+    <string name="debug_simulated_states">🟡 ESTADOS SIMULADOS</string>
+    <string name="debug_shows_registered_devices">Solo muestra dispositivos registrados</string>
+    <string name="debug_device_number">Dispositivo #%1$d</string>
+    <string name="debug_device_status">Estado: </string>
+    <string name="debug_device_connected">✅ Conectado</string>
+    <string name="debug_device_reconnecting">🔄 Reconectando (%1$d)</string>
+    <string name="debug_device_disconnected">❌ Desconectado</string>
+    <string name="debug_device_error">Error: %1$s</string>
+    <string name="debug_force_reconnection">Forzar Reconexión</string>
+
+    <!-- Extension Status -->
+    <string name="extension_not_available">Extensión no disponible</string>
+    <string name="extension_restart_karoo">Reinicia tu dispositivo Karoo</string>
+    <string name="extension_warning_message">⚠️ %1$s. %2$s.</string>
 </resources>

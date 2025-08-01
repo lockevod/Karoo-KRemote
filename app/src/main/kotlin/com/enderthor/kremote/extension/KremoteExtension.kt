@@ -3,6 +3,7 @@ package com.enderthor.kremote.extension
 import android.annotation.SuppressLint
 import android.content.Intent
 
+
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
 import io.hammerhead.karooext.models.RequestAnt
@@ -28,6 +29,7 @@ import com.enderthor.kremote.data.GlobalSettings
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
 import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.data.getLabelString
+import com.enderthor.kremote.utils.DebugLogger
 
 
 
@@ -45,6 +47,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import io.hammerhead.karooext.models.OnGlobalPOIs
 
 import io.hammerhead.karooext.models.UserProfile
+import androidx.core.content.edit
+import com.enderthor.kremote.utils.PerformanceOptimizer
 
 
 class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME) {
@@ -88,6 +92,43 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             Timber.d("[KRemote] Comando ANT recibido en extensión: ${command.getLabelString(applicationContext)} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
             extensionScope.launch(Dispatchers.Main) {
                 try {
+                    // MEJORADO: Verificar estado de aprendizaje desde SharedPreferences
+                    val sharedPrefs = applicationContext.getSharedPreferences("kremote_state",
+                        MODE_PRIVATE
+                    )
+                    val isLearningMode = sharedPrefs.getBoolean("learning_mode", false)
+
+                    Timber.d("🔍 [KRemote] DIAGNÓSTICO APRENDIZAJE:")
+                    Timber.d("   ├── SharedPreferences learning_mode: $isLearningMode")
+                    Timber.d("   ├── AntManager learningMode actual: ${_antManager.learningMode}")
+
+                    // Sincronizar el estado con AntManager local
+                    _antManager.setLearningMode(isLearningMode)
+
+                    Timber.d("   └── AntManager learningMode después sync: ${_antManager.learningMode}")
+
+                    if (isLearningMode) {
+                        Timber.d("🎓 [KRemote] MODO APRENDIZAJE: Comando detectado sin restricciones (sincronizado desde app)")
+
+                        // NUEVO: Comunicar el comando detectado de vuelta a la aplicación
+                        val sharedPrefsCommands = applicationContext.getSharedPreferences("kremote_learned_commands",
+                            MODE_PRIVATE
+                        )
+                        val currentTime = System.currentTimeMillis()
+                        sharedPrefsCommands.edit {
+                            putString("last_command", command.name)
+                            putString("last_press_type", pressType.name)
+                            putLong("timestamp", currentTime)
+                        }
+
+                        Timber.d("📤 [KRemote] Comando enviado a app: ${command.name} (${pressType.name})")
+
+                        // En modo aprendizaje, no aplicar restricciones de riding
+                        // El comando se procesará directamente por el DeviceViewModel
+                        return@launch
+                    }
+
+                    // Solo aplicar restricciones de riding cuando NO estamos aprendiendo
                     if (::karooAction.isInitialized) {
                         karooAction.handleAntCommand(command.gCommand, pressType)
                     }
@@ -109,7 +150,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     applicationContext,
                     { isServiceConnected },
                     { isRiding },
-                    { globalSettings?.onlyWhileRiding != false },
+                    { globalSettings?.onlyWhileRiding ?: false },
                     { globalSettings?.isForcedScreenOn != false},
                     { activeDevice }
                 )
@@ -126,7 +167,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         monitorActiveDeviceChanges()
         startConnectionService()
         initializeRideReceiver()
-        //initializeEvents()
+        initializeEvents()
     }
 
     private fun initializeEvents() {
@@ -162,6 +203,10 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
                 karooSystem.addConsumer { user: UserProfile ->
                     Timber.w("UserProfile changed: $user")
+                }
+
+                karooSystem.addConsumer { event: OnGlobalPOIs ->
+                    Timber.w("UserProfile changed: $event")
                 }
 
             }
@@ -234,7 +279,32 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     private fun initializeRideReceiver() {
         rideReceiver = KarooRideReceiver { isRideActive ->
             Timber.d("Ride state changed: active = $isRideActive")
+            DebugLogger.logConnectionEvent(
+                deviceNumber = 0,
+                event = "RIDE_STATE_CHANGED",
+                details = "Ride active: $isRideActive (previous: $isRiding)",
+                source = "KremoteExtension"
+            )
             isRiding = isRideActive
+            
+            // NUEVO: Notificar al sistema de heartbeat del cambio de estado de riding
+            PerformanceOptimizer.setRidingState(isRideActive)
+
+            // Log adicional para verificar configuraciones relacionadas
+            extensionScope.launch {
+                try {
+                    val currentConfig = repository.currentConfig.first()
+                    val onlyWhileRiding = currentConfig.globalSettings.onlyWhileRiding
+                    DebugLogger.logConnectionEvent(
+                        deviceNumber = 0,
+                        event = "RIDE_CONFIG_CHECK",
+                        details = "OnlyWhileRiding setting: $onlyWhileRiding, Current riding state: $isRideActive, Heartbeat mode: ${if (isRideActive) "CRITICAL" else "NORMAL"}",
+                        source = "KremoteExtension"
+                    )
+                } catch (e: Exception) {
+                    Timber.e(e, "Error getting current config for ride state logging")
+                }
+            }
         }
 
         rideReceiver?.let { receiver ->
@@ -252,10 +322,18 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
     private fun startConnectionService() {
         try {
+            DebugLogger.logConnectionEvent(0, "EXTENSION_START_SERVICE", "Attempting to start ConnectionService via broadcast", "KremoteExtension")
+            Timber.d("[KremoteExtension] Enviando broadcast para iniciar ConnectionService")
+
             val intent = Intent("com.enderthor.kremote.START_CONNECTION_SERVICE")
             intent.putExtra(ConnectionServiceReceiver.EXTRA_IS_EXTENSION, true)
-            sendBroadcast(intent)
+            // ARREGLADO: Usar el permiso requerido por el receiver
+            sendBroadcast(intent, "com.enderthor.kremote.PERMISSION_START_CONNECTION")
+
+            DebugLogger.logConnectionEvent(0, "EXTENSION_BROADCAST_SENT", "Broadcast sent successfully with permission", "KremoteExtension")
+            Timber.d("[KremoteExtension] Broadcast enviado correctamente con permiso")
         } catch (e: Exception) {
+            DebugLogger.logError("EXTENSION", "Error starting ConnectionService", e, "KremoteExtension")
             Timber.e(e, "Error starting ConnectionService")
         }
     }
@@ -280,10 +358,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             extensionScope.cancel()
 
         } catch (e: Exception) {
-            Timber.e(e, "Error during extension destruction")
-        }
-        finally {
-            super.onDestroy()
+            Timber.e(e, "Error during onDestroy")
         }
     }
 }

@@ -23,10 +23,8 @@ class ConfigurationViewModel(
     val devices: StateFlow<List<RemoteDevice>> = _devices.asStateFlow()
 
     private val _activeDevice = MutableStateFlow<RemoteDevice?>(null)
-    val activeDevice: StateFlow<RemoteDevice?> = _activeDevice.asStateFlow()
 
     private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     private val _onlyWhileRiding = MutableStateFlow(true)
     val onlyWhileRiding: StateFlow<Boolean> = _onlyWhileRiding.asStateFlow()

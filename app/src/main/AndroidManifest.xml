@@ -6,6 +6,8 @@
         android:name="com.enderthor.kremote.PERMISSION_START_CONNECTION"
         android:protectionLevel="signature" />
 
+    <uses-permission android:name="com.enderthor.kremote.PERMISSION_START_CONNECTION" />
+
     <application
         android:name=".KremoteApplication"
         android:allowBackup="true"
@@ -18,7 +20,8 @@
         <service
             android:name=".service.ConnectionService"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
 
         <activity
             android:name=".activity.MainActivity"
@@ -55,6 +58,3 @@
     </application>
 
 </manifest>
-
-
-
