@@ -46,14 +46,14 @@ object NotificationHelper {
 
     fun createServiceNotification(
         context: Context,
-        title: String = "KRemote - Servicio activo",
-        content: String = "Servicio de conexión ANT+ en ejecución",
+        title: String = "KRemote - Service Active",
+        content: String = "ANT Service executing",
         isWarning: Boolean = false
     ): Notification {
         // Asegurar que los canales existen
         createNotificationChannels(context)
 
-        // Intent para abrir la app cuando se toque la notificación
+        // Intent to open the app when notification is tapped
         val intent = Intent().apply {
             setClassName(context.packageName, "${context.packageName}.MainActivity")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -80,11 +80,11 @@ object NotificationHelper {
             .setPriority(priority)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
 
-        // Si es advertencia, añadir más información
+        // If it's a warning, add more information
         if (isWarning) {
             builder.setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("$content\n\nPara solucionarlo:\n1. Reinicia tu dispositivo Karoo\n2. Vuelve a abrir KRemote")
+                    .bigText("$content\n\nTo solve:\n Restart Karoo\n2. Reopen App")
             )
         } else {
             builder.setSilent(true)

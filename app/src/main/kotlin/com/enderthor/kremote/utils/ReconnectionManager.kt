@@ -28,7 +28,7 @@ class ReconnectionManager(
     private val reconnectionJobs = mutableMapOf<Int, Job>()
     private val monitoringJobs = mutableMapOf<Int, Job>()
 
-    // NUEVO: Acceso público al AntManager para heartbeat
+    // Acceso público al AntManager para heartbeat
     fun getAntManager(): AntManager = antManager
 
     // Configuración mejorada con PerformanceOptimizer
@@ -39,7 +39,7 @@ class ReconnectionManager(
     private val connectionTimeout = 15000L
 
     init {
-        // MEJORADO: Inicializar limpieza periódica usando HeartbeatManager
+        // Inicializar limpieza periódica usando HeartbeatManager
         HeartbeatManager.setupPeriodicCleanup(scope)
     }
 
@@ -126,12 +126,12 @@ class ReconnectionManager(
                             if (!isConnected && currentState.isConnected && !currentState.isReconnecting) {
                                 // Conexión perdida, iniciar reconexión
                                 DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_LOST", "Starting reconnection process")
-                                Timber.w("[ReconnectionManager] 🔴 Conexión perdida para dispositivo #$deviceNumber - iniciando reconexión")
+                                Timber.w("[ReconnectionManager] 🔴 Connection lost for device #$deviceNumber - starting reconnection")
                                 startReconnection(deviceNumber)
                             } else if (isConnected && !currentState.isConnected) {
                                 // Conexión recuperada
                                 DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_RECOVERED")
-                                Timber.i("[ReconnectionManager] 🟢 Conexión recuperada para dispositivo #$deviceNumber")
+                                Timber.i("[ReconnectionManager] 🟢 Connection recovered for device #$deviceNumber")
                                 PerformanceOptimizer.recordDeviceReconnection(deviceNumber)
                                 updateConnectionState(deviceNumber) {
                                     it.copy(
@@ -163,7 +163,7 @@ class ReconnectionManager(
                         }
                     }
 
-                    // MEJORADO: Usar intervalo adaptativo del HeartbeatManager
+                    // Usar intervalo adaptativo del HeartbeatManager
                     val optimalInterval = PerformanceOptimizer.getOptimalVerificationInterval(deviceNumber)
                     DebugLogger.logConnectionEvent(deviceNumber, "MONITORING_INTERVAL", "Próxima verificación en ${optimalInterval}ms", "ReconnectionManager")
                     delay(optimalInterval)

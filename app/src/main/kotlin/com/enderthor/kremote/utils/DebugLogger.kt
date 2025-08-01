@@ -15,33 +15,33 @@ object DebugLogger {
     private var logFile: File? = null
     private var contextRef: WeakReference<Context>? = null
     
-    // Configuración de timeout automático para debug (24 horas)
-    private const val DEBUG_AUTO_DISABLE_TIMEOUT = 24 * 60 * 60 * 1000L // 24 horas en ms
+    // Automatic timeout configuration for debug (24 hours)
+    private const val DEBUG_AUTO_DISABLE_TIMEOUT = 24 * 60 * 60 * 1000L // 24 hours in ms
     private const val PREFS_NAME = "kremote_debug_prefs"
     private const val PREF_DEBUG_ENABLED = "debug_enabled"
     private const val PREF_DEBUG_ENABLED_TIME = "debug_enabled_time"
 
     fun initialize(context: Context, enabled: Boolean = false) {
-        // Usar ApplicationContext para evitar memory leaks
+        // Use ApplicationContext to avoid memory leaks
         this.contextRef = WeakReference(context.applicationContext)
         
-        // Verificar si hay preferencia guardada y si no ha expirado
+        // Check if there's a saved preference and if it hasn't expired
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val savedEnabled = prefs.getBoolean(PREF_DEBUG_ENABLED, false)
         val enabledTime = prefs.getLong(PREF_DEBUG_ENABLED_TIME, 0L)
         val currentTime = System.currentTimeMillis()
         
-        // Si el debug estaba habilitado pero ha pasado el timeout, deshabilitarlo
+        // If debug was enabled but timeout has passed, disable it
         isDebugEnabled = if (savedEnabled && (currentTime - enabledTime) < DEBUG_AUTO_DISABLE_TIMEOUT) {
             Timber.w("Debug logging restored from previous session (${(currentTime - enabledTime) / (60 * 60 * 1000)}h ago)")
             true
         } else {
             if (savedEnabled) {
-                // Limpiar preferencia expirada usando KTX
+                // Clear expired preference using KTX
                 prefs.edit { clear() }
                 Timber.i("Debug logging auto-disabled due to timeout")
             }
-            enabled // Usar valor por defecto
+            enabled // Use default value
         }
         
         createLogFileIfNeeded()
@@ -54,7 +54,7 @@ object DebugLogger {
         if (context != null) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             if (enabled) {
-                // Guardar preferencia con timestamp usando KTX
+                // Save preference with timestamp using KTX
                 prefs.edit {
                     putBoolean(PREF_DEBUG_ENABLED, true)
                     putLong(PREF_DEBUG_ENABLED_TIME, System.currentTimeMillis())
@@ -64,7 +64,7 @@ object DebugLogger {
                 logConnectionEvent(0, "DEBUG_MODE_ENABLED", "Debug logging activated from menu (will auto-disable in 24h)")
                 Timber.w("⚠️ DEBUG LOGGING ENABLED - This may impact performance! Auto-disable in 24h")
             } else {
-                // Limpiar preferencia usando KTX
+                // Clear preference using KTX
                 prefs.edit { clear() }
                 logConnectionEvent(0, "DEBUG_MODE_DISABLED", "Debug logging deactivated")
                 Timber.i("Debug logging disabled")
@@ -73,7 +73,7 @@ object DebugLogger {
     }
     
     /**
-     * Obtiene información sobre el estado de debug y cuándo expira
+     * Obtains information about the debug status and when it expires
      */
     fun getDebugInfo(): String {
         if (!isDebugEnabled) return "Debug: DISABLED"
@@ -95,9 +95,9 @@ object DebugLogger {
         val context = contextRef?.get()
         if (isDebugEnabled && context != null) {
             try {
-                // Escribir directamente en la raíz del directorio de archivos externos
+                // Write directly to external files directory root
                 val debugDir = context.getExternalFilesDir(null) ?: context.filesDir
-                debugDir.mkdirs() // Asegurar que el directorio existe
+                debugDir.mkdirs() // Ensure the directory exists
 
                 logFile = File(debugDir, "kremote_debug.log")
 
@@ -106,25 +106,25 @@ object DebugLogger {
                 Timber.d("Directory exists: ${debugDir.exists()}")
                 Timber.d("Directory writable: ${debugDir.canWrite()}")
 
-                // Limpiar log anterior si es muy grande (>5MB)
+                // Clear previous log if it's too large (>5MB)
                 logFile?.let { file ->
                     if (file.exists() && file.length() > 5 * 1024 * 1024) {
-                        // En lugar de borrar, rotar el archivo
+                        // Instead of deleting, rotate the file
                         val backupFile = File(debugDir, "kremote_debug_previous.log")
                         if (backupFile.exists()) {
-                            backupFile.delete() // Borrar backup anterior si existe
+                            backupFile.delete() // Delete previous backup if exists
                         }
                         
-                        // Mover el archivo actual como backup
+                        // Move the current file as backup
                         file.renameTo(backupFile)
                         Timber.d("Rotated large log file to: ${backupFile.absolutePath}")
                         
-                        // Crear nuevo archivo limpio
+                        // Create new clean file
                         file.createNewFile()
                         Timber.d("Created fresh log file: ${file.absolutePath}")
                     }
 
-                    // Log inicial para verificar que funciona
+                    // Initial log to verify it's working
                     val initialMessage = "\n=== KREMOTE DEBUG SESSION STARTED ===\n" +
                             "Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}\n" +
                             "File: ${file.absolutePath}\n" +
@@ -136,7 +136,7 @@ object DebugLogger {
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error creating debug log file")
-                // Fallback a directorio interno si hay problemas
+                // Fallback to internal directory if there are issues
                 try {
                     context.let {
                         logFile = File(it.filesDir, "kremote_debug.log")
@@ -207,7 +207,7 @@ object DebugLogger {
     private fun getCallerInfo(): String {
         return try {
             val stackTrace = Thread.currentThread().stackTrace
-            // Buscar el primer frame que no sea DebugLogger
+            // Find the first frame that is not DebugLogger
             for (i in 3 until stackTrace.size) {
                 val element = stackTrace[i]
                 if (!element.className.contains("DebugLogger")) {
@@ -227,10 +227,10 @@ object DebugLogger {
         val timestamp = dateFormat.format(Date())
         val logEntry = "[$timestamp] $message\n"
 
-        // Log to Timber también
+        // Log to Timber also
         Timber.d(message)
 
-        // Escribir a archivo si está habilitado
+        // Write to file if enabled
         logFile?.let { file ->
             try {
                 file.appendText(logEntry)
@@ -248,24 +248,24 @@ object DebugLogger {
         try {
             logFile?.let { file ->
                 if (file.exists()) {
-                    // Vaciar el contenido del archivo en lugar de borrarlo
+                    // Empty the file content instead of deleting it
                     file.writeText("")
 
-                    // Escribir un mensaje de confirmación
-                    val clearMessage = "\n=== LOG LIMPIADO ===\n" +
-                            "Tiempo: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}\n" +
-                            "Archivo: ${file.absolutePath}\n\n"
+                    // Write a confirmation message
+                    val clearMessage = "\n=== LOG CLEARED ===\n" +
+                            "Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}\n" +
+                            "File: ${file.absolutePath}\n\n"
                     file.appendText(clearMessage)
 
-                    Timber.d("[DebugLogger] ✅ Log limpiado correctamente")
+                    Timber.d("[DebugLogger] ✅ Log cleaned")
                 } else {
-                    Timber.w("[DebugLogger] ⚠️ Archivo de log no existe, no se puede limpiar")
+                    Timber.w("[DebugLogger] ⚠️ Log file does not exist, cannot clean")
                 }
             } ?: run {
-                Timber.w("[DebugLogger] ⚠️ LogFile es null, no se puede limpiar")
+                Timber.w("[DebugLogger] ⚠️ LogFile is null, cannot clean")
             }
         } catch (e: Exception) {
-            Timber.e(e, "[DebugLogger] ❌ Error limpiando el log")
+            Timber.e(e, "[DebugLogger] ❌ Error cleaning the log")
         }
     }
 

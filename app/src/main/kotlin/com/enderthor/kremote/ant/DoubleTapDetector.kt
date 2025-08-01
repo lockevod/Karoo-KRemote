@@ -20,18 +20,18 @@ class DoubleTapDetector(
         val timeSinceLastCommand = currentTime - lastTime
 
         DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "DETECTING", true)
-        Timber.d("Comando recibido: $commandNumber")
-        Timber.d("Tiempo desde la última pulsación: $timeSinceLastCommand")
-        Timber.d("Tiempo de doble pulsación: $doubleTapTimeout")
+        Timber.d("Command received: $commandNumber")
+        Timber.d("Time since last press: $timeSinceLastCommand")
+        Timber.d("Double tap timeout: $doubleTapTimeout")
 
         if (timeSinceLastCommand <= doubleTapTimeout && timeSinceLastCommand > 50) { // Evitar rebotes < 50ms
-            // Doble tap detectado
+            // Double tap detected
             DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "DOUBLE", true)
-            Timber.d("Doble pulsación detectada: $commandNumber")
+            Timber.d("Double tap detected: $commandNumber")
             pendingCommands.remove(commandNumber)
             onCommand(commandNumber, PressType.DOUBLE)
         } else {
-            // Posible single tap, esperar para confirmar
+            // Single tap, wait to confirm
             pendingCommands.add(commandNumber)
             Handler(Looper.getMainLooper()).postDelayed({
                 if (pendingCommands.contains(commandNumber)) {
@@ -48,7 +48,7 @@ class DoubleTapDetector(
     fun updateTimeout(newTimeout: Long) {
         this.doubleTapTimeout = newTimeout
         DebugLogger.logConnectionEvent(0, "DOUBLE_TAP_TIMEOUT_UPDATED", "New timeout: $newTimeout ms")
-        Timber.d("[DoubleTapDetector] Timeout actualizado a: $newTimeout ms")
+        Timber.d("[DoubleTapDetector] Timeout updated to: $newTimeout ms")
     }
 
 }

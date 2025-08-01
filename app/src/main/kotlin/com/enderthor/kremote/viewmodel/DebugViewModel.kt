@@ -75,7 +75,7 @@ class DebugViewModel(
             DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton found", "DebugViewModel")
             Timber.d("[DebugViewModel] ReconnectionManager singleton encontrado")
 
-            // NUEVO: Verificar si hay estados de conexión activos
+            // Verificar si hay estados de conexión activos
             viewModelScope.launch {
                 reconnectionManager.connectionStates.collect { states ->
                     DebugLogger.logConnectionEvent(0, "CONNECTION_STATES_UPDATE", "States count: ${states.size}, devices: ${states.keys.toList()}", "DebugViewModel")
@@ -87,12 +87,12 @@ class DebugViewModel(
             Timber.w("[DebugViewModel] ReconnectionManager singleton es NULL - mostrando dispositivos registrados en su lugar")
         }
 
-        // NUEVO: Verificación activa puntual cuando se accede a la pantalla de debug
+        //  Verificación activa puntual cuando se accede a la pantalla de debug
         performPeriodicActiveCheck()
     }
 
     /**
-     * NUEVO: Realiza verificaciones activas puntuales de conexión
+     * Realiza verificaciones activas puntuales de conexión
      * Solo se ejecuta cuando se accede a la pantalla de debug y cada 10 minutos
      */
     private fun performPeriodicActiveCheck() {
@@ -111,8 +111,8 @@ class DebugViewModel(
     }
 
     /**
-     * NUEVO: Ejecuta verificaciones activas para todos los dispositivos registrados
-     * MEJORADO: Usar HeartbeatManager en lugar de PerformanceOptimizer directamente
+     *  Ejecuta verificaciones activas para todos los dispositivos registrados
+     *  Usar HeartbeatManager en lugar de PerformanceOptimizer directamente
      */
     private suspend fun performActiveConnectionChecks(reason: String) {
         val reconnectionManager = ReconnectionManagerSingleton.getInstance()
@@ -125,7 +125,7 @@ class DebugViewModel(
             devices.forEach { device ->
                 device.antDeviceId?.let { deviceId ->
                     try {
-                        // MEJORADO: Usar HeartbeatManager en lugar de PerformanceOptimizer directamente
+                        //  Usar HeartbeatManager en lugar de PerformanceOptimizer directamente
                         val isConnected = HeartbeatManager.performDebugScreenCheck(deviceId, antManager)
 
                         // Actualizar estado si es diferente del actual
@@ -200,6 +200,4 @@ class DebugViewModel(
         }
     }
 
-    // Funciones de limpieza y configuración de debug eliminadas para reducir warnings
-    // Las funciones de heartbeat se mantienen disponibles a través de HeartbeatManager directamente
 }
