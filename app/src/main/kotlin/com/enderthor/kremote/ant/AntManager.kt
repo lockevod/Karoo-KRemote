@@ -55,7 +55,7 @@ class AntManager(
         doubleTapDetector = DoubleTapDetector(doubleTapTimeout) { commandNumber, pressType ->
             val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
             antCommand?.let {
-                Timber.d("[ANT] Procesando comando: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+                Timber.d("[ANT] Processing command: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
                 commandCallback.invoke(it, pressType)
             }
         }
@@ -70,8 +70,7 @@ class AntManager(
                 RequestAccessResult.SUCCESS -> {
                     remotePcc = result
                     _isConnected = true
-                    
-                    // OPCIÓN B: Notificar evento real de conexión ANT+
+                    // OPTION B: Notify real ANT+ connection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, true)
                     
                     result?.let { pcc: AntPlusGenericControllableDevicePcc ->
@@ -92,7 +91,7 @@ class AntManager(
 
                 RequestAccessResult.USER_CANCELLED -> {
                     _isConnected = false
-                    // OPCIÓN B: Notificar evento real de desconexión ANT+
+                    // OPTION B: Notify real ANT+ disconnection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_FAILED", "User cancelled")
                     Timber.w("User cancelled ANT+ remote connection")
@@ -101,7 +100,7 @@ class AntManager(
 
                 RequestAccessResult.CHANNEL_NOT_AVAILABLE -> {
                     _isConnected = false
-                    // OPCIÓN B: Notificar evento real de desconexión ANT+
+                    // OPTION B: Notify real ANT+ disconnection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_FAILED", "Channel not available")
                     Timber.w("ANT+ channel not available")
@@ -110,7 +109,7 @@ class AntManager(
 
                 RequestAccessResult.OTHER_FAILURE -> {
                     _isConnected = false
-                    // OPCIÓN B: Notificar evento real de desconexión ANT+
+                    // OPTION B: Notify real ANT+ disconnection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_FAILED", "Other failure")
                     Timber.w("ANT+ connection failed")
@@ -119,7 +118,7 @@ class AntManager(
 
                 RequestAccessResult.DEPENDENCY_NOT_INSTALLED -> {
                     _isConnected = false
-                    // OPCIÓN B: Notificar evento real de desconexión ANT+
+                    // OPTION B: Notify real ANT+ disconnection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_FAILED", "Dependency not installed")
                     Timber.w("ANT+ dependency not installed")
@@ -128,7 +127,7 @@ class AntManager(
 
                 RequestAccessResult.DEVICE_ALREADY_IN_USE -> {
                     _isConnected = false
-                    // OPCIÓN B: Notificar evento real de desconexión ANT+
+                    // OPTION B: Notify real ANT+ disconnection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_FAILED", "Device already in use")
                     Timber.w("ANT+ device already in use")
@@ -137,7 +136,7 @@ class AntManager(
 
                 RequestAccessResult.SEARCH_TIMEOUT -> {
                     _isConnected = false
-                    // OPCIÓN B: Notificar evento real de desconexión ANT+
+                    // OPTION B: Notify real ANT+ disconnection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_FAILED", "Search timeout")
                     Timber.w("ANT+ search timed out")
@@ -146,7 +145,7 @@ class AntManager(
 
                 RequestAccessResult.ALREADY_SUBSCRIBED -> {
                     _isConnected = true
-                    // OPCIÓN B: Notificar evento real de conexión ANT+
+                    // OPTION B: Notify real ANT+ connection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, true)
                     DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_SUCCESS", "Already subscribed")
                     Timber.d("ANT+ already subscribed")
@@ -154,7 +153,7 @@ class AntManager(
 
                 RequestAccessResult.BAD_PARAMS -> {
                     _isConnected = false
-                    // OPCIÓN B: Notificar evento real de desconexión ANT+
+                    // OPTION B: Notify real ANT+ disconnection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_FAILED", "Bad parameters")
                     Timber.w("ANT+ bad parameters")
@@ -163,7 +162,7 @@ class AntManager(
 
                 RequestAccessResult.ADAPTER_NOT_DETECTED -> {
                     _isConnected = false
-                    // OPCIÓN B: Notificar evento real de desconexión ANT+
+                    // OPTION B: Notify real ANT+ disconnection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     DebugLogger.logConnectionEvent(deviceNumber, "CONNECTION_FAILED", "Adapter not detected")
                     Timber.w("ANT+ adapter not detected")
@@ -184,13 +183,13 @@ class AntManager(
         return _isConnected && remotePcc?.antDeviceNumber == deviceNumber
     }
     fun setupCommandCallback(callback: (AntRemoteKey, PressType) -> Unit) {
-        Timber.d("Configurando callback para comandos ANT+")
+        Timber.d("Setting up callback for ANT+ commands")
         this.commandCallback = callback
     }
 
     fun setLearningMode(enabled: Boolean) {
         _learningMode = enabled
-        Timber.d("Modo aprendizaje: $_learningMode")
+        Timber.d("Learning mode: $_learningMode")
     }
 
 
@@ -205,10 +204,10 @@ class AntManager(
                 PerformanceOptimizer.recordDeviceActivity(deviceNumber)
 
                 DebugLogger.logKeyEvent(deviceNumber, commandName, "RAW", true)
-                Timber.d("[ANT] Comando recibido: $commandNumber (Modo aprendizaje: $learningMode)")
+                Timber.d("[ANT] Command received: $commandNumber (Learning mode: $learningMode)")
 
                 runBlocking {
-                    // Usar PerformanceOptimizer para throttling de comandos
+                    // Use PerformanceOptimizer for command throttling
                     PerformanceOptimizer.throttledExecution(
                         key = "command_$deviceNumber",
                         minIntervalMs = PerformanceOptimizer.getOptimizedDelay(COMMAND_PROCESSING_DELAY_MS)
@@ -224,12 +223,12 @@ class AntManager(
                     }
                 }
 
-                // Retornar CommandStatus.PASS para indicar que el comando fue procesado correctamente
+                // Return CommandStatus.PASS to indicate command was processed correctly
                 CommandStatus.PASS
             } catch (e: Exception) {
                 Timber.e(e, "Error processing ANT+ command")
                 DebugLogger.logError("ANT_COMMAND", "Error processing command $commandNumber", e)
-                // Retornar CommandStatus.FAIL en caso de error
+                // Return CommandStatus.FAIL in case of error
                 CommandStatus.FAIL
             }
         }
@@ -242,7 +241,7 @@ class AntManager(
             when (newDeviceState) {
                 DeviceState.DEAD -> {
                     _isConnected = false
-                    // OPCIÓN B: Notificar evento real de desconexión ANT+
+                    // OPTION B: Notify real ANT+ disconnection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     DebugLogger.logConnectionEvent(deviceNumber, "DEVICE_STATE_DEAD", "Connection lost")
                     Timber.d("ANT+ remote connection dead")
@@ -251,7 +250,7 @@ class AntManager(
 
                 DeviceState.CLOSED -> {
                     _isConnected = false
-                    // OPCIÓN B: Notificar evento real de desconexión ANT+
+                    // OPTION B: Notify real ANT+ disconnection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     DebugLogger.logConnectionEvent(deviceNumber, "DEVICE_STATE_CLOSED", "Connection closed")
                     Timber.d("ANT+ remote connection closed")
@@ -259,7 +258,7 @@ class AntManager(
 
                 DeviceState.TRACKING -> {
                     _isConnected = true
-                    // OPCIÓN B: Notificar evento real de conexión ANT+
+                    // OPTION B: Notify real ANT+ connection event
                     PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, true)
                     DebugLogger.logConnectionEvent(deviceNumber, "DEVICE_STATE_TRACKING", "Device tracking and ready")
                     Timber.d("ANT+ remote connected and tracking")
@@ -279,12 +278,12 @@ class AntManager(
 
     fun updateDoubleTapTimeout(timeout: Long) {
         this.doubleTapTimeout = timeout
-        // Actualizar el doubleTapDetector existente o crear uno nuevo
+        // Update existing doubleTapDetector or create a new one
         doubleTapDetector?.updateTimeout(timeout) ?: run {
             doubleTapDetector = DoubleTapDetector(timeout) { commandNumber, pressType ->
                 val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
                 antCommand?.let {
-                    Timber.d("[ANT] Procesando comando: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+                    Timber.d("[ANT] Processing command: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
                     commandCallback.invoke(it, pressType)
                 }
             }
@@ -294,13 +293,13 @@ class AntManager(
     fun connect(deviceNumber: Int) {
 
         if (isConnecting) {
-            Timber.d("[ANT] Ya hay un intento de conexión en curso")
+            Timber.d("[ANT] Connection attempt already in progress")
             return
         }
 
         val now = System.currentTimeMillis()
         if (now - lastConnectionAttempt < minReconnectInterval) {
-            Timber.d("[ANT] Intento de reconexión demasiado frecuente, ignorando")
+            Timber.d("[ANT] Reconnection attempt too frequent, ignoring")
             return
         }
 
@@ -310,7 +309,7 @@ class AntManager(
 
         runBlocking(Dispatchers.Main) {
             try {
-                Timber.d("[ANT] Conectando a dispositivo #$deviceNumber (Modo aprendizaje: $learningMode)")
+                Timber.d("[ANT] Connecting to device #$deviceNumber (Learning mode: $learningMode)")
 
 
                 val currentLearningMode = learningMode
@@ -318,7 +317,7 @@ class AntManager(
                 if (_isConnected && remotePcc?.antDeviceNumber != deviceNumber) {
                     disconnect()
                 } else if (_isConnected && remotePcc?.antDeviceNumber == deviceNumber) {
-                    Timber.d("[ANT] Ya conectado al dispositivo $deviceNumber")
+                    Timber.d("[ANT] Already connected to device $deviceNumber")
                     isConnecting = false
                     return@runBlocking
                 }
@@ -333,10 +332,10 @@ class AntManager(
                     deviceNumber
                 )
 
-                Timber.d("[ANT] Conexión solicitada al dispositivo #$deviceNumber")
+                Timber.d("[ANT] Connection requested to device #$deviceNumber")
             } catch (e: Exception) {
                 _isConnected = false
-                Timber.e(e, "[ANT] Error conectando al dispositivo")
+                Timber.e(e, "[ANT] Error connecting to device")
             } finally {
                 isConnecting = false
             }
@@ -345,14 +344,14 @@ class AntManager(
 
     fun disconnect() {
         val wasLearning = _learningMode
-        Timber.d("Closing ANT+ remote handler (Modo aprendizaje: $_learningMode)")
+        Timber.d("Closing ANT+ remote handler (Learning mode: $_learningMode)")
         remoteReleaseHandle?.close()
         remoteReleaseHandle = null
         remotePcc = null
         _isConnected = false
 
         if (wasLearning) {
-            Timber.d("[ANT] Preservando modo aprendizaje: true")
+            Timber.d("[ANT] Preserving learning mode: true")
             _learningMode = true
         }
     }
@@ -400,9 +399,9 @@ class AntManager(
         try {
             remoteReleaseHandle?.close()
             remoteReleaseHandle = null
-            Timber.d("ANT+ cleanup completado")
+            Timber.d("ANT+ cleanup completed")
         } catch (e: Exception) {
-            Timber.e(e, "Error en cleanup de ANT+")
+            Timber.e(e, "Error in ANT+ cleanup")
         }
     }
 }

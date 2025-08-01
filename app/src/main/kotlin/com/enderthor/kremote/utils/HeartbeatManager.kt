@@ -6,17 +6,17 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Gestor central del sistema de heartbeat inteligente
- * Coordina las 3 opciones: A (puntual), B (eventos reales), C (UI inteligente)
+ * Central manager for intelligent heartbeat system
+ * Coordinates the 3 options: A (punctual), B (real events), C (intelligent UI)
  */
 object HeartbeatManager {
 
-    // Lista de listeners para cambios de estado ANT+ (Opción B)
+    // List of listeners for ANT+ state changes (Option B)
     private val connectionStateListeners = mutableMapOf<Int, MutableList<(Boolean) -> Unit>>()
 
     /**
-     * Heartbeat para pantalla de debug
-     * Llama a esto cuando el usuario entra en la pantalla de debug
+     * Heartbeat for debug screen
+     * Call this when user enters the debug screen
      */
     suspend fun performDebugScreenCheck(deviceId: Int, antManager: AntManager): Boolean {
         return try {
@@ -35,8 +35,8 @@ object HeartbeatManager {
     }
 
     /**
-     * OPCIÓN C: Verificación inteligente para UI
-     * Para cualquier pantalla que necesite conocer el estado de conexión
+     * OPTION C: Intelligent verification for UI
+     * For any screen that needs to know the connection status
      */
     suspend fun performUICheck(deviceId: Int, antManager: AntManager, screenName: String): Boolean {
         return try {
@@ -55,11 +55,11 @@ object HeartbeatManager {
     }
 
     /**
-     * OPCIÓN B: Registrar listener para eventos ANT+ reales
-     * Para reaccionar instantáneamente a conexiones/desconexiones
+     * OPTION B: Register listener for real ANT+ events
+     * To react instantly to connections/disconnections
      */
     fun registerConnectionListener(deviceId: Int, listener: (Boolean) -> Unit) {
-        // Mantener registro local para gestión
+        // Keep local registry for management
         val listeners = connectionStateListeners.getOrPut(deviceId) { mutableListOf() }
         listeners.add(listener)
 
@@ -68,8 +68,8 @@ object HeartbeatManager {
     }
 
     /**
-     * Obtiene el último estado conocido sin hacer verificaciones activas
-     * OPCIÓN B: Usa los eventos reales capturados
+     * Gets the last known state without performing active verifications
+     * OPTION B: Uses real captured events
      */
     fun getLastKnownState(deviceId: Int): Boolean? {
         val state = PerformanceOptimizer.getLastKnownConnectionState(deviceId)
@@ -78,8 +78,8 @@ object HeartbeatManager {
     }
 
     /**
-     * Verifica si un dispositivo necesita verificación activa
-     * OPCIÓN A: Basado en actividad reciente
+     * Checks if a device needs active verification
+     * OPTION A: Based on recent activity
      */
     fun shouldVerifyConnection(deviceId: Int): Boolean {
         val shouldVerify = PerformanceOptimizer.shouldVerifyConnection(deviceId)
@@ -94,7 +94,7 @@ object HeartbeatManager {
     }
 
     /**
-     * Limpia todas las cachés y listeners
+     * Cleans all caches and listeners
      */
     fun cleanup() {
         connectionStateListeners.clear()
@@ -104,12 +104,12 @@ object HeartbeatManager {
     }
 
     /**
-     * Configura limpieza periódica en un scope específico
+     * Sets up periodic cleanup in a specific scope
      */
     fun setupPeriodicCleanup(scope: CoroutineScope) {
         scope.launch {
             while (true) {
-                kotlinx.coroutines.delay(300_000L) // 5 minutos
+                kotlinx.coroutines.delay(300_000L) // 5 minutes
                 try {
                     PerformanceOptimizer.cleanUIVerificationCache()
                     DebugLogger.logConnectionEvent(0, "PERIODIC_CLEANUP", "Periodic heartbeat cleanup completed")

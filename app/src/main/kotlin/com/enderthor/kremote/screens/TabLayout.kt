@@ -73,8 +73,8 @@ fun TabLayout(
         Box(modifier = Modifier.weight(1f)) {
             when (selectedTab) {
                 0 -> {
-                    // Pestaña de Configuración - NO debe mostrar dispositivos seleccionados
-                    // Aquí solo configuración global y mapeos de dispositivos activos
+                    // Configuration tab - Should NOT show selected devices
+                    // Here only global configuration and active device mappings
                     ConfigurationScreen(
                         devices = devices,
                         activeDevice = devices.firstOrNull { it.isActive },
@@ -90,7 +90,7 @@ fun TabLayout(
                         // Estado para el diálogo de confirmación (dentro del contexto del dispositivo)
                         var showClearCommandsDialog by remember { mutableStateOf(false) }
 
-                        // Pantalla de aprendizaje con scroll
+                        // Learning screen with scroll
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -183,7 +183,7 @@ fun TabLayout(
                             )
                         }
                     } ?: run {
-                        // Lista normal de dispositivos
+                        // Normal device list
                         DeviceManagementScreen(
                             devices = devices,
                             availableAntDevices = availableAntDevices,

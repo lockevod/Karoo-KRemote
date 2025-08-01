@@ -89,10 +89,10 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
 
         _antManager = AntManager(applicationContext, { command, pressType ->
-            Timber.d("[KRemote] Comando ANT recibido en extensión: ${command.getLabelString(applicationContext)} (${if(pressType == PressType.DOUBLE) "DOBLE" else "SIMPLE"})")
+            Timber.d("[KRemote] ANT command received in extension: ${command.getLabelString(applicationContext)} (${if(pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
             extensionScope.launch(Dispatchers.Main) {
                 try {
-                    // MEJORADO: Verificar estado de aprendizaje desde SharedPreferences
+
                     val sharedPrefs = applicationContext.getSharedPreferences("kremote_state",
                         MODE_PRIVATE
                     )
@@ -102,10 +102,10 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     Timber.d("   ├── SharedPreferences learning_mode: $isLearningMode")
                     Timber.d("   ├── AntManager learningMode actual: ${_antManager.learningMode}")
 
-                    // Sincronizar el estado con AntManager local
+                    // Sync with  AntManager local
                     _antManager.setLearningMode(isLearningMode)
 
-                    Timber.d("   └── AntManager learningMode después sync: ${_antManager.learningMode}")
+                    Timber.d("   └── AntManager learningMode after sync: ${_antManager.learningMode}")
 
                     if (isLearningMode) {
                         Timber.d("🎓 [KRemote] MODO APRENDIZAJE: Comando detectado sin restricciones (sincronizado desde app)")
@@ -228,7 +228,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
                         delay(2000)
                         if (antManager.isConnectedToDevice(deviceId)) {
-                            Timber.d("[KRemote] Conexión exitosa a dispositivo ANT+ #$deviceId")
+                            Timber.d("[KRemote] Successful connection to ANT+ device #$deviceId")
                         } else {
                             Timber.d("[KRemote] No se pudo conectar a dispositivo ANT+ #$deviceId")
                         }
@@ -287,7 +287,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             )
             isRiding = isRideActive
             
-            // NUEVO: Notificar al sistema de heartbeat del cambio de estado de riding
+            // Notificar al sistema de heartbeat del cambio de estado de riding
             PerformanceOptimizer.setRidingState(isRideActive)
 
             // Log adicional para verificar configuraciones relacionadas
@@ -323,15 +323,15 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     private fun startConnectionService() {
         try {
             DebugLogger.logConnectionEvent(0, "EXTENSION_START_SERVICE", "Attempting to start ConnectionService via broadcast", "KremoteExtension")
-            Timber.d("[KremoteExtension] Enviando broadcast para iniciar ConnectionService")
+            Timber.d("[KremoteExtension] Sending broadcast to start ConnectionService")
 
             val intent = Intent("com.enderthor.kremote.START_CONNECTION_SERVICE")
             intent.putExtra(ConnectionServiceReceiver.EXTRA_IS_EXTENSION, true)
-            // ARREGLADO: Usar el permiso requerido por el receiver
+            //  Usar el permiso requerido por el receiver
             sendBroadcast(intent, "com.enderthor.kremote.PERMISSION_START_CONNECTION")
 
             DebugLogger.logConnectionEvent(0, "EXTENSION_BROADCAST_SENT", "Broadcast sent successfully with permission", "KremoteExtension")
-            Timber.d("[KremoteExtension] Broadcast enviado correctamente con permiso")
+            Timber.d("[KremoteExtension] Broadcast sent it with permission to start ConnectionService")
         } catch (e: Exception) {
             DebugLogger.logError("EXTENSION", "Error starting ConnectionService", e, "KremoteExtension")
             Timber.e(e, "Error starting ConnectionService")
