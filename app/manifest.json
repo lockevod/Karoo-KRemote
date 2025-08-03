@@ -7,5 +7,5 @@
   "latestVersionCode": 202508011,
   "developer": "Enderthor",
   "description": "This extension for Karoo allows to use a remote to change screens remotely.",
-  "releaseNotes": "New actions. Complete redesign. Improve performance. Improve debugging. Fix some bugs"
+  "releaseNotes": "New actions (fast zoom in/out). Complete redesign. Improve performance. Improve debugging. Fix some bugs"
 }
