@@ -109,6 +109,7 @@
     <string name="karoo_key_bell1">Bell Low</string>
     <string name="karoo_key_bell2">Bell 1</string>
     <string name="karoo_key_bell3">Bell 2</string>
+    <string name="karoo_key_drawer">Climber</string>
     <string name="karoo_key_lap">Lap</string>
     <string name="karoo_key_showmap">Map and Zoom In</string>
     <string name="karoo_key_topleft">Page Left</string>
