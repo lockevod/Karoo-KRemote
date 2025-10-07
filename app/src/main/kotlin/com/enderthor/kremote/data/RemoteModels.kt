@@ -65,6 +65,7 @@ enum class KarooKey(val action: KarooEffect, val labelResId: Int) {
     CONTROLCENTER(PerformHardwareAction.ControlCenterComboPress, R.string.karoo_key_controlcenter),
     BELL2(PlayBeepPattern(BellBeepPattern.BELL4.tones), R.string.karoo_key_bell2),
     BELL3(PlayBeepPattern(BellBeepPattern.BELL5.tones), R.string.karoo_key_bell3),
+    DRAWER(PerformHardwareAction.DrawerActionComboPress, R.string.karoo_key_drawer),
     LAP(MarkLap, R.string.karoo_key_lap),
     SHOWMAP(ShowMapPage(true), R.string.karoo_key_showmap),
     TOPLEFT(PerformHardwareAction.TopLeftPress, R.string.karoo_key_topleft),

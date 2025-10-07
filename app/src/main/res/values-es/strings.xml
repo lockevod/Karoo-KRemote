@@ -110,6 +110,7 @@
     <string name="karoo_key_bell1">Timbre Bajo</string>
     <string name="karoo_key_bell2">Timbre 1</string>
     <string name="karoo_key_bell3">Timbre 2</string>
+    <string name="karoo_key_drawer">Climber</string>
     <string name="karoo_key_lap">Vuelta</string>
     <string name="karoo_key_showmap">Mapa y Zoom</string>
     <string name="karoo_key_topleft">Página Izquierda</string>
