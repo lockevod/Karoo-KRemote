@@ -27,8 +27,6 @@ import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.GlobalSettings
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
-import com.enderthor.kremote.data.PressType
-import com.enderthor.kremote.data.getLabelString
 import com.enderthor.kremote.utils.DebugLogger
 
 
@@ -89,52 +87,30 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
 
         _antManager = AntManager(applicationContext, { command, pressType ->
-            Timber.d("[KRemote] ANT command received in extension: ${command.getLabelString(applicationContext)} (${if(pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
-            extensionScope.launch(Dispatchers.Main) {
-                try {
-
-                    val sharedPrefs = applicationContext.getSharedPreferences("kremote_state",
-                        MODE_PRIVATE
-                    )
-                    val isLearningMode = sharedPrefs.getBoolean("learning_mode", false)
-
-                    Timber.d("🔍 [KRemote] DIAGNÓSTICO APRENDIZAJE:")
-                    Timber.d("   ├── SharedPreferences learning_mode: $isLearningMode")
-                    Timber.d("   ├── AntManager learningMode actual: ${_antManager.learningMode}")
-
-                    // Sync with  AntManager local
-                    _antManager.setLearningMode(isLearningMode)
-
-                    Timber.d("   └── AntManager learningMode after sync: ${_antManager.learningMode}")
-
-                    if (isLearningMode) {
-                        Timber.d("🎓 [KRemote] MODO APRENDIZAJE: Comando detectado sin restricciones (sincronizado desde app)")
-
-                        // NUEVO: Comunicar el comando detectado de vuelta a la aplicación
-                        val sharedPrefsCommands = applicationContext.getSharedPreferences("kremote_learned_commands",
-                            MODE_PRIVATE
+            // Hot path: lee directamente de AntManager (@Volatile), sin I/O
+            if (_antManager.learningMode) {
+                // Modo aprendizaje: comunicar comando a la app vía SharedPreferences
+                extensionScope.launch(Dispatchers.IO) {
+                    try {
+                        val sharedPrefsCommands = applicationContext.getSharedPreferences(
+                            "kremote_learned_commands", MODE_PRIVATE
                         )
-                        val currentTime = System.currentTimeMillis()
                         sharedPrefsCommands.edit {
                             putString("last_command", command.name)
                             putString("last_press_type", pressType.name)
-                            putLong("timestamp", currentTime)
+                            putLong("timestamp", System.currentTimeMillis())
                         }
-
                         Timber.d("📤 [KRemote] Comando enviado a app: ${command.name} (${pressType.name})")
-
-                        // En modo aprendizaje, no aplicar restricciones de riding
-                        // El comando se procesará directamente por el DeviceViewModel
-                        return@launch
+                    } catch (e: Exception) {
+                        Timber.e(e, "[KRemote] Error guardando comando aprendido")
                     }
-
-                    // Solo aplicar restricciones de riding cuando NO estamos aprendiendo
-                    if (::karooAction.isInitialized) {
-                        karooAction.handleAntCommand(command.gCommand, pressType)
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "[KRemote] Error procesando comando ANT")
                 }
+                return@AntManager
+            }
+
+            // Modo normal: ejecutar acción Karoo directamente
+            if (::karooAction.isInitialized) {
+                karooAction.handleAntCommand(command.gCommand, pressType)
             }
         }, DEFAULT_DOUBLE_TAP_TIMEOUT)
 
@@ -250,6 +226,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     activeDevice?.doubleTapTimeout?.let { timeout ->
                         antManager.updateDoubleTapTimeout(timeout)
                     }
+                    antManager.updateDoubleTapEnabled(activeDevice?.enabledDoubleTap == true)
 
                     if (activeDevice?.macAddress != null) {
                         try {
@@ -354,6 +331,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
             antManager.disconnect()
             antManager.cleanup()
+            if (::karooAction.isInitialized) karooAction.cleanup()
             karooSystem.disconnect()
             extensionScope.cancel()
 

@@ -15,7 +15,9 @@ import timber.log.Timber
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 
 class KarooAction(
     private val karooSystem: KarooSystemService,
@@ -26,6 +28,12 @@ class KarooAction(
     private val isForcedScreenOn: () -> Boolean,
     private val activeDevice: () -> RemoteDevice?
 ) {
+    // Scope propio para acciones de larga duración (zoom rápido), cancelable correctamente
+    private val actionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    fun cleanup() {
+        actionScope.cancel()
+    }
 
 
     fun handleAntCommand(
@@ -166,32 +174,22 @@ class KarooAction(
             when (karooKey) {
                 KarooKey.ZOOM_IN_FAST -> {
                     Timber.d("🔥 [KRemote] EXECUTING FAST ZOOM IN (3x)")
-                    DebugLogger.logConnectionEvent(0, "FAST_ZOOM_IN_START", "Executing 3x zoom in", "KarooAction")
-
-                    // Execute 3 consecutive zoom ins with delay between them
-                    CoroutineScope(Dispatchers.Main).launch {
+                    actionScope.launch {
                         repeat(3) { i ->
                             karooSystem.dispatch(ZoomPage(true))
-                            Timber.d("   └── Zoom In ${i + 1}/3 executed")
-                            if (i < 2) delay(150) // 150ms delay between zooms (except last one)
+                            if (i < 2) delay(150)
                         }
                     }
-                    DebugLogger.logConnectionEvent(0, "FAST_ZOOM_IN_SUCCESS", "3x zoom in completed", "KarooAction")
                 }
 
                 KarooKey.ZOOM_OUT_FAST -> {
                     Timber.d("🔥 [KRemote] EXECUTING FAST ZOOM OUT (3x)")
-                    DebugLogger.logConnectionEvent(0, "FAST_ZOOM_OUT_START", "Executing 3x zoom out", "KarooAction")
-
-                    // Execute 3 consecutive zoom outs with delay between them
-                    CoroutineScope(Dispatchers.Main).launch {
+                    actionScope.launch {
                         repeat(3) { i ->
                             karooSystem.dispatch(ZoomPage(false))
-                            Timber.d("   └── Zoom Out ${i + 1}/3 executed")
-                            if (i < 2) delay(150) // 150ms delay between zooms (except last one)
+                            if (i < 2) delay(150)
                         }
                     }
-                    DebugLogger.logConnectionEvent(0, "FAST_ZOOM_OUT_SUCCESS", "3x zoom out completed", "KarooAction")
                 }
 
                 else -> {
