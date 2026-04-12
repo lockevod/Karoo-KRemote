@@ -46,19 +46,20 @@ class KarooAction(
         val activeDeviceInfo = activeDevice()
 
         // DETAILED LOGGING OF NAVIGATION STATE
-        DebugLogger.logConnectionEvent(
-            deviceNumber = activeDeviceInfo?.antDeviceId ?: 0,
-            event = "COMMAND_RECEIVED",
-            details = "Command: $commandNumber, PressType: ${pressType.name}, Connected: $isConnected, Riding: $currentlyRiding, OnlyWhileRiding: $onlyDuringRide",
-            source = "KarooAction"
-        )
-
-        Timber.d("🔍 [KRemote] COMPLETE DIAGNOSTIC:")
-        Timber.d("   ├── Service connected: $isConnected")
-        Timber.d("   ├── In riding mode: $currentlyRiding")
-        Timber.d("   ├── Only during ride: $onlyDuringRide")
-        Timber.d("   ├── Active device: ${activeDeviceInfo?.name ?: "NONE"}")
-        Timber.d("   └── Command: $commandNumber")
+        if (DebugLogger.isEnabled()) {
+            DebugLogger.logConnectionEvent(
+                deviceNumber = activeDeviceInfo?.antDeviceId ?: 0,
+                event = "COMMAND_RECEIVED",
+                details = "Command: $commandNumber, PressType: ${pressType.name}, Connected: $isConnected, Riding: $currentlyRiding, OnlyWhileRiding: $onlyDuringRide",
+                source = "KarooAction"
+            )
+            Timber.d("🔍 [KRemote] COMPLETE DIAGNOSTIC:")
+            Timber.d("   ├── Service connected: $isConnected")
+            Timber.d("   ├── In riding mode: $currentlyRiding")
+            Timber.d("   ├── Only during ride: $onlyDuringRide")
+            Timber.d("   ├── Active device: ${activeDeviceInfo?.name ?: "NONE"}")
+            Timber.d("   └── Command: $commandNumber")
+        }
 
         if (!isConnected) {
             Timber.w("❌ [KRemote] BLOCKED: Karoo service not connected")
@@ -78,12 +79,14 @@ class KarooAction(
         }
 
         // LOGGING: Verificar que podemos proceder
-        DebugLogger.logConnectionEvent(
-            deviceNumber = activeDeviceInfo?.antDeviceId ?: 0,
-            event = "EXECUTION_ALLOWED",
-            details = "All conditions met - proceeding with command processing",
-            source = "KarooAction"
-        )
+        if (DebugLogger.isEnabled()) {
+            DebugLogger.logConnectionEvent(
+                deviceNumber = activeDeviceInfo?.antDeviceId ?: 0,
+                event = "EXECUTION_ALLOWED",
+                details = "All conditions met - proceeding with command processing",
+                source = "KarooAction"
+            )
+        }
 
         try {
             val antRemoteKey = AntRemoteKey.entries.find { it.gCommand == commandNumber }
@@ -93,51 +96,60 @@ class KarooAction(
                 return
             }
 
-            DebugLogger.logKeyEvent(
-                deviceNumber = activeDeviceInfo?.antDeviceId ?: 0,
-                command = antRemoteKey.name,
-                pressType = pressType.name,
-                processed = false,
-                source = "KarooAction"
-            )
-
-            activeDeviceInfo?.let { device ->
-                Timber.d("🔍 [KRemote] Looking for mapping: ${antRemoteKey.getLabelString(context)} (${if (pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
-                DebugLogger.logConnectionEvent(
-                    deviceNumber = device.antDeviceId ?: 0,
-                    event = "COMMAND_MAPPING_SEARCH",
-                    details = "Looking for mapping: ${antRemoteKey.name} (${pressType.name})",
+            if (DebugLogger.isEnabled()) {
+                DebugLogger.logKeyEvent(
+                    deviceNumber = activeDeviceInfo?.antDeviceId ?: 0,
+                    command = antRemoteKey.name,
+                    pressType = pressType.name,
+                    processed = false,
                     source = "KarooAction"
                 )
+            }
+
+            activeDeviceInfo?.let { device ->
+                if (DebugLogger.isEnabled()) {
+                    Timber.d("🔍 [KRemote] Looking for mapping: ${antRemoteKey.getLabelString(context)} (${if (pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
+                    DebugLogger.logConnectionEvent(
+                        deviceNumber = device.antDeviceId ?: 0,
+                        event = "COMMAND_MAPPING_SEARCH",
+                        details = "Looking for mapping: ${antRemoteKey.name} (${pressType.name})",
+                        source = "KarooAction"
+                    )
+                }
 
                 val karooKey = device.getKarooKey(antRemoteKey.gCommand, pressType)
                 if (karooKey != null) {
-                    Timber.d("✅ [KRemote] EXECUTING: ${antRemoteKey.getLabelString(context)} → ${karooKey.getLabelString(context)}")
-                    DebugLogger.logConnectionEvent(
-                        deviceNumber = device.antDeviceId ?: 0,
-                        event = "COMMAND_MAPPED_SUCCESS",
-                        details = "Mapping found: ${antRemoteKey.name} → ${karooKey.action::class.simpleName}",
-                        source = "KarooAction"
-                    )
+                    if (DebugLogger.isEnabled()) {
+                        Timber.d("✅ [KRemote] EXECUTING: ${antRemoteKey.getLabelString(context)} → ${karooKey.getLabelString(context)}")
+                        DebugLogger.logConnectionEvent(
+                            deviceNumber = device.antDeviceId ?: 0,
+                            event = "COMMAND_MAPPED_SUCCESS",
+                            details = "Mapping found: ${antRemoteKey.name} → ${karooKey.action::class.simpleName}",
+                            source = "KarooAction"
+                        )
+                    }
                     executeKarooAction(karooKey)
-                    DebugLogger.logKeyEvent(
-                        deviceNumber = device.antDeviceId ?: 0,
-                        command = antRemoteKey.name,
-                        pressType = pressType.name,
-                        processed = true,
-                        source = "KarooAction"
-                    )
+                    if (DebugLogger.isEnabled()) {
+                        DebugLogger.logKeyEvent(
+                            deviceNumber = device.antDeviceId ?: 0,
+                            command = antRemoteKey.name,
+                            pressType = pressType.name,
+                            processed = true,
+                            source = "KarooAction"
+                        )
+                    }
                 } else {
                     Timber.w("❌ [KRemote] NOT MAPPED: No action assigned for ${antRemoteKey.getLabelString(context)} (${if (pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
-                    DebugLogger.logConnectionEvent(
-                        deviceNumber = device.antDeviceId ?: 0,
-                        event = "COMMAND_NOT_MAPPED",
-                        details = "No mapping found for: ${antRemoteKey.name} (${pressType.name}). Available mappings: ${device.learnedCommands.size}",
-                        source = "KarooAction"
-                    )
-                    Timber.d("🔍 [KRemote] Available commands on device:")
-                    device.learnedCommands.forEach { cmd ->
-                        Timber.d("   └── ${cmd.command.getLabelString(context)} (${cmd.pressType}) → ${cmd.karooKey?.getLabelString(context) ?: "UNASSIGNED"}")
+                    if (DebugLogger.isEnabled()) {
+                        DebugLogger.logConnectionEvent(
+                            deviceNumber = device.antDeviceId ?: 0,
+                            event = "COMMAND_NOT_MAPPED",
+                            details = "No mapping found for: ${antRemoteKey.name} (${pressType.name}). Available mappings: ${device.learnedCommands.size}",
+                            source = "KarooAction"
+                        )
+                        device.learnedCommands.forEach { cmd ->
+                            Timber.d("   └── ${cmd.command.getLabelString(context)} (${cmd.pressType}) → ${cmd.karooKey?.getLabelString(context) ?: "UNASSIGNED"}")
+                        }
                     }
                 }
             } ?: run {
@@ -150,13 +162,15 @@ class KarooAction(
         }
     }
     fun executeKarooAction(karooKey: KarooKey) {
-        Timber.d("executeKarooAction: $karooKey")
-        DebugLogger.logConnectionEvent(
-            deviceNumber = 0,
-            event = "KAROO_ACTION_START",
-            details = "Executing Karoo action: ${karooKey.name}",
-            source = "KarooAction"
-        )
+        if (DebugLogger.isEnabled()) {
+            Timber.d("executeKarooAction: $karooKey")
+            DebugLogger.logConnectionEvent(
+                deviceNumber = 0,
+                event = "KAROO_ACTION_START",
+                details = "Executing Karoo action: ${karooKey.name}",
+                source = "KarooAction"
+            )
+        }
 
         if (!isServiceConnected()) {
             Timber.w("Cannot execute action: Karoo service not connected")
@@ -166,7 +180,9 @@ class KarooAction(
 
         try {
             if(isForcedScreenOn()) {
-                DebugLogger.logConnectionEvent(0, "SCREEN_ON_FORCED", "Turning screen on before action", "KarooAction")
+                if (DebugLogger.isEnabled()) {
+                    DebugLogger.logConnectionEvent(0, "SCREEN_ON_FORCED", "Turning screen on before action", "KarooAction")
+                }
                 karooSystem.dispatch(TurnScreenOn)
             }
 
@@ -193,21 +209,24 @@ class KarooAction(
                 }
 
                 else -> {
-                    // Execute normal action
-                    DebugLogger.logConnectionEvent(
-                        deviceNumber = 0,
-                        event = "KAROO_ACTION_DISPATCHED",
-                        details = "Action dispatched to Karoo system: ${karooKey.action::class.simpleName}",
-                        source = "KarooAction"
-                    )
+                    if (DebugLogger.isEnabled()) {
+                        DebugLogger.logConnectionEvent(
+                            deviceNumber = 0,
+                            event = "KAROO_ACTION_DISPATCHED",
+                            details = "Action dispatched to Karoo system: ${karooKey.action::class.simpleName}",
+                            source = "KarooAction"
+                        )
+                    }
                     karooSystem.dispatch(karooKey.action)
 
-                    DebugLogger.logConnectionEvent(
-                        deviceNumber = 0,
-                        event = "KAROO_ACTION_SUCCESS",
-                        details = "Action executed successfully: ${karooKey.action::class.simpleName}",
-                        source = "KarooAction"
-                    )
+                    if (DebugLogger.isEnabled()) {
+                        DebugLogger.logConnectionEvent(
+                            deviceNumber = 0,
+                            event = "KAROO_ACTION_SUCCESS",
+                            details = "Action executed successfully: ${karooKey.action::class.simpleName}",
+                            source = "KarooAction"
+                        )
+                    }
                 }
             }
 
