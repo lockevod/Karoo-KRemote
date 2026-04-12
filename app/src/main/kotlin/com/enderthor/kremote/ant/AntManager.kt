@@ -62,7 +62,9 @@ class AntManager(
         doubleTapDetector = DoubleTapDetector(doubleTapTimeout, doubleTapEnabled) { commandNumber, pressType ->
             val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
             antCommand?.let {
-                Timber.d("[ANT] Processing command: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
+                if (DebugLogger.isEnabled()) {
+                    Timber.d("[ANT] Processing command: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
+                }
                 commandCallback.invoke(it, pressType)
             }
         }
@@ -212,8 +214,8 @@ class AntManager(
                 if (DebugLogger.isEnabled()) {
                     val commandName = antCommand?.getLabelString(context) ?: "UNKNOWN_$commandNumber"
                     DebugLogger.logKeyEvent(deviceNumber, commandName, "RAW", true)
+                    Timber.d("[ANT] Command received: $commandNumber (Learning mode: $learningMode)")
                 }
-                Timber.d("[ANT] Command received: $commandNumber (Learning mode: $learningMode)")
 
                 val isLearningMode = learningMode
                 commandProcessingScope.launch {
@@ -301,7 +303,9 @@ class AntManager(
             doubleTapDetector = DoubleTapDetector(timeout, doubleTapEnabled) { commandNumber, pressType ->
                 val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
                 antCommand?.let {
-                    Timber.d("[ANT] Processing command: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
+                    if (DebugLogger.isEnabled()) {
+                        Timber.d("[ANT] Processing command: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
+                    }
                     commandCallback.invoke(it, pressType)
                 }
             }

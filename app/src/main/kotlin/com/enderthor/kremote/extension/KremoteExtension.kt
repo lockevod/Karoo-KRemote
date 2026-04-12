@@ -147,42 +147,35 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     }
 
     private fun initializeEvents() {
+        // Estos consumers solo sirven para diagnóstico en desarrollo.
+        // En release no se registran: evitan overhead de IPC y construcción de strings.
+        if (!BuildConfig.DEBUG) return
+
         extensionScope.launch {
             suspendCancellableCoroutine { cont ->
                 karooSystem.addConsumer { rideState: RideState ->
-                    Timber.w("Ride state changed: $rideState")
+                    Timber.d("Ride state changed: $rideState")
                 }
                 karooSystem.addConsumer { navigationState: OnNavigationState ->
-                    Timber.w("Navigation state changed: $navigationState")
-                    Timber.w("Navigation state changed: ${navigationState.state}")
+                    Timber.d("Navigation state changed: ${navigationState.state}")
                 }
                 karooSystem.addConsumer { event: OnGlobalPOIs ->
-                    Timber.w("Global POIs changed: $event")
-                    Timber.w("Global POIs changed: ${event.pois}")
+                    Timber.d("Global POIs changed: ${event.pois}")
                 }
                 karooSystem.addConsumer { event: SavedDevices ->
-                    Timber.w("Saved devices changed: $event")
-                    Timber.w("Saved devices changed: ${event.devices}")
+                    Timber.d("Saved devices changed: ${event.devices}")
                 }
                 karooSystem.addConsumer { event: Bikes ->
-                    Timber.w("Bikes changed: $event")
-                    Timber.w("Bikes changed: ${event.bikes}")
+                    Timber.d("Bikes changed: ${event.bikes}")
                 }
                 karooSystem.addConsumer { event: ActiveRideProfile ->
-                    Timber.w("ActiveRideProfile changed: $event")
-                    Timber.w("ActiveRideProfile changed: ${event.profile}")
+                    Timber.d("ActiveRideProfile changed: ${event.profile}")
                 }
                 karooSystem.addConsumer { event: ActiveRidePage ->
-                    Timber.w("ActiveRidePage changed: $event")
-                    Timber.w("ActiveRidePage changed: ${event.page}")
+                    Timber.d("ActiveRidePage changed: ${event.page}")
                 }
-
                 karooSystem.addConsumer { user: UserProfile ->
-                    Timber.w("UserProfile changed: $user")
-                }
-
-                karooSystem.addConsumer { event: OnGlobalPOIs ->
-                    Timber.w("UserProfile changed: $event")
+                    Timber.d("UserProfile changed: $user")
                 }
 
             }

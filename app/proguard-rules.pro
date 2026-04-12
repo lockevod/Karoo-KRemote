@@ -19,24 +19,58 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 
-# Mantener la extensión Karoo
--keep class io.hammerhead.karooext.** { *; }
+# ─── Glance ActionCallbacks (referenced by class name via actionRunCallback) ──
+-keep class * extends androidx.glance.appwidget.action.ActionCallback { *; }
+
+# ─── Kotlinx Serialization ────────────────────────────────────────────────────
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+# Keep serializable data classes and their generated $$serializer companions
+-keep @kotlinx.serialization.Serializable class com.enderthor.kremote.** {
+    <fields>;
+    *** Companion;
+}
+-keep class com.enderthor.kremote.**$$serializer { *; }
+-dontwarn kotlinx.serialization.**
+
+# ─── Hammerhead karoo-ext — AIDL stubs (IPC with Karoo system) ───────────────
+# Small package (~5 interfaces), safe to keep entirely
+-keep class io.hammerhead.karooext.aidl.** { *; }
+
+# ─── Hammerhead karoo-ext — base classes our code extends ────────────────────
+-keep class io.hammerhead.karooext.extension.KarooExtension { *; }
+-keep class io.hammerhead.karooext.extension.DataTypeImpl { *; }
+-keep class io.hammerhead.karooext.KarooSystemService { *; }
+-keep class io.hammerhead.karooext.internal.ViewEmitter { *; }
+
+# ─── Hammerhead karoo-ext — models used in dispatch / addConsumer calls ───────
+# Keep field names and constructors (needed for IPC serialization/reflection)
+# but allow R8 to remove unused model classes
+-keepnames class io.hammerhead.karooext.models.** { }
+-keepclassmembers class io.hammerhead.karooext.models.** {
+    <fields>;
+    <init>(...);
+}
+
 
 # Mantener las clases de tu aplicación
+# La regla raíz ya cubre todos los subpaquetes; las líneas individuales son redundantes.
 -keep class com.enderthor.kremote.** { *; }
--keep class com.enderthor.kremote.ant.** { *; }
--keep class com.enderthor.kremote.activity.** { *; }
--keep class com.enderthor.kremote.data.** { *; }
--keep class com.enderthor.kremote.extension.** { *; }
--keep class com.enderthor.kremote.receiver.** { *; }
--keep class com.enderthor.kremote.service.** { *; }
--keep class com.enderthor.kremote.screens.** { *; }
--keep class com.enderthor.kremote.viewmodel.** { *; }
 
 
 # Reglas para Timber
 -dontwarn org.jetbrains.annotations.**
--keep class timber.log.** { *; }
+-dontwarn timber.log.**
+-dontnote timber.log.**
+# Elimina en release las llamadas a Timber.v/d/i/w (y sus argumentos si no tienen side effects)
+# Solo ERROR y ASSERT llegan al árbol de release en runtime;
+# con esto R8 elimina también la construcción de strings en call site.
+-assumenosideeffects class timber.log.Timber {
+    public static *** v(...);
+    public static *** d(...);
+    public static *** i(...);
+    public static *** w(...);
+}
 
 # Reglas generales para Android
 -keepattributes *Annotation*
@@ -56,7 +90,6 @@
 }
 
 # Si usas Kotlin
--keep class kotlin.** { *; }
 -keep class kotlin.Metadata { *; }
 -dontwarn kotlin.**
 -keepclassmembers class **$WhenMappings {
@@ -77,11 +110,12 @@
 -keep class * extends android.app.Service
 -keep class * extends android.content.BroadcastReceiver
 
-# Si usas Composables
--keep class androidx.compose.** { *; }
+# Jetpack Compose ya incluye sus propias reglas ProGuard en las AARs — no se necesita -keep general.
+# Solo mantenemos los miembros anotados con @Composable que puedan ser accedidos por reflexión.
 -keepclassmembers class * {
-    @androidx.compose.** *;
+    @androidx.compose.runtime.Composable *;
 }
+
 
 -keep class com.dsi.ant.plugins.antplus.pcc.controls.AntPlusGenericControllableDevicePcc { *; }
 -keep class com.dsi.ant.plugins.antplus.pcc.controls.defines.CommandStatus { *; }
