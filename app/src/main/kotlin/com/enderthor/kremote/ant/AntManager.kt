@@ -1,6 +1,7 @@
 package com.enderthor.kremote.ant
 
 import android.content.Context
+import android.os.SystemClock
 import com.dsi.ant.plugins.antplus.pcc.controls.AntPlusGenericControllableDevicePcc
 import com.dsi.ant.plugins.antplus.pcc.controls.defines.CommandStatus
 import com.dsi.ant.plugins.antplus.pcc.defines.DeviceState
@@ -16,10 +17,6 @@ import com.enderthor.kremote.data.COMMAND_PROCESSING_DELAY_MS
 import com.enderthor.kremote.utils.DebugLogger
 import com.enderthor.kremote.utils.PerformanceOptimizer
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,7 +32,7 @@ data class AntDeviceInfo(
 class AntManager(
     private val context: Context,
     private var commandCallback: (AntRemoteKey, PressType) -> Unit,
-    private var doubleTapTimeout: Long = DEFAULT_DOUBLE_TAP_TIMEOUT
+    doubleTapTimeout: Long = DEFAULT_DOUBLE_TAP_TIMEOUT
 ) {
     private var remotePcc: AntPlusGenericControllableDevicePcc? = null
     private var remoteReleaseHandle: PccReleaseHandle<AntPlusGenericControllableDevicePcc?>? = null
@@ -53,14 +50,16 @@ class AntManager(
     private var isConnecting = false
     private var lastConnectionAttempt = 0L
 
-    private val commandProcessingScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    // Simple inline throttle: no coroutine allocation in hot path
+    @Volatile private var lastCommandTimeMs = 0L
 
-    private var doubleTapEnabled = false
+    @Volatile private var doubleTapEnabled = false
+    @Volatile private var doubleTapTimeout_field = doubleTapTimeout
     private var doubleTapDetector: DoubleTapDetector? = null
 
     init {
-        doubleTapDetector = DoubleTapDetector(doubleTapTimeout, doubleTapEnabled) { commandNumber, pressType ->
-            val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
+        doubleTapDetector = DoubleTapDetector(doubleTapTimeout_field, doubleTapEnabled) { commandNumber, pressType ->
+            val antCommand = AntRemoteKey.byCommand[commandNumber]
             antCommand?.let {
                 if (DebugLogger.isEnabled()) {
                     Timber.d("[ANT] Processing command: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
@@ -205,50 +204,37 @@ class AntManager(
     private val mRemoteCommand =
         AntPlusGenericControllableDevicePcc.IGenericCommandReceiver { _, _, _, _, _, commandNumber ->
             try {
-                val deviceNumber = remotePcc?.antDeviceNumber ?: 0
-                val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
+                // ── Inline throttle (no coroutine / ConcurrentHashMap needed) ──────────
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastCommandTimeMs < COMMAND_PROCESSING_DELAY_MS) {
+                    return@IGenericCommandReceiver CommandStatus.PASS
+                }
+                lastCommandTimeMs = now
 
-                // NUEVO: Registrar actividad del dispositivo para el sistema de heartbeat
+                val deviceNumber = remotePcc?.antDeviceNumber ?: 0
+                // Record activity (ConcurrentHashMap.put – non-blocking)
                 PerformanceOptimizer.recordDeviceActivity(deviceNumber)
 
                 if (DebugLogger.isEnabled()) {
+                    val antCommand = AntRemoteKey.byCommand[commandNumber]
                     val commandName = antCommand?.getLabelString(context) ?: "UNKNOWN_$commandNumber"
                     DebugLogger.logKeyEvent(deviceNumber, commandName, "RAW", true)
                     Timber.d("[ANT] Command received: $commandNumber (Learning mode: $learningMode)")
                 }
 
-                val isLearningMode = learningMode
-                commandProcessingScope.launch {
-                    try {
-                        // Use PerformanceOptimizer for command throttling without blocking ANT callback thread
-                        PerformanceOptimizer.throttledExecution(
-                            key = "command_$deviceNumber",
-                            minIntervalMs = PerformanceOptimizer.getOptimizedDelay(COMMAND_PROCESSING_DELAY_MS)
-                        ) {
-                            if (isLearningMode) {
-                                antCommand?.let {
-                                    if (DebugLogger.isEnabled()) {
-                                        val commandName = it.getLabelString(context)
-                                        DebugLogger.logKeyEvent(deviceNumber, commandName, "SINGLE", true)
-                                    }
-                                    commandCallback.invoke(it, PressType.SINGLE)
-                                }
-                            } else {
-                                doubleTapDetector?.handleCommand(commandNumber)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error processing ANT+ command asynchronously")
-                        DebugLogger.logError("ANT_COMMAND", "Async error processing command $commandNumber", e)
+                if (learningMode) {
+                    // Learning mode: direct callback (non-blocking – will launch IO coroutine in KremoteExtension)
+                    AntRemoteKey.byCommand[commandNumber]?.let {
+                        commandCallback.invoke(it, PressType.SINGLE)
                     }
+                } else {
+                    // Normal mode: posts to Main looper (non-blocking, DoubleTapDetector is thread-safe)
+                    doubleTapDetector?.handleCommand(commandNumber)
                 }
 
-                // Return CommandStatus.PASS to indicate command was processed correctly
                 CommandStatus.PASS
             } catch (e: Exception) {
                 Timber.e(e, "Error processing ANT+ command")
-                DebugLogger.logError("ANT_COMMAND", "Error processing command $commandNumber", e)
-                // Return CommandStatus.FAIL in case of error
                 CommandStatus.FAIL
             }
         }
@@ -297,12 +283,11 @@ class AntManager(
         }
 
     fun updateDoubleTapTimeout(timeout: Long) {
-        this.doubleTapTimeout = timeout
-        // Update existing doubleTapDetector or create a new one
+        if (this.doubleTapTimeout_field == timeout) return
+        this.doubleTapTimeout_field = timeout
         doubleTapDetector?.updateTimeout(timeout) ?: run {
             doubleTapDetector = DoubleTapDetector(timeout, doubleTapEnabled) { commandNumber, pressType ->
-                val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
-                antCommand?.let {
+                AntRemoteKey.byCommand[commandNumber]?.let {
                     if (DebugLogger.isEnabled()) {
                         Timber.d("[ANT] Processing command: ${it.getLabelString(context)} (${if(pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
                     }
@@ -313,11 +298,11 @@ class AntManager(
     }
 
     fun updateDoubleTapEnabled(enabled: Boolean) {
+        if (doubleTapEnabled == enabled) return
         doubleTapEnabled = enabled
         doubleTapDetector?.updateEnabled(enabled) ?: run {
-            doubleTapDetector = DoubleTapDetector(doubleTapTimeout, enabled) { commandNumber, pressType ->
-                val antCommand = AntRemoteKey.entries.find { it.gCommand == commandNumber }
-                antCommand?.let {
+            doubleTapDetector = DoubleTapDetector(doubleTapTimeout_field, enabled) { commandNumber, pressType ->
+                AntRemoteKey.byCommand[commandNumber]?.let {
                     commandCallback.invoke(it, pressType)
                 }
             }
@@ -431,7 +416,6 @@ class AntManager(
 
     fun cleanup() {
         try {
-            commandProcessingScope.coroutineContext.cancel()
             remoteReleaseHandle?.close()
             remoteReleaseHandle = null
             Timber.d("ANT+ cleanup completed")

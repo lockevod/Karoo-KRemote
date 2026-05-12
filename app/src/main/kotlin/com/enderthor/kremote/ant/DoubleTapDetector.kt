@@ -35,12 +35,16 @@ class DoubleTapDetector(
                 return@post
             }
 
-            Timber.d("[DoubleTap] Command: $commandNumber timeSince=${timeSinceLastCommand}ms")
+            if (DebugLogger.isEnabled()) {
+                Timber.d("[DoubleTap] Command: $commandNumber timeSince=${timeSinceLastCommand}ms")
+            }
 
             if (timeSinceLastCommand <= doubleTapTimeout && timeSinceLastCommand > 50) {
                 // Double tap detectado
-                DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "DOUBLE", true)
-                Timber.d("[DoubleTap] DOUBLE detected: $commandNumber")
+                if (DebugLogger.isEnabled()) {
+                    DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "DOUBLE", true)
+                    Timber.d("[DoubleTap] DOUBLE detected: $commandNumber")
+                }
                 clearPendingCommand(commandNumber)
                 onCommand(commandNumber, PressType.DOUBLE)
             } else {
@@ -52,7 +56,9 @@ class DoubleTapDetector(
                     if (pendingCommands.contains(commandNumber)) {
                         pendingCommands.remove(commandNumber)
                         pendingCallbacks.remove(commandNumber)
-                        DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "SINGLE", true)
+                        if (DebugLogger.isEnabled()) {
+                            DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "SINGLE", true)
+                        }
                         onCommand(commandNumber, PressType.SINGLE)
                     }
                 }

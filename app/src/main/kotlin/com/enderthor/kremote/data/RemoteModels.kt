@@ -97,6 +97,11 @@ enum class AntRemoteKey(val labelResId: Int, val gCommand: GenericCommandNumber)
 
     @Composable
     fun getLabel(): String = stringResource(id = labelResId)
+
+    companion object {
+        // Hot-path O(1) lookup: avoids linear scan on every ANT command.
+        val byCommand: Map<GenericCommandNumber, AntRemoteKey> = entries.associateBy { it.gCommand }
+    }
 }
 
 fun KarooKey.getLabelString(context: android.content.Context): String {
@@ -113,6 +118,27 @@ data class LearnedCommand(
     val pressType: PressType = PressType.SINGLE,
     val karooKey: KarooKey? = null
 )
+
+/**
+ * Precomputed O(1) lookup for the hot ANT-command path.
+ * Two maps split by PressType so each press does a single HashMap.get without
+ * allocating a Pair or comparing enums in a linear scan.
+ */
+class KeyLookup(
+    private val single: Map<GenericCommandNumber, KarooKey>,
+    private val double: Map<GenericCommandNumber, KarooKey>
+) {
+    fun get(command: GenericCommandNumber, pressType: PressType): KarooKey? = when (pressType) {
+        PressType.SINGLE -> single[command]
+        PressType.DOUBLE -> double[command]
+    }
+
+    val size: Int get() = single.size + double.size
+
+    companion object {
+        val EMPTY = KeyLookup(emptyMap(), emptyMap())
+    }
+}
 
 
 @Serializable
@@ -137,6 +163,24 @@ data class RemoteDevice(
         return learnedCommands.find {
             it.command.gCommand == command && it.pressType == pressType
         }?.karooKey
+    }
+
+    /**
+     * Precomputed O(1) lookup table for the hot command path.
+     * Split by pressType to avoid Pair allocations on every button press.
+     * Caller should rebuild whenever learnedCommands changes (i.e. on active device updates).
+     */
+    fun buildKeyLookup(): KeyLookup {
+        val single = HashMap<GenericCommandNumber, KarooKey>(learnedCommands.size)
+        val double = HashMap<GenericCommandNumber, KarooKey>(learnedCommands.size)
+        for (lc in learnedCommands) {
+            val key = lc.karooKey ?: continue
+            when (lc.pressType) {
+                PressType.SINGLE -> single[lc.command.gCommand] = key
+                PressType.DOUBLE -> double[lc.command.gCommand] = key
+            }
+        }
+        return KeyLookup(single, double)
     }
 
     companion object {

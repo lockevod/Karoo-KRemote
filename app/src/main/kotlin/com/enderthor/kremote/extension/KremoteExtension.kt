@@ -15,7 +15,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 
 import timber.log.Timber
 
@@ -26,6 +25,8 @@ import com.enderthor.kremote.data.EXTENSION_NAME
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.GlobalSettings
+import com.enderthor.kremote.data.KeyLookup
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
 import com.enderthor.kremote.utils.DebugLogger
 
@@ -73,8 +74,11 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     private var isRiding = false
     private var isServiceConnected = false
     private val extensionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var activeDevice: RemoteDevice? = null
-    private var globalSettings: GlobalSettings? = null
+    @Volatile private var activeDevice: RemoteDevice? = null
+    @Volatile private var globalSettings: GlobalSettings? = null
+    // Precomputed O(1) command → KarooKey table, rebuilt only when the active device's
+    // learnedCommands actually change. Read on the hot ANT-callback path.
+    @Volatile private var activeKeyLookup: KeyLookup = KeyLookup.EMPTY
 
 
 
@@ -128,7 +132,8 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     { isRiding },
                     { globalSettings?.onlyWhileRiding ?: false },
                     { globalSettings?.isForcedScreenOn != false},
-                    { activeDevice }
+                    { activeDevice },
+                    { activeKeyLookup }
                 )
 
 
@@ -185,22 +190,13 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     private fun connectActiveDevice() {
         extensionScope.launch {
             try {
-
                 val device = repository.getActiveDevice().first()
                 if (device != null) {
                     val deviceId = device.macAddress?.toInt()
                     if (deviceId != null) {
                         Timber.d("[KRemote] Conectando a dispositivo #$deviceId")
-
-
                         antManager.connect(deviceId)
-
-                        delay(2000)
-                        if (antManager.isConnectedToDevice(deviceId)) {
-                            Timber.d("[KRemote] Successful connection to ANT+ device #$deviceId")
-                        } else {
-                            Timber.d("[KRemote] No se pudo conectar a dispositivo ANT+ #$deviceId")
-                        }
+                        // La conexión es asíncrona; el resultado llega via mRemoteResultReceiver
                     }
                 }
             } catch (e: Exception) {
@@ -212,33 +208,44 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
    private fun monitorActiveDeviceChanges() {
         extensionScope.launch {
             try {
-                repository.currentConfig.collect { config ->
-                    activeDevice = config.devices.find { it.isActive }
-                    globalSettings = config.globalSettings
-
-                    activeDevice?.doubleTapTimeout?.let { timeout ->
-                        antManager.updateDoubleTapTimeout(timeout)
+                // distinctUntilChanged: el DataStore puede re-emitir el mismo JSON tras escrituras
+                // no relacionadas; comparamos sólo lo que nos importa para reducir trabajo.
+                repository.currentConfig
+                    .distinctUntilChanged { a, b ->
+                        val da = a.devices.find { it.isActive }
+                        val db = b.devices.find { it.isActive }
+                        da == db && a.globalSettings == b.globalSettings
                     }
-                    antManager.updateDoubleTapEnabled(activeDevice?.enabledDoubleTap == true)
+                    .collect { config ->
+                        val newActive = config.devices.find { it.isActive }
+                        val previousActive = activeDevice
+                        activeDevice = newActive
+                        globalSettings = config.globalSettings
 
-                    if (activeDevice?.macAddress != null) {
-                        try {
-                            val deviceNumber = activeDevice?.macAddress?.toInt()
-                            if (deviceNumber != null) {
+                        // Reconstruir el lookup sólo si han cambiado los comandos aprendidos.
+                        val commandsChanged = previousActive?.learnedCommands != newActive?.learnedCommands
+                        if (commandsChanged) {
+                            activeKeyLookup = newActive?.buildKeyLookup() ?: KeyLookup.EMPTY
+                        }
+
+                        newActive?.doubleTapTimeout?.let { antManager.updateDoubleTapTimeout(it) }
+                        antManager.updateDoubleTapEnabled(newActive?.enabledDoubleTap == true)
+
+                        val mac = newActive?.macAddress
+                        if (mac != null) {
+                            try {
+                                val deviceNumber = mac.toInt()
                                 if (!antManager.isConnectedToDevice(deviceNumber)) {
-                                    Timber.d("[KRemote] Conectando a dispositivo #$deviceNumber (no conectado o dispositivo incorrecto)")
+                                    Timber.d("[KRemote] Conectando a dispositivo #$deviceNumber")
                                     antManager.connect(deviceNumber)
                                 }
+                            } catch (e: Exception) {
+                                Timber.e(e, "[KRemote] Error conectando dispositivo ANT+")
                             }
-                        } catch (e: Exception) {
-                            Timber.e(e, "[KRemote] Error conectando dispositivo ANT+")
-                        }
-                    } else {
-                        if (antManager.isConnected) {
+                        } else if (antManager.isConnected) {
                             antManager.disconnect()
                         }
                     }
-                }
             } catch (e: Exception) {
                 Timber.e(e, "[KRemote] Error monitorizando cambios de dispositivo")
             }
@@ -248,31 +255,29 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun initializeRideReceiver() {
         rideReceiver = KarooRideReceiver { isRideActive ->
-            Timber.d("Ride state changed: active = $isRideActive")
-            DebugLogger.logConnectionEvent(
-                deviceNumber = 0,
-                event = "RIDE_STATE_CHANGED",
-                details = "Ride active: $isRideActive (previous: $isRiding)",
-                source = "KremoteExtension"
-            )
             isRiding = isRideActive
-            
-            // Notificar al sistema de heartbeat del cambio de estado de riding
             PerformanceOptimizer.setRidingState(isRideActive)
 
-            // Log adicional para verificar configuraciones relacionadas
-            extensionScope.launch {
-                try {
-                    val currentConfig = repository.currentConfig.first()
-                    val onlyWhileRiding = currentConfig.globalSettings.onlyWhileRiding
-                    DebugLogger.logConnectionEvent(
-                        deviceNumber = 0,
-                        event = "RIDE_CONFIG_CHECK",
-                        details = "OnlyWhileRiding setting: $onlyWhileRiding, Current riding state: $isRideActive, Heartbeat mode: ${if (isRideActive) "CRITICAL" else "NORMAL"}",
-                        source = "KremoteExtension"
-                    )
-                } catch (e: Exception) {
-                    Timber.e(e, "Error getting current config for ride state logging")
+            // Debug-only: log de estado de configuración (evita DataStore I/O en release)
+            if (DebugLogger.isEnabled()) {
+                DebugLogger.logConnectionEvent(
+                    deviceNumber = 0,
+                    event = "RIDE_STATE_CHANGED",
+                    details = "Ride active: $isRideActive",
+                    source = "KremoteExtension"
+                )
+                extensionScope.launch {
+                    try {
+                        val currentConfig = repository.currentConfig.first()
+                        DebugLogger.logConnectionEvent(
+                            deviceNumber = 0,
+                            event = "RIDE_CONFIG_CHECK",
+                            details = "OnlyWhileRiding: ${currentConfig.globalSettings.onlyWhileRiding}, Riding: $isRideActive",
+                            source = "KremoteExtension"
+                        )
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error getting current config for ride state logging")
+                    }
                 }
             }
         }

@@ -2,6 +2,7 @@ package com.enderthor.kremote.extension
 
 import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
 import com.enderthor.kremote.data.AntRemoteKey
+import com.enderthor.kremote.data.KeyLookup
 import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.getLabelString
@@ -26,7 +27,8 @@ class KarooAction(
     private val isRiding: () -> Boolean,
     private val onlyWhileRiding: () -> Boolean,
     private val isForcedScreenOn: () -> Boolean,
-    private val activeDevice: () -> RemoteDevice?
+    private val activeDevice: () -> RemoteDevice?,
+    private val keyLookup: () -> KeyLookup = { KeyLookup.EMPTY }
 ) {
     // Scope propio para acciones de larga duración (zoom rápido), cancelable correctamente
     private val actionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -89,7 +91,7 @@ class KarooAction(
         }
 
         try {
-            val antRemoteKey = AntRemoteKey.entries.find { it.gCommand == commandNumber }
+            val antRemoteKey = AntRemoteKey.byCommand[commandNumber]
             if (antRemoteKey == null) {
                 Timber.w("❌ [KRemote] Unrecognized ANT+ command: $commandNumber")
                 DebugLogger.logError("MAPPING", "Unrecognized ANT+ command: $commandNumber", source = "KarooAction")
@@ -117,7 +119,11 @@ class KarooAction(
                     )
                 }
 
-                val karooKey = device.getKarooKey(antRemoteKey.gCommand, pressType)
+                // Hot-path: O(1) HashMap lookup via precomputed KeyLookup. Falls back to
+                // the device.getKarooKey() linear scan only if the cache is empty (e.g. no
+                // active device snapshot yet at startup).
+                val karooKey = keyLookup().get(antRemoteKey.gCommand, pressType)
+                    ?: device.getKarooKey(antRemoteKey.gCommand, pressType)
                 if (karooKey != null) {
                     if (DebugLogger.isEnabled()) {
                         Timber.d("✅ [KRemote] EXECUTING: ${antRemoteKey.getLabelString(context)} → ${karooKey.getLabelString(context)}")
@@ -189,7 +195,7 @@ class KarooAction(
             // Handle special fast zoom actions
             when (karooKey) {
                 KarooKey.ZOOM_IN_FAST -> {
-                    Timber.d("🔥 [KRemote] EXECUTING FAST ZOOM IN (3x)")
+                    if (DebugLogger.isEnabled()) Timber.d("🔥 [KRemote] EXECUTING FAST ZOOM IN (3x)")
                     actionScope.launch {
                         repeat(3) { i ->
                             karooSystem.dispatch(ZoomPage(true))
@@ -199,7 +205,7 @@ class KarooAction(
                 }
 
                 KarooKey.ZOOM_OUT_FAST -> {
-                    Timber.d("🔥 [KRemote] EXECUTING FAST ZOOM OUT (3x)")
+                    if (DebugLogger.isEnabled()) Timber.d("🔥 [KRemote] EXECUTING FAST ZOOM OUT (3x)")
                     actionScope.launch {
                         repeat(3) { i ->
                             karooSystem.dispatch(ZoomPage(false))

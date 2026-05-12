@@ -2,6 +2,7 @@ package com.enderthor.kremote.utils
 
 import com.enderthor.kremote.ant.AntManager
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -108,7 +109,7 @@ object HeartbeatManager {
      */
     fun setupPeriodicCleanup(scope: CoroutineScope) {
         scope.launch {
-            while (true) {
+            while (isActive) {
                 kotlinx.coroutines.delay(300_000L) // 5 minutes
                 try {
                     PerformanceOptimizer.cleanUIVerificationCache()
