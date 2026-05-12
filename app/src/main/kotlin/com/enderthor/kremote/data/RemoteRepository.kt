@@ -10,7 +10,6 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.enderthor.kremote.utils.DebugLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import timber.log.Timber
@@ -46,19 +45,17 @@ class RemoteRepository(private val context: Context) {
         config.devices.find { it.isActive }
     }
 
-    private suspend fun getCurrentConfig(): GlobalConfig {
+    /**
+     * Lee GlobalConfig directamente de las preferencias ya disponibles en el transform de edit{}.
+     * Evita una segunda lectura de DataStore mientras se está editando.
+     */
+    private fun Preferences.getCurrentConfig(): GlobalConfig {
         return try {
-            val preferences = context.dataStore.data.first()
-            val configString = preferences[settingsKey]
-            Timber.d("Current config read: $configString")
-            if (configString != null) {
-                Json.decodeFromString(configString)
-            } else {
-                GlobalConfig()
-            }
+            val configString = this[settingsKey]
+            if (configString != null) Json.decodeFromString(configString) else GlobalConfig()
         } catch (e: Exception) {
-            Timber.e(e, "Error reading configuration")
-            throw e
+            Timber.e(e, "Error parsing config inside edit transform")
+            GlobalConfig()
         }
     }
 
@@ -66,7 +63,7 @@ class RemoteRepository(private val context: Context) {
     suspend fun addDevice(device: RemoteDevice) {
         try {
             context.dataStore.edit { preferences ->
-                val currentConfig = getCurrentConfig()
+                val currentConfig = preferences.getCurrentConfig()
                 Timber.d("Current config before adding: $currentConfig")
 
                 val updatedDevices = currentConfig.devices + device
@@ -88,7 +85,7 @@ class RemoteRepository(private val context: Context) {
     suspend fun removeDevice(deviceId: String) {
         try {
             context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
+                val current = preferences.getCurrentConfig()
                 val updatedDevices = current.devices.filter { it.id != deviceId }
 
                 val finalDevices = if (current.devices.find { it.isActive }?.id == deviceId && updatedDevices.isNotEmpty()) {
@@ -113,7 +110,7 @@ class RemoteRepository(private val context: Context) {
     suspend fun setActiveDevice(deviceId: String) {
         try {
             context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
+                val current = preferences.getCurrentConfig()
                 preferences[settingsKey] = Json.encodeToString(
                     GlobalConfig.serializer(),
                     current.copy(
@@ -132,7 +129,7 @@ class RemoteRepository(private val context: Context) {
     suspend fun clearDeviceCommands(deviceId: String) {
         try {
             context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
+                val current = preferences.getCurrentConfig()
                 val updatedDevices = current.devices.map { device ->
                     if (device.id == deviceId) {
                         device.copy(learnedCommands = mutableListOf())
@@ -164,7 +161,7 @@ class RemoteRepository(private val context: Context) {
             )
 
             context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
+                val current = preferences.getCurrentConfig()
                 val updatedDevices = current.devices.map { device ->
                     if (device.id == deviceId) {
                         val commandExists = device.learnedCommands.any {
@@ -243,7 +240,7 @@ class RemoteRepository(private val context: Context) {
             )
 
             context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
+                val current = preferences.getCurrentConfig()
                 val updatedConfig = current.copy(
                     devices = current.devices.map { device ->
                         if (device.id == deviceId) {
@@ -316,7 +313,7 @@ class RemoteRepository(private val context: Context) {
     suspend fun updateDeviceProperty(deviceId: String, update: (RemoteDevice) -> RemoteDevice) {
         try {
             context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
+                val current = preferences.getCurrentConfig()
                 val updatedDevices = current.devices.map { device ->
                     if (device.id == deviceId) {
                         update(device)
@@ -339,7 +336,7 @@ class RemoteRepository(private val context: Context) {
     suspend fun updateGlobalSetting(update: (GlobalSettings) -> GlobalSettings) {
         try {
             context.dataStore.edit { preferences ->
-                val current = getCurrentConfig()
+                val current = preferences.getCurrentConfig()
                 val updatedSettings = update(current.globalSettings)
                 preferences[settingsKey] = Json.encodeToString(
                     GlobalConfig.serializer(),

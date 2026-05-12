@@ -13,8 +13,8 @@ android {
         applicationId = "com.enderthor.kremote"
         minSdk = 26
         targetSdk = 34
-        versionCode = 202604121
-        versionName = "3.4"
+        versionCode = 202605121
+        versionName = "3.6"
     }
 
     buildTypes {
@@ -85,6 +85,8 @@ dependencies {
     // coroutines
     implementation(libs.kotlinx.coroutines.android)
     // implementation(libs.kotlinx.coroutines.rx2)
+
+    testImplementation(libs.junit)
 }
 java {
     toolchain {

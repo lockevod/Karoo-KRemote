@@ -15,13 +15,10 @@ object PerformanceOptimizer {
     private val _isOptimizationEnabled = MutableStateFlow(true)
     val isOptimizationEnabled: StateFlow<Boolean> = _isOptimizationEnabled.asStateFlow()
 
-    // Pool couroutines for quick operations
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val quickOperationDispatcher = Dispatchers.Default.limitedParallelism(2)
-
     // Cache to avoid recreating objects frequently
     private val commandCache = ConcurrentHashMap<String, Any>()
-    private val connectionStateCache = ConcurrentHashMap<Int, Long>()
+    // Use String keys directly to avoid hashCode collisions
+    private val connectionStateCache = ConcurrentHashMap<String, Long>()
 
     // OPTION A: Simple and efficient punctual heartbeat system
     private val deviceActivityCache = ConcurrentHashMap<Int, Long>()
@@ -69,13 +66,11 @@ object PerformanceOptimizer {
         }
 
         val now = System.currentTimeMillis()
-        val lastExecution = connectionStateCache[key.hashCode()] ?: 0L
+        val lastExecution = connectionStateCache[key] ?: 0L
 
         if (now - lastExecution >= minIntervalMs) {
-            connectionStateCache[key.hashCode()] = now
-            withContext(quickOperationDispatcher) {
-                operation()
-            }
+            connectionStateCache[key] = now
+            operation()
         }
     }
 
@@ -120,8 +115,7 @@ object PerformanceOptimizer {
         return mapOf(
             "isEnabled" to _isOptimizationEnabled.value,
             "commandCacheSize" to commandCache.size,
-            "connectionStateCacheSize" to connectionStateCache.size,
-            "quickOperationDispatcher" to quickOperationDispatcher.toString()
+            "connectionStateCacheSize" to connectionStateCache.size
         )
     }
 
