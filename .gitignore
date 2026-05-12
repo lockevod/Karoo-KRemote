@@ -21,3 +21,7 @@ local.properties
 /.kotlin/
 /app/release/
 /release/
+
+# Local-only files (AI agent docs, reference material)
+/AGENTS.md
+/docs/
