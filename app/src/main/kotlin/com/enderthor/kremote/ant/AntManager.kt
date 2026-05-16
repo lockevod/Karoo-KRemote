@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
+import java.util.concurrent.ConcurrentHashMap
 
 import timber.log.Timber
 
@@ -50,8 +51,11 @@ class AntManager(
     private var isConnecting = false
     private var lastConnectionAttempt = 0L
 
-    // Simple inline throttle: no coroutine allocation in hot path
-    @Volatile private var lastCommandTimeMs = 0L
+    // Per-device inline throttle (no coroutine allocation in hot path).
+    // Antes era un único @Volatile global; volvemos a per-device para no perder
+    // pulsaciones cuando hay varios mandos / canales activos. ConcurrentHashMap
+    // garantiza visibilidad entre el callback ANT (binder) y otros hilos.
+    private val lastCommandTimeByDevice = ConcurrentHashMap<Int, Long>()
 
     @Volatile private var doubleTapEnabled = false
     @Volatile private var doubleTapTimeout_field = doubleTapTimeout
@@ -204,16 +208,22 @@ class AntManager(
     private val mRemoteCommand =
         AntPlusGenericControllableDevicePcc.IGenericCommandReceiver { _, _, _, _, _, commandNumber ->
             try {
-                // ── Inline throttle (no coroutine / ConcurrentHashMap needed) ──────────
+                val deviceNumber = remotePcc?.antDeviceNumber ?: 0
+
+                // Record activity ANTES del throttle: el HeartbeatManager / verificador
+                // de conexión usa deviceActivityCache para saber que el mando sigue vivo.
+                // Si solo registramos en eventos no-throttled, los press-and-hold rápidos
+                // del ANT+ no alimentan el heartbeat → el sistema cree que el mando está
+                // inactivo y dispara verificaciones que pueden glitch'ear pulsaciones.
+                PerformanceOptimizer.recordDeviceActivity(deviceNumber)
+
+                // ── Inline throttle PER-DEVICE (no coroutine alloc en hot path) ────────
                 val now = SystemClock.elapsedRealtime()
-                if (now - lastCommandTimeMs < COMMAND_PROCESSING_DELAY_MS) {
+                val last = lastCommandTimeByDevice[deviceNumber] ?: 0L
+                if (now - last < COMMAND_PROCESSING_DELAY_MS) {
                     return@IGenericCommandReceiver CommandStatus.PASS
                 }
-                lastCommandTimeMs = now
-
-                val deviceNumber = remotePcc?.antDeviceNumber ?: 0
-                // Record activity (ConcurrentHashMap.put – non-blocking)
-                PerformanceOptimizer.recordDeviceActivity(deviceNumber)
+                lastCommandTimeByDevice[deviceNumber] = now
 
                 if (DebugLogger.isEnabled()) {
                     val antCommand = AntRemoteKey.byCommand[commandNumber]

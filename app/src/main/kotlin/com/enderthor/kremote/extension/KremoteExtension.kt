@@ -15,6 +15,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 
 import timber.log.Timber
 
@@ -196,7 +197,18 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     if (deviceId != null) {
                         Timber.d("[KRemote] Conectando a dispositivo #$deviceId")
                         antManager.connect(deviceId)
-                        // La conexión es asíncrona; el resultado llega via mRemoteResultReceiver
+
+                        // Esperar al callback ANT+ asíncrono antes de declarar
+                        // el resultado y antes de permitir que monitorActiveDeviceChanges
+                        // intente otra conexión paralela. Sin este margen, en el arranque
+                        // en frío veíamos arranques con _isConnected=false hasta que
+                        // llegaba mRemoteResultReceiver.
+                        delay(2000)
+                        if (antManager.isConnectedToDevice(deviceId)) {
+                            Timber.d("[KRemote] Successful connection to ANT+ device #$deviceId")
+                        } else {
+                            Timber.d("[KRemote] No se pudo conectar a dispositivo ANT+ #$deviceId")
+                        }
                     }
                 }
             } catch (e: Exception) {
