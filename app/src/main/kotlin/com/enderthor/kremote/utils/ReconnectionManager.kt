@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -25,8 +26,12 @@ class ReconnectionManager(
     private val _connectionStates = MutableStateFlow<Map<Int, ConnectionState>>(emptyMap())
     val connectionStates: StateFlow<Map<Int, ConnectionState>> = _connectionStates.asStateFlow()
 
-    private val reconnectionJobs = mutableMapOf<Int, Job>()
-    private val monitoringJobs = mutableMapOf<Int, Job>()
+    // ConcurrentHashMap: estos mapas se tocan desde el bucle de monitoreo, desde el
+    // antEventListener (binder ANT+ → scope.launch IO) y desde forceReconnect (UI),
+    // potencialmente en paralelo. Con HashMap plano el patrón cancel-and-replace
+    // podía dejar coroutines huérfanas spammeando requestAccess() al stack ANT+.
+    private val reconnectionJobs = ConcurrentHashMap<Int, Job>()
+    private val monitoringJobs = ConcurrentHashMap<Int, Job>()
 
     // Acceso público al AntManager para heartbeat
     fun getAntManager(): AntManager = antManager
@@ -35,6 +40,11 @@ class ReconnectionManager(
     private val baseReconnectDelay = 2000L
     private val maxReconnectDelay = 30000L
     private val maxReconnectAttempts = 15
+    // Una vez agotados los intentos con backoff exponencial corto, no abandonamos:
+    // pasamos a un backoff largo y fijo para no dejar la conexión muerta hasta
+    // reiniciar la app. 60s es suficientemente espaciado para no spamear el stack
+    // ANT+ y suficientemente frecuente para recuperarse cuando vuelva la señal.
+    private val longBackoffDelay = 60000L
     private val connectionCheckInterval = 10000L
     private val connectionTimeout = 15000L
 
@@ -47,8 +57,10 @@ class ReconnectionManager(
         DebugLogger.logConnectionEvent(deviceNumber, "START_MONITORING", "Iniciando monitoreo para dispositivo #$deviceNumber", "ReconnectionManager")
         Timber.d("[ReconnectionManager] 🔍 Iniciando monitoreo para dispositivo #$deviceNumber")
 
-        // Cancelar monitoring anterior si existe
-        monitoringJobs[deviceNumber]?.cancel()
+        // Cancelar monitoring anterior si existe (atómico — si dos hilos entran a
+        // startMonitoring para el mismo deviceNumber, el remove devuelve el job solo
+        // una vez al ganador, evitando huérfanos sin referencia en el mapa).
+        monitoringJobs.remove(deviceNumber)?.cancel()
         DebugLogger.logConnectionEvent(deviceNumber, "PREVIOUS_MONITORING_CANCELLED", "Cancelado monitoreo anterior si existía", "ReconnectionManager")
 
         // MEJORADO: Registrar listener para eventos ANT+ reales (Opción B)
@@ -105,7 +117,7 @@ class ReconnectionManager(
         updateConnectionState(deviceNumber) { initialState }
         DebugLogger.logConnectionEvent(deviceNumber, "INITIAL_STATE_SET", "Estado inicial establecido: $initialState", "ReconnectionManager")
 
-        monitoringJobs[deviceNumber] = scope.launch {
+        val newMonitoringJob = scope.launch {
             DebugLogger.logConnectionEvent(deviceNumber, "MONITORING_LOOP_STARTED", "Bucle de monitoreo iniciado", "ReconnectionManager")
             Timber.d("[ReconnectionManager] 🔄 Bucle de monitoreo iniciado para dispositivo #$deviceNumber")
 
@@ -187,32 +199,55 @@ class ReconnectionManager(
             DebugLogger.logConnectionEvent(deviceNumber, "MONITORING_LOOP_ENDED", "Bucle de monitoreo terminado", "ReconnectionManager")
             Timber.d("[ReconnectionManager] 🛑 Bucle de monitoreo terminado para dispositivo #$deviceNumber")
         }
+        // Publicación atómica: si entre el remove de arriba y este put otro hilo metió
+        // su propio job, lo cancelamos aquí en lugar de dejarlo huérfano.
+        monitoringJobs.put(deviceNumber, newMonitoringJob)?.cancel()
 
         DebugLogger.logConnectionEvent(deviceNumber, "MONITORING_JOB_CREATED", "Job de monitoreo creado y almacenado", "ReconnectionManager")
         Timber.d("[ReconnectionManager] ✅ Monitoreo configurado correctamente para dispositivo #$deviceNumber")
     }
 
     private fun startReconnection(deviceNumber: Int) {
-        // Cancelar reconexión anterior si existe
-        reconnectionJobs[deviceNumber]?.cancel()
-
-        reconnectionJobs[deviceNumber] = scope.launch {
+        // Construir el nuevo job y publicarlo atómicamente. `put` devuelve el job
+        // anterior (si lo había) → lo cancelamos sin riesgo de huérfano. Si dos
+        // hilos entran aquí simultáneamente, ambos crean un job y compiten en put:
+        // el último gana, el otro se cancela vía el valor previo devuelto.
+        val newJob = scope.launch {
             var attempts = 0
 
             updateConnectionState(deviceNumber) {
                 it.copy(isReconnecting = true, isConnected = false)
             }
 
-            while (attempts < maxReconnectAttempts && isActive) {
+            // Fase 1: backoff exponencial corto (15 intentos, hasta 30s entre cada uno).
+            // Fase 2: si no conecta, NO abandonamos — pasamos a backoff largo fijo de 60s
+            // indefinidamente. El job sigue vivo y mantiene `isReconnecting=true`, así que
+            // el bucle de monitoreo no necesita re-detectar transiciones para volver a
+            // intentarlo (que es lo que antes nos dejaba la conexión muerta hasta reinicio).
+            while (isActive) {
                 attempts++
+                val isLongBackoff = attempts > maxReconnectAttempts
 
                 // Usar PerformanceOptimizer para calcular delay optimizado
-                val delay = PerformanceOptimizer.getOptimizedDelay(
-                    calculateBackoffDelay(attempts),
-                    loadFactor = if (attempts > 5) 1.5f else 1.0f // Aumentar delay si hay muchos fallos
-                )
+                val delay = if (isLongBackoff) {
+                    longBackoffDelay
+                } else {
+                    PerformanceOptimizer.getOptimizedDelay(
+                        calculateBackoffDelay(attempts),
+                        loadFactor = if (attempts > 5) 1.5f else 1.0f // Aumentar delay si hay muchos fallos
+                    )
+                }
 
                 DebugLogger.logReconnectionEvent(deviceNumber, attempts, maxReconnectAttempts, delay, false)
+                if (isLongBackoff && attempts == maxReconnectAttempts + 1) {
+                    DebugLogger.logConnectionEvent(
+                        deviceNumber,
+                        "RECONNECTION_LONG_BACKOFF",
+                        "Switched to long backoff (${longBackoffDelay}ms) after $maxReconnectAttempts short attempts",
+                        "ReconnectionManager"
+                    )
+                    Timber.w("[ReconnectionManager] ⏳ Device #$deviceNumber entering long backoff after $maxReconnectAttempts attempts")
+                }
 
                 updateConnectionState(deviceNumber) {
                     it.copy(
@@ -259,13 +294,8 @@ class ReconnectionManager(
                     }
                 }
             }
-
-            // Agotados todos los intentos
-            DebugLogger.logConnectionEvent(deviceNumber, "RECONNECTION_FAILED", "Max attempts reached: $maxReconnectAttempts")
-            updateConnectionState(deviceNumber) {
-                it.copy(isReconnecting = false, lastError = "Max reconnection attempts reached")
-            }
         }
+        reconnectionJobs.put(deviceNumber, newJob)?.cancel()
     }
 
     private fun calculateBackoffDelay(attempt: Int): Long {
