@@ -35,8 +35,12 @@ class AntManager(
     private var commandCallback: (AntRemoteKey, PressType) -> Unit,
     doubleTapTimeout: Long = DEFAULT_DOUBLE_TAP_TIMEOUT
 ) {
-    private var remotePcc: AntPlusGenericControllableDevicePcc? = null
-    private var remoteReleaseHandle: PccReleaseHandle<AntPlusGenericControllableDevicePcc?>? = null
+    // Escritos desde el binder thread ANT+ (mRemoteResultReceiver) y desde disconnect()
+    // que se llama desde varios scopes. Leídos desde el binder en cada comando y desde
+    // coroutines IO en isConnectedToDevice. Sin @Volatile un lector IO puede ver el
+    // puntero antiguo no-null tras un disconnect en main → falso positivo de conexión.
+    @Volatile private var remotePcc: AntPlusGenericControllableDevicePcc? = null
+    @Volatile private var remoteReleaseHandle: PccReleaseHandle<AntPlusGenericControllableDevicePcc?>? = null
 
 
     private val _detectedDevices = MutableStateFlow<List<AntDeviceInfo>>(emptyList())
@@ -48,8 +52,12 @@ class AntManager(
     @Volatile private var _learningMode = false
     val learningMode: Boolean get() = _learningMode
 
-    private var isConnecting = false
-    private var lastConnectionAttempt = 0L
+    // Guardia del re-entry de connect(). Sin @Volatile, dos llamadas concurrentes podían
+    // pasar el TOCTOU y disparar dos requestAccess seguidos, dejando el primer
+    // remoteReleaseHandle huérfano. @Volatile no es atomic, pero combinado con el
+    // throttle de minReconnectInterval cierra la ventana en la práctica.
+    @Volatile private var isConnecting = false
+    @Volatile private var lastConnectionAttempt = 0L
 
     // Per-device inline throttle (no coroutine allocation in hot path).
     // Antes era un único @Volatile global; volvemos a per-device para no perder
