@@ -83,6 +83,7 @@
     <string name="enable_double_tap">Habilitar doble pulsación</string>
     <string name="double_tap_timeout">Intervalo: %1$d ms</string>
     <string name="lower_values_explanation">Valores más bajos requieren pulsaciones más rápidas</string>
+    <string name="double_tap_delay_warning">⚠️ Activar el doble toque retrasa cada pulsación simple en %1$d ms (el sistema debe esperar a ver si llega una segunda pulsación).</string>
     <string name="single_press">Pulsación simple:</string>
     <string name="double_press">Doble pulsación:</string>
     <string name="no_learned_commands">No hay comandos aprendidos. Primero configura tu mando en la pestaña Remotes.</string>

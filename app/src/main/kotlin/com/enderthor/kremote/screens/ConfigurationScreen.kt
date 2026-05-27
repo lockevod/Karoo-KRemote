@@ -126,11 +126,13 @@ fun ConfigurationScreen(
                             Slider(
                                 value = device.doubleTapTimeout.toFloat(),
                                 onValueChange = { value ->
-                                    val roundedValue = (value / 100f).toInt() * 100L
-                                    configViewModel.updateDoubleTapTimeout(device.id, roundedValue)
+                                    configViewModel.updateDoubleTapTimeout(device.id, value.toLong())
                                 },
                                 valueRange = 1000f..2200f,
-                                steps = 24, // 100ms
+                                // 11 intermediate stops + 2 endpoints = 13 stops spaced at exactly 100ms.
+                                // (2200-1000) / (11+1) = 100. Antes era 24 con redondeo manual, lo que
+                                // hacía que 3 ticks consecutivos del slider guardaran el mismo valor.
+                                steps = 11,
                                 modifier = Modifier.fillMaxWidth()
                             )
 
@@ -138,6 +140,17 @@ fun ConfigurationScreen(
                                 text = stringResource(R.string.lower_values_explanation),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = stringResource(
+                                    R.string.double_tap_delay_warning,
+                                    device.doubleTapTimeout.toInt()
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
                             )
                         }
 

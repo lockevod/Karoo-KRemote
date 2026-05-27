@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.min
 
 /**
@@ -24,7 +25,9 @@ object PerformanceOptimizer {
     private val deviceActivityCache = ConcurrentHashMap<Int, Long>()
 
     // OPTION B: Real ANT+ event detection system
-    private val antEventListeners = ConcurrentHashMap<Int, MutableList<(Boolean) -> Unit>>()
+    // CopyOnWriteArrayList: iteration unsynchronized (notify is on the ANT binder hot path),
+    // mutation rare (listener registered once per device on service start).
+    private val antEventListeners = ConcurrentHashMap<Int, CopyOnWriteArrayList<(Boolean) -> Unit>>()
     private val lastKnownConnectionState = ConcurrentHashMap<Int, Boolean>()
 
     // OPTION C: Smart verification only for UI
@@ -328,6 +331,22 @@ object PerformanceOptimizer {
      */
     fun getLastKnownConnectionState(deviceNumber: Int): Boolean? {
         return lastKnownConnectionState[deviceNumber]
+    }
+
+    /**
+     * Registra un listener para eventos reales de conexión/desconexión ANT+.
+     * Lo invocan ReconnectionManager / HeartbeatManager al iniciar el monitoreo
+     * de un dispositivo. Los listeners se disparan desde el hilo del binder ANT+,
+     * así que deben ser no-bloqueantes (lo típico: hacer scope.launch dentro).
+     */
+    fun addAntEventListener(deviceNumber: Int, listener: (Boolean) -> Unit) {
+        antEventListeners.getOrPut(deviceNumber) { CopyOnWriteArrayList() }.add(listener)
+        DebugLogger.logConnectionEvent(
+            deviceNumber,
+            "ANT_LISTENER_REGISTERED",
+            "ANT+ event listener registered (total=${antEventListeners[deviceNumber]?.size ?: 0})",
+            "PerformanceOptimizer"
+        )
     }
 
     // === OPCIÓN C: VERIFICACIÓN INTELIGENTE SOLO PARA UI (MUY EFICIENTE) ===
