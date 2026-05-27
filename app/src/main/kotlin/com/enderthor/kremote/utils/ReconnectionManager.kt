@@ -159,6 +159,15 @@ class ReconnectionManager(
                                 updateConnectionState(deviceNumber) {
                                     it.copy(isConnected = lastKnownState)
                                 }
+                                // Si el sync revela una caída y no estamos reconectando, lanzar
+                                // reconexión inmediatamente. Antes se actualizaba el flag pero
+                                // nunca se reconectaba: en la siguiente vuelta currentState.isConnected
+                                // ya era false y la rama del `if (shouldVerify)` no podía detectar
+                                // la transición → la conexión quedaba muerta hasta reiniciar la app.
+                                if (!lastKnownState && !currentState.isReconnecting) {
+                                    Timber.w("[ReconnectionManager] 🔴 lastKnownState=disconnected for #$deviceNumber — kicking reconnection")
+                                    startReconnection(deviceNumber)
+                                }
                             }
                         }
                     }

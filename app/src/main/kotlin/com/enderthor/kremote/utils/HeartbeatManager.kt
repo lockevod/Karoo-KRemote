@@ -12,9 +12,6 @@ import timber.log.Timber
  */
 object HeartbeatManager {
 
-    // List of listeners for ANT+ state changes (Option B)
-    private val connectionStateListeners = mutableMapOf<Int, MutableList<(Boolean) -> Unit>>()
-
     /**
      * Heartbeat for debug screen
      * Call this when user enters the debug screen
@@ -57,13 +54,14 @@ object HeartbeatManager {
 
     /**
      * OPTION B: Register listener for real ANT+ events
-     * To react instantly to connections/disconnections
+     * To react instantly to connections/disconnections.
+     * Delegates to PerformanceOptimizer — which is the same module that fires
+     * `notifyAntConnectionStateChanged` from the ANT+ binder callback.
+     * Antes había un mapa local aquí que jamás se conectaba con el dispatch,
+     * con lo que el callback de reconexión nunca llegaba a saltar.
      */
     fun registerConnectionListener(deviceId: Int, listener: (Boolean) -> Unit) {
-        // Keep local registry for management
-        val listeners = connectionStateListeners.getOrPut(deviceId) { mutableListOf() }
-        listeners.add(listener)
-
+        PerformanceOptimizer.addAntEventListener(deviceId, listener)
         DebugLogger.logConnectionEvent(deviceId, "CONNECTION_LISTENER_REGISTERED", "Registered connection state listener")
         Timber.d("HeartbeatManager: Registered connection listener for device $deviceId")
     }
@@ -98,7 +96,6 @@ object HeartbeatManager {
      * Cleans all caches and listeners
      */
     fun cleanup() {
-        connectionStateListeners.clear()
         PerformanceOptimizer.clearHeartbeatCaches()
         DebugLogger.logConnectionEvent(0, "HEARTBEAT_MANAGER_CLEANUP", "All heartbeat data cleared")
         Timber.i("HeartbeatManager: Cleaned up all caches and listeners")
