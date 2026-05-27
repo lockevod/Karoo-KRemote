@@ -20,6 +20,19 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class RemoteRepository(private val context: Context) {
     private val settingsKey = stringPreferencesKey("remote_config")
 
+    // Json tolerante a schema drift. Con `Json` por defecto, renombrar o eliminar
+    // un valor de enum (AntRemoteKey, KarooKey, PressType) o añadir un campo no
+    // opcional hacía que decodeFromString lanzase SerializationException →
+    // entrabas en el catch que devuelve GlobalConfig() vacío. La próxima edición
+    // del usuario lo guardaba sobre el JSON original, perdiendo silenciosamente
+    // toda su configuración. Con estas tres flags el parse sobrevive cambios
+    // razonables de esquema sin destruir la config.
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        isLenient = true
+    }
+
     val currentConfig: Flow<GlobalConfig> = context.dataStore.data
         .catch { exception ->
             Timber.e(exception, "Error loading config")
@@ -29,7 +42,7 @@ class RemoteRepository(private val context: Context) {
             try {
                 val jsonString = preferences[settingsKey]
                 if (jsonString != null) {
-                    Json.decodeFromString<GlobalConfig>(jsonString)
+                    json.decodeFromString<GlobalConfig>(jsonString)
                 } else {
                     GlobalConfig()
                 }
@@ -52,7 +65,7 @@ class RemoteRepository(private val context: Context) {
     private fun Preferences.getCurrentConfig(): GlobalConfig {
         return try {
             val configString = this[settingsKey]
-            if (configString != null) Json.decodeFromString(configString) else GlobalConfig()
+            if (configString != null) json.decodeFromString(configString) else GlobalConfig()
         } catch (e: Exception) {
             Timber.e(e, "Error parsing config inside edit transform")
             GlobalConfig()
