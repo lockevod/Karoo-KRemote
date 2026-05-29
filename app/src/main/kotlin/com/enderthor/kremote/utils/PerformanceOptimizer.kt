@@ -349,6 +349,21 @@ object PerformanceOptimizer {
         )
     }
 
+    /**
+     * Elimina todos los listeners de un dispositivo. Lo llama startMonitoring antes
+     * de registrar uno nuevo: sin esto, reiniciar el monitoreo (p. ej. al reiniciar el
+     * servicio) acumulaba listeners y disparaba reconexiones duplicadas.
+     */
+    fun removeAntEventListeners(deviceNumber: Int) {
+        antEventListeners.remove(deviceNumber)
+        DebugLogger.logConnectionEvent(
+            deviceNumber,
+            "ANT_LISTENERS_REMOVED",
+            "ANT+ event listeners removed for device",
+            "PerformanceOptimizer"
+        )
+    }
+
     // === OPCIÓN C: VERIFICACIÓN INTELIGENTE SOLO PARA UI (MUY EFICIENTE) ===
 
     /**

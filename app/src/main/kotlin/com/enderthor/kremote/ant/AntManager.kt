@@ -291,10 +291,13 @@ class AntManager(
                 else -> {
                     DebugLogger.logConnectionEvent(deviceNumber, "DEVICE_STATE_CHANGE", "State: $newDeviceState")
                     Timber.d("ANT+ remote state changed: $newDeviceState")
-                    // Para otros estados, verificar si seguimos conectados basado en estados válidos de ANT+
-                    val isStillConnected = (newDeviceState == DeviceState.SEARCHING)
-                    if (_isConnected != isStillConnected) {
-                        PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, isStillConnected)
+                    // SEARCHING y demás estados no-terminales NO son conexión activa: solo
+                    // TRACKING entrega datos. Reportarlos como conectados marcaba falsos
+                    // positivos (cancelaba reconexiones en curso al "recuperar" una conexión
+                    // que en realidad seguía buscando).
+                    if (_isConnected) {
+                        _isConnected = false
+                        PerformanceOptimizer.notifyAntConnectionStateChanged(deviceNumber, false)
                     }
                 }
             }

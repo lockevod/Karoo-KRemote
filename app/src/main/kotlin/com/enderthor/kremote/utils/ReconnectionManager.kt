@@ -5,6 +5,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import timber.log.Timber
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
@@ -101,6 +102,10 @@ class ReconnectionManager(
             }
         }
 
+        // Quitar cualquier listener previo de este dispositivo antes de registrar el
+        // nuevo: si startMonitoring se llama otra vez (p. ej. reinicio del servicio),
+        // evita acumular listeners y disparar reconexiones duplicadas.
+        HeartbeatManager.unregisterConnectionListeners(deviceNumber)
         HeartbeatManager.registerConnectionListener(deviceNumber, antEventListener)
 
         // Inicializar estado usando caché del PerformanceOptimizer
@@ -303,17 +308,20 @@ class ReconnectionManager(
         return min(exponentialDelay, maxReconnectDelay)
     }
 
-    private fun updateConnectionState(deviceNumber: Int, update: (ConnectionState) -> ConnectionState) {
-        val currentStates = _connectionStates.value.toMutableMap()
-        val currentState = currentStates[deviceNumber] ?: ConnectionState(
-            deviceNumber = deviceNumber,
-            isConnected = false,
-            isReconnecting = false,
-            lastConnectionAttempt = 0L,
-            reconnectAttempts = 0
-        )
-        currentStates[deviceNumber] = update(currentState)
-        _connectionStates.value = currentStates
+    private fun updateConnectionState(deviceNumber: Int, transform: (ConnectionState) -> ConnectionState) {
+        // CAS atómico: varios productores (loop de monitoreo, listener ANT+, job de
+        // reconexión) pueden tocar el mapa a la vez; update{} reintenta hasta ganar
+        // el compareAndSet, evitando que un read→copy→write pierda actualizaciones.
+        _connectionStates.update { currentStates ->
+            val currentState = currentStates[deviceNumber] ?: ConnectionState(
+                deviceNumber = deviceNumber,
+                isConnected = false,
+                isReconnecting = false,
+                lastConnectionAttempt = 0L,
+                reconnectAttempts = 0
+            )
+            currentStates + (deviceNumber to transform(currentState))
+        }
     }
 
     fun forceReconnect(deviceNumber: Int) {

@@ -179,7 +179,7 @@ class ConnectionService : Service() {
             if (extensionAvailable) {
                 title = if (isFromExtension) "KRemote - Extension" else "KRemote - App"
                 content = if (isFromExtension) {
-                    "Monitoring from Karoo Exten"
+                    "Monitoring from Karoo Extension"
                 } else {
                     "ANT+ connection service active"
                 }
@@ -219,7 +219,7 @@ class ConnectionService : Service() {
 
         // Use Toast directly - simpler and always works
         Handler(Looper.getMainLooper()).post {
-            Toast.makeText(applicationContext, "⚠️ $message", Toast.LENGTH_LONG).show()
+            Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
             Timber.d("[ConnectionService] Warning toast shown: $message")
         }
     }

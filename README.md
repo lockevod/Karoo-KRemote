@@ -151,7 +151,7 @@ Debug logs contain detailed information about:
 - Error messages with timestamps
 
 ## Know Bugs
-- Sometimes app isn't working fine, this new release has better support and it's working fine, but you need to know, Karoo function have priority oven kremote actions.
+- Sometimes app isn't working fine, this new release has better support and it's working fine, but you need to know, Karoo function have priority over kremote actions.
 
 ## Technical Notes
 - **Automatic Riding Detection**: Uses Karoo's native riding state broadcasts

@@ -55,7 +55,7 @@ object NotificationHelper {
 
         // Intent to open the app when notification is tapped
         val intent = Intent().apply {
-            setClassName(context.packageName, "${context.packageName}.MainActivity")
+            setClassName(context.packageName, "${context.packageName}.activity.MainActivity")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
