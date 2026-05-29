@@ -40,7 +40,7 @@ import io.hammerhead.karooext.models.OnNavigationState
 import io.hammerhead.karooext.models.RideState
 import io.hammerhead.karooext.models.SavedDevices
 
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.awaitCancellation
 
 
 
@@ -158,33 +158,34 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         if (!BuildConfig.DEBUG) return
 
         extensionScope.launch {
-            suspendCancellableCoroutine { cont ->
-                karooSystem.addConsumer { rideState: RideState ->
-                    Timber.d("Ride state changed: $rideState")
-                }
-                karooSystem.addConsumer { navigationState: OnNavigationState ->
-                    Timber.d("Navigation state changed: ${navigationState.state}")
-                }
-                karooSystem.addConsumer { event: OnGlobalPOIs ->
-                    Timber.d("Global POIs changed: ${event.pois}")
-                }
-                karooSystem.addConsumer { event: SavedDevices ->
-                    Timber.d("Saved devices changed: ${event.devices}")
-                }
-                karooSystem.addConsumer { event: Bikes ->
-                    Timber.d("Bikes changed: ${event.bikes}")
-                }
-                karooSystem.addConsumer { event: ActiveRideProfile ->
-                    Timber.d("ActiveRideProfile changed: ${event.profile}")
-                }
-                karooSystem.addConsumer { event: ActiveRidePage ->
-                    Timber.d("ActiveRidePage changed: ${event.page}")
-                }
-                karooSystem.addConsumer { user: UserProfile ->
-                    Timber.d("UserProfile changed: $user")
-                }
-
+            karooSystem.addConsumer { rideState: RideState ->
+                Timber.d("Ride state changed: $rideState")
             }
+            karooSystem.addConsumer { navigationState: OnNavigationState ->
+                Timber.d("Navigation state changed: ${navigationState.state}")
+            }
+            karooSystem.addConsumer { event: OnGlobalPOIs ->
+                Timber.d("Global POIs changed: ${event.pois}")
+            }
+            karooSystem.addConsumer { event: SavedDevices ->
+                Timber.d("Saved devices changed: ${event.devices}")
+            }
+            karooSystem.addConsumer { event: Bikes ->
+                Timber.d("Bikes changed: ${event.bikes}")
+            }
+            karooSystem.addConsumer { event: ActiveRideProfile ->
+                Timber.d("ActiveRideProfile changed: ${event.profile}")
+            }
+            karooSystem.addConsumer { event: ActiveRidePage ->
+                Timber.d("ActiveRidePage changed: ${event.page}")
+            }
+            karooSystem.addConsumer { user: UserProfile ->
+                Timber.d("UserProfile changed: $user")
+            }
+
+            // Mantener la coroutine viva para que los consumers sigan registrados
+            // hasta que se cancele el scope de la extensión.
+            awaitCancellation()
         }
     }
 

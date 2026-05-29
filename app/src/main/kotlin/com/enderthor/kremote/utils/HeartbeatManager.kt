@@ -67,6 +67,15 @@ object HeartbeatManager {
     }
 
     /**
+     * Elimina los listeners de conexión de un dispositivo. startMonitoring lo llama
+     * antes de registrar uno nuevo para no acumular callbacks duplicados.
+     */
+    fun unregisterConnectionListeners(deviceId: Int) {
+        PerformanceOptimizer.removeAntEventListeners(deviceId)
+        Timber.d("HeartbeatManager: Unregistered connection listeners for device $deviceId")
+    }
+
+    /**
      * Gets the last known state without performing active verifications
      * OPTION B: Uses real captured events
      */
