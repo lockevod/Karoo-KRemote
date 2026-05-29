@@ -198,11 +198,12 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                         Timber.d("[KRemote] Conectando a dispositivo #$deviceId")
                         antManager.connect(deviceId)
 
-                        // Esperar al callback ANT+ asíncrono antes de declarar
-                        // el resultado y antes de permitir que monitorActiveDeviceChanges
-                        // intente otra conexión paralela. Sin este margen, en el arranque
-                        // en frío veíamos arranques con _isConnected=false hasta que
-                        // llegaba mRemoteResultReceiver.
+                        // La conexión es asíncrona: el resultado real llega vía
+                        // mRemoteResultReceiver. Esperamos ~2s solo para que el log de
+                        // abajo refleje el estado ya resuelto (en arranque en frío veíamos
+                        // _isConnected=false hasta que llegaba el callback). Esto NO serializa
+                        // contra monitorActiveDeviceChanges —corre en otra coroutine—; el
+                        // doble-connect lo evita el guard isConnecting + throttle de connect().
                         delay(2000)
                         if (antManager.isConnectedToDevice(deviceId)) {
                             Timber.d("[KRemote] Successful connection to ANT+ device #$deviceId")
