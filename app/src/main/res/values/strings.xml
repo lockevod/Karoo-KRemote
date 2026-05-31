@@ -55,6 +55,9 @@
     <string name="global_settings">Global settings</string>
     <string name="only_while_riding">Only in ride screen?</string>
     <string name="forced_screen_on">Force Screen On when Action?</string>
+    <string name="bypass_mute">Bypass mute on bells?</string>
+    <string name="bypass_mute_explanation">Plays bells through the physical buzzer even when Karoo alerts are muted. Uses a private Karoo service; if a Karoo update blocks it, bells fall back to the normal (mute-respecting) beep.</string>
+    <string name="bypass_mute_test">Test buzzer</string>
 
     <!-- Success Messages -->
     <string name="device_deleted">Device deleted</string>

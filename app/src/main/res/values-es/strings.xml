@@ -56,6 +56,9 @@
     <string name="global_settings">Configuración General</string>
     <string name="only_while_riding">Activar solo durante paseo</string>
     <string name="forced_screen_on">Mantener pantalla encendida</string>
+    <string name="bypass_mute">¿Saltar mute en campanas?</string>
+    <string name="bypass_mute_explanation">Reproduce las campanas en el zumbador físico aunque las alertas del Karoo estén silenciadas. Usa un servicio privado del Karoo; si una actualización del Karoo lo bloquea, las campanas vuelven al beep normal (que respeta el mute).</string>
+    <string name="bypass_mute_test">Probar zumbador</string>
 
     <!-- Success Messages -->
     <string name="device_deleted">Dispositivo eliminado</string>

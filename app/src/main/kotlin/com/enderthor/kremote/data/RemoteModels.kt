@@ -212,4 +212,7 @@ data class GlobalConfig(
 data class GlobalSettings(
     val onlyWhileRiding: Boolean = true,
     val isForcedScreenOn: Boolean = false,
+    // Opt-in: enruta los beep de KRemote por el HAL privado para saltarse el mute del Karoo.
+    // Off por defecto. Si el bind falla o un OTA lo capa, se cae al beep del SDK (respeta mute).
+    val bypassMute: Boolean = false,
 )

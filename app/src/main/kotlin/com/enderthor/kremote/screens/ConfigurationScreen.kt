@@ -36,6 +36,9 @@ fun ConfigurationScreen(
     val selectedDevice = devices.find { it.id == selectedDeviceId }
     val onlyWhileRiding by configViewModel.onlyWhileRiding.collectAsState()
     val forcedScreenOn by configViewModel.forcedScreenOn.collectAsState()
+    val bypassMute by configViewModel.bypassMute.collectAsState()
+    val buzzerTestResult by configViewModel.buzzerTestResult.collectAsState()
+    val buzzerTesting by configViewModel.buzzerTesting.collectAsState()
     var showDoubleTapDisclaimer by remember { mutableStateOf(false) }
     var tempDeviceId by remember { mutableStateOf("") }
 
@@ -199,6 +202,60 @@ fun ConfigurationScreen(
                                 text = stringResource(R.string.forced_screen_on),
                                 modifier = Modifier.padding(start = 8.dp)
                             )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Switch(
+                                checked = bypassMute,
+                                onCheckedChange = { checked ->
+                                    configViewModel.updateBypassMute(checked)
+                                }
+                            )
+
+                            Text(
+                                text = stringResource(R.string.bypass_mute),
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+
+                        Text(
+                            text = stringResource(R.string.bypass_mute_explanation),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = { configViewModel.testBuzzer() },
+                                enabled = !buzzerTesting
+                            ) {
+                                if (buzzerTesting) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                } else {
+                                    Text(stringResource(R.string.bypass_mute_test))
+                                }
+                            }
+
+                            buzzerTestResult?.let { result ->
+                                val ok = result == "SUCCESS"
+                                Text(
+                                    text = result,
+                                    modifier = Modifier.padding(start = 12.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (ok) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(22.dp))

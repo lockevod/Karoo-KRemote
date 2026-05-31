@@ -42,7 +42,7 @@ fun TabLayout(
     )
 
     val configViewModel: ConfigurationViewModel = viewModel(
-        factory = ConfigViewModelFactory(repository)
+        factory = ConfigViewModelFactory(repository, LocalContext.current.applicationContext)
     )
 
     // Collect states from ViewModels
@@ -231,12 +231,13 @@ class DeviceViewModelFactory(
 }
 
 class ConfigViewModelFactory(
-    private val repository: RemoteRepository
+    private val repository: RemoteRepository,
+    private val appContext: Context
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ConfigurationViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ConfigurationViewModel(repository) as T
+            return ConfigurationViewModel(repository, appContext) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

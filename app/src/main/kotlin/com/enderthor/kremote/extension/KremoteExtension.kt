@@ -27,6 +27,7 @@ import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.GlobalSettings
 import com.enderthor.kremote.data.KeyLookup
+import com.enderthor.kremote.hal.BuzzerClient
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
 import com.enderthor.kremote.utils.DebugLogger
@@ -68,6 +69,9 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     private lateinit var _antManager: AntManager
     private lateinit var repository: RemoteRepository
     private lateinit var karooAction: KarooAction
+    // Cliente HAL para el bypass del mute; el bind es asíncrono y se reutiliza durante toda
+    // la vida de la extensión. Nullable: si el bind falla, KarooAction cae al beep del SDK.
+    private var buzzerClient: BuzzerClient? = null
 
     val antManager: AntManager get() = _antManager
 
@@ -89,6 +93,12 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
         karooSystem = KarooSystemService(applicationContext)
         repository = RemoteRepository(applicationContext)
+
+        // Lanzamos el bind del HAL ya en onCreate para que el binder esté listo antes del
+        // primer beep. Es idempotente y barato; si no hay opt-in, KarooAction nunca lo usa.
+        buzzerClient = BuzzerClient(applicationContext).also {
+            Timber.d("[KRemote] BuzzerClient bind: ${it.connect()}")
+        }
 
 
         _antManager = AntManager(applicationContext, { command, pressType ->
@@ -134,7 +144,9 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     { globalSettings?.onlyWhileRiding ?: false },
                     { globalSettings?.isForcedScreenOn != false},
                     { activeDevice },
-                    { activeKeyLookup }
+                    { activeKeyLookup },
+                    { globalSettings?.bypassMute == true },
+                    buzzerClient
                 )
 
 
@@ -344,6 +356,8 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             antManager.disconnect()
             antManager.cleanup()
             if (::karooAction.isInitialized) karooAction.cleanup()
+            buzzerClient?.disconnect()
+            buzzerClient = null
             karooSystem.disconnect()
             extensionScope.cancel()
 

@@ -7,7 +7,10 @@ import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.getLabelString
 import com.enderthor.kremote.data.KarooKey
+import com.enderthor.kremote.hal.BuzzerClient
+import com.enderthor.kremote.hal.BuzzerClient.Companion.toBuzzerTones
 import io.hammerhead.karooext.KarooSystemService
+import io.hammerhead.karooext.models.PlayBeepPattern
 import io.hammerhead.karooext.models.TurnScreenOn
 import io.hammerhead.karooext.models.ZoomPage
 import android.content.Context
@@ -28,13 +31,37 @@ class KarooAction(
     private val onlyWhileRiding: () -> Boolean,
     private val isForcedScreenOn: () -> Boolean,
     private val activeDevice: () -> RemoteDevice?,
-    private val keyLookup: () -> KeyLookup = { KeyLookup.EMPTY }
+    private val keyLookup: () -> KeyLookup = { KeyLookup.EMPTY },
+    private val bypassMute: () -> Boolean = { false },
+    private val buzzerClient: BuzzerClient? = null
 ) {
     // Scope propio para acciones de larga duración (zoom rápido), cancelable correctamente
     private val actionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     fun cleanup() {
         actionScope.cancel()
+    }
+
+    /**
+     * Reproduce un beep por EXACTAMENTE un canal — nunca los dos a la vez (el zumbador es un
+     * único piezo; disparar SDK + HAL solapa los patrones y suena a ruido):
+     *  - bypass HAL si el rider lo activó AND el bind está vivo AND beep() devolvió true,
+     *  - SDK PlayBeepPattern (sujeto a mute) en cualquier otro caso.
+     * Así el peor caso post-OTA es "suena como antes", nunca silencio.
+     */
+    private fun playBeep(pattern: PlayBeepPattern) {
+        val client = buzzerClient
+        val tryBypass = bypassMute() && client != null && client.isReady()
+        if (tryBypass && client!!.beep(pattern.tones.toBuzzerTones())) {
+            if (DebugLogger.isEnabled()) {
+                Timber.d("🔔 [KRemote] Beep vía HAL (bypass mute), result=${client.lastResult}")
+            }
+            return
+        }
+        if (DebugLogger.isEnabled() && bypassMute()) {
+            Timber.d("🔔 [KRemote] Beep vía SDK (fallback; bind=${client?.isReady()}, last=${client?.lastResult})")
+        }
+        karooSystem.dispatch(pattern)
     }
 
 
@@ -223,7 +250,12 @@ class KarooAction(
                             source = "KarooAction"
                         )
                     }
-                    karooSystem.dispatch(karooKey.action)
+                    val action = karooKey.action
+                    if (action is PlayBeepPattern) {
+                        playBeep(action)
+                    } else {
+                        karooSystem.dispatch(action)
+                    }
 
                     if (DebugLogger.isEnabled()) {
                         DebugLogger.logConnectionEvent(

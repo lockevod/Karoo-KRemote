@@ -46,6 +46,7 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - You can configure double tap option. This permits to use double press and use more options with the remote (for example, zoom in double tap in left button, etc). Double tap works fine but introduces a delay (it's necessary to catch double press). The default delay is 1200 ms.
 - You can map several actions (mark lap, swipe between screens, zoom in etc and use your Karoo as a BELL)
 - If you have karoo > 1.535 you can use showmap option also
+- **Bypass mute on bells** (Conf screen, Global settings): when enabled, bells are played through the Karoo's physical buzzer even if you have muted the device's audio alerts, so you stay audible to pedestrians/traffic. It is OFF by default and only affects bell actions. Use the **Test buzzer** button to check it works on your firmware (see below).
 
 ## Enroll new remote
 - If you want to enroll a new remote, you can do it in the Remotes screen
@@ -60,6 +61,12 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - If you have problems you can go to Debug screen and enable debug logging. This will help you to see what is happening in the app and if there are any issues with the remote connection or commands.Please repeat the process and send me the log.
 
 ## New Features & Performance Improvements
+
+### 🔔 Mute-Bypass Bells
+- **Stay audible when muted**: Optional toggle (Conf screen → Global settings → *Bypass mute on bells?*) that routes KRemote's bells through the Karoo's physical buzzer, bypassing the device's audio-alerts mute. Useful so a mapped bell button still warns pedestrians/traffic when you have silenced the Karoo.
+- **Opt-in and safe by default**: OFF unless you enable it, and it only affects bell actions — every other action is unchanged.
+- **Resilient**: Uses a private Karoo service. If it isn't available (e.g. a future Karoo update blocks it), bells automatically fall back to the normal beep that respects mute — they never go silent.
+- **Test buzzer button**: Next to the toggle. Plays a short test tone and shows the result (`SUCCESS`, or a diagnostic such as `GATED_BY_SECURITY` / `BIND_FAILED…`) so you can verify the feature on your firmware without needing logs.
 
 ### 🚀 Intelligent Heartbeat System
 - **Automatic Riding Detection**: KRemote automatically detects when you start/stop a ride on your Karoo
