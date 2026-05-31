@@ -8,6 +8,13 @@
 
     <uses-permission android:name="com.enderthor.kremote.PERMISSION_START_CONNECTION" />
 
+    <!-- Visibilidad de paquete (Android 11+) para poder bindear el servicio HAL privado
+         del Karoo y tocar el zumbador saltándose el mute. Sin esto, bindService devuelve
+         false sin log. Una línea <package> por cada servicio de sistema que se bindee. -->
+    <queries>
+        <package android:name="io.hammerhead.hal" />
+    </queries>
+
     <application
         android:name=".KremoteApplication"
         android:allowBackup="true"
