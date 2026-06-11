@@ -94,10 +94,12 @@ class DeviceViewModel(
                     antManager.startDeviceSearch()
                 }
 
-                val startTime = System.currentTimeMillis()
-                while (System.currentTimeMillis() - startTime < 30000) {
-                    _availableAntDevices.value = antManager.detectedDevices.value
-                    delay(1000)
+                // Fix: en lugar de polling cada 1 s, recoger el StateFlow directamente
+                // con un timeout de 30 s (igual que antes)
+                kotlinx.coroutines.withTimeoutOrNull(30_000L) {
+                    antManager.detectedDevices.collect { devices ->
+                        _availableAntDevices.value = devices
+                    }
                 }
             } catch (e: CancellationException) {
                 Timber.d("Scan job cancelled $e")
@@ -267,8 +269,10 @@ class DeviceViewModel(
         Timber.d("🎓 [DeviceViewModel] Learning mode DEACTIVATED and synced with extension")
         DebugLogger.logConnectionEvent(0, "LEARNING_MODE_DEACTIVATED", "Learning deactivated and synced with extension", "DeviceViewModel")
 
-        saveLearnedCommands()
-
+        // Fix: cada comando ya se persiste en onCommandDetected vía repository.updateLearnedCommand
+        // con la pressType correcta. La llamada redundante a saveLearnedCommands() sobraría
+        // (y usaba pressType.SINGLE por defecto para todos). Eliminada.
+        stopCommandListener()
 
         learningTimeoutJob?.cancel()
         DebugLogger.logConnectionEvent(0, "LEARNING_TIMEOUT_CANCELLED", "Auto-timeout job cancelled", "DeviceViewModel")
@@ -292,41 +296,51 @@ class DeviceViewModel(
     }
 
 
+    private var commandPrefsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
+
     private fun startCommandListener() {
-        viewModelScope.launch {
-            val sharedPrefsCommands = appContext.getSharedPreferences("kremote_learned_commands", Context.MODE_PRIVATE)
-            var lastTimestamp = 0L
-            
-            while (_scanning.value) {
-                try {
-                    val currentTimestamp = sharedPrefsCommands.getLong("timestamp", 0L)
-                    
-                    if (currentTimestamp > lastTimestamp) {
-                        val commandName = sharedPrefsCommands.getString("last_command", null)
-                        val pressTypeName = sharedPrefsCommands.getString("last_press_type", "SINGLE")
-                        
-                        if (!commandName.isNullOrEmpty() && !pressTypeName.isNullOrEmpty()) {
-                            try {
-                                val command = AntRemoteKey.valueOf(commandName)
-                                val pressType = PressType.valueOf(pressTypeName)
-                                
-                                Timber.d("📥 [DeviceViewModel] Command received from extension: $commandName ($pressTypeName)")
-                                onCommandDetected(command, pressType)
-                                
-                                lastTimestamp = currentTimestamp
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error procesando comando recibido: $commandName")
-                            }
-                        }
+        val sharedPrefsCommands = appContext.getSharedPreferences("kremote_learned_commands", Context.MODE_PRIVATE)
+
+        // Fix: sustituir el polling de 500 ms por un listener de SharedPreferences
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+            if (key == "timestamp" && _scanning.value) {
+                val commandName = prefs.getString("last_command", null)
+                val pressTypeName = prefs.getString("last_press_type", "SINGLE")
+                if (!commandName.isNullOrEmpty() && !pressTypeName.isNullOrEmpty()) {
+                    try {
+                        val command = AntRemoteKey.valueOf(commandName)
+                        val pressType = PressType.valueOf(pressTypeName)
+                        Timber.d("📥 [DeviceViewModel] Command received from extension: $commandName ($pressTypeName)")
+                        onCommandDetected(command, pressType)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error procesando comando recibido: $commandName")
                     }
-                    
-                    delay(500) // Verificar cada 500ms
-                } catch (e: Exception) {
-                    Timber.e(e, "Error en listener de comandos")
-                    delay(1000)
                 }
             }
         }
+        commandPrefsListener = listener
+        sharedPrefsCommands.registerOnSharedPreferenceChangeListener(listener)
+
+        // Lectura inicial para no perder un comando ya escrito antes de registrar el listener
+        val commandName = sharedPrefsCommands.getString("last_command", null)
+        val pressTypeName = sharedPrefsCommands.getString("last_press_type", "SINGLE")
+        if (!commandName.isNullOrEmpty() && !pressTypeName.isNullOrEmpty()) {
+            try {
+                val command = AntRemoteKey.valueOf(commandName)
+                val pressType = PressType.valueOf(pressTypeName)
+                onCommandDetected(command, pressType)
+            } catch (e: Exception) {
+                Timber.e(e, "Error procesando comando inicial: $commandName")
+            }
+        }
+    }
+
+    private fun stopCommandListener() {
+        commandPrefsListener?.let { listener ->
+            appContext.getSharedPreferences("kremote_learned_commands", Context.MODE_PRIVATE)
+                .unregisterOnSharedPreferenceChangeListener(listener)
+        }
+        commandPrefsListener = null
     }
 
     private fun onCommandDetected(command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
@@ -375,22 +389,6 @@ class DeviceViewModel(
                 processed = false,
                 source = "DeviceViewModel"
             )
-        }
-    }
-
-    private fun saveLearnedCommands() {
-        selectedDevice.value?.let { device ->
-            viewModelScope.launch {
-                try {
-                    for (command in _learnedCommands.value) {
-                        repository.updateLearnedCommand(device.id, command)
-                        Timber.d("💾 [DeviceViewModel] Learned command persisted: %s", command.name)
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error saving learned commands")
-                    _message.value = DeviceMessage.Error(getString(R.string.error))
-                }
-            }
         }
     }
 

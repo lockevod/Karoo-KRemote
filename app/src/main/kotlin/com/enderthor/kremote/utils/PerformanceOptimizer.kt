@@ -16,8 +16,8 @@ object PerformanceOptimizer {
     private val _isOptimizationEnabled = MutableStateFlow(true)
     val isOptimizationEnabled: StateFlow<Boolean> = _isOptimizationEnabled.asStateFlow()
 
-    // Cache to avoid recreating objects frequently
-    private val commandCache = ConcurrentHashMap<String, Any>()
+    // Fix: commandCache eliminado — su único llamador (ReconnectionManager) cacheaba un
+    // ConnectionState constante; ahora se crea directamente (ver ReconnectionManager).
     // Use String keys directly to avoid hashCode collisions
     private val connectionStateCache = ConcurrentHashMap<String, Long>()
 
@@ -33,9 +33,10 @@ object PerformanceOptimizer {
     // OPTION C: Smart verification only for UI
     private val uiVerificationRequests = ConcurrentHashMap<String, Long>()
 
-    // NEW: Automatic riding state detection from KremoteExtension
-    private val _isRiding = MutableStateFlow(false)
-    // Expose isRiding as public property so it can be used from other classes
+    // Fix: _isRiding solo se lee con .value y nunca se colecta como Flow → @Volatile var.
+    // Se mantiene el nombre de acceso público setRidingState() para que KremoteExtension
+    // no necesite cambios.
+    @Volatile private var _isRiding = false
 
 
     // Simple punctual heartbeat configuration
@@ -78,22 +79,9 @@ object PerformanceOptimizer {
     }
 
     /**
-     * Obtiene un objeto del caché o lo crea si no existe
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <T> getCachedOrCreate(key: String, factory: () -> T): T {
-        if (!_isOptimizationEnabled.value) {
-            return factory()
-        }
-
-        return commandCache.getOrPut(key) { factory() } as T
-    }
-
-    /**
      * Limpia las cachés para liberar memoria
      */
     fun clearCaches() {
-        commandCache.clear()
         connectionStateCache.clear()
         deviceActivityCache.clear()
     }
@@ -117,7 +105,6 @@ object PerformanceOptimizer {
     fun getStats(): Map<String, Any> {
         return mapOf(
             "isEnabled" to _isOptimizationEnabled.value,
-            "commandCacheSize" to commandCache.size,
             "connectionStateCacheSize" to connectionStateCache.size
         )
     }
@@ -136,7 +123,7 @@ object PerformanceOptimizer {
         val stats = getStats()
         return buildString {
             appendLine(optimizationsStatus.format(if (stats["isEnabled"] as Boolean) enabledStatus else disabledStatus))
-            appendLine(commandCacheLabel.format(stats["commandCacheSize"]))
+            // Fix: commandCache eliminado; parámetro commandCacheLabel mantenido para no romper llamadores
             appendLine(connectionCacheLabel.format(stats["connectionStateCacheSize"]))
             appendLine(coroutinePoolLabel)
         }
@@ -171,7 +158,7 @@ object PerformanceOptimizer {
         val timeSinceActivity = now - lastActivity
 
         // Si está en riding, intervalos menos agresivos pero más inteligentes
-        if (_isRiding.value) {
+        if (_isRiding) {
             return when {
                 // Primera verificación después de detectar riding: 30 segundos
                 // (para confirmar que la conexión funciona al iniciar)
@@ -242,14 +229,14 @@ object PerformanceOptimizer {
 
 
         // Usar timeout adaptativo según estado de riding
-        val timeout = if (_isRiding.value) RIDING_HEARTBEAT_TIMEOUT_MS else NORMAL_HEARTBEAT_TIMEOUT_MS
+        val timeout = if (_isRiding) RIDING_HEARTBEAT_TIMEOUT_MS else NORMAL_HEARTBEAT_TIMEOUT_MS
 
         return withTimeoutOrNull(timeout) {
             try {
                 DebugLogger.logConnectionEvent(
                     deviceNumber,
                     "DEBUG_HEARTBEAT_START",
-                    "Debug screen heartbeat check started (timeout: ${timeout}ms, riding: ${_isRiding.value})",
+                    "Debug screen heartbeat check started (timeout: ${timeout}ms, riding: ${_isRiding})",
                     "PerformanceOptimizer"
                 )
 
@@ -280,7 +267,7 @@ object PerformanceOptimizer {
             DebugLogger.logConnectionEvent(
                 deviceNumber,
                 "DEBUG_HEARTBEAT_TIMEOUT",
-                "Debug screen heartbeat timed out after ${timeout}ms (riding: ${_isRiding.value})",
+                "Debug screen heartbeat timed out after ${timeout}ms (riding: ${_isRiding})",
                 "PerformanceOptimizer"
             )
             false
@@ -470,8 +457,8 @@ object PerformanceOptimizer {
      * Esta función es llamada automáticamente cuando cambia el estado del ride
      */
     fun setRidingState(isRiding: Boolean) {
-        val wasRiding = _isRiding.value
-        _isRiding.value = isRiding
+        val wasRiding = _isRiding
+        _isRiding = isRiding  // @Volatile — write visible a todos los hilos
 
         DebugLogger.logConnectionEvent(
             deviceNumber = 0,

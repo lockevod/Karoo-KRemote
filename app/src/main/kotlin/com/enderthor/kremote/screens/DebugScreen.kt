@@ -32,6 +32,12 @@ fun DebugScreen(
     val isDebugEnabled by viewModel.isDebugEnabled.collectAsState()
     val connectionStates: Map<Int, ConnectionState> by viewModel.connectionStates.collectAsState(initial = emptyMap())
 
+    // Fix: arrancar/parar la verificación periódica solo mientras la pantalla está visible
+    DisposableEffect(Unit) {
+        viewModel.startPeriodicActiveCheck()
+        onDispose { viewModel.stopPeriodicActiveCheck() }
+    }
+
     // DIAGNÓSTICO: Verificar estado del singleton cada vez que se abre la pantalla
     LaunchedEffect(isDebugEnabled) {
         if (isDebugEnabled) {
@@ -65,6 +71,26 @@ fun DebugScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val optimizerEnabled by PerformanceOptimizer.isOptimizationEnabled.collectAsState()
+
+                // Fix: getFormattedStats se recalcula solo cuando optimizerEnabled cambia,
+                // no en cada recomposición. Los strings de recursos son estables.
+                val optimizerStatusStr = stringResource(R.string.debug_optimizations_status)
+                val optimizerEnabledStr = stringResource(R.string.debug_optimizations_enabled_status)
+                val optimizerDisabledStr = stringResource(R.string.debug_optimizations_disabled_status)
+                val commandCacheStr = stringResource(R.string.debug_command_cache)
+                val connectionCacheStr = stringResource(R.string.debug_connection_cache)
+                val coroutinePoolStr = stringResource(R.string.debug_coroutine_pool)
+                val formattedStats = remember(optimizerEnabled) {
+                    PerformanceOptimizer.getFormattedStats(
+                        optimizationsStatus = optimizerStatusStr,
+                        enabledStatus = optimizerEnabledStr,
+                        disabledStatus = optimizerDisabledStr,
+                        commandCacheLabel = commandCacheStr,
+                        connectionCacheLabel = connectionCacheStr,
+                        coroutinePoolLabel = coroutinePoolStr
+                    )
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -84,14 +110,7 @@ fun DebugScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = PerformanceOptimizer.getFormattedStats(
-                        optimizationsStatus = stringResource(R.string.debug_optimizations_status),
-                        enabledStatus = stringResource(R.string.debug_optimizations_enabled_status),
-                        disabledStatus = stringResource(R.string.debug_optimizations_disabled_status),
-                        commandCacheLabel = stringResource(R.string.debug_command_cache),
-                        connectionCacheLabel = stringResource(R.string.debug_connection_cache),
-                        coroutinePoolLabel = stringResource(R.string.debug_coroutine_pool)
-                    ),
+                    text = formattedStats,
                     fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -155,6 +174,10 @@ fun DebugScreen(
                 )
 
                 if (isDebugEnabled) {
+                    // Fix: getDebugInfo() lee SharedPreferences → sacarlo de la ruta de
+                    // recomposición; se recalcula solo cuando cambia isDebugEnabled.
+                    val debugInfo = remember(isDebugEnabled) { DebugLogger.getDebugInfo() }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
@@ -167,7 +190,7 @@ fun DebugScreen(
 
                     // Show detailed debug information using getDebugInfo()
                     Text(
-                        text = DebugLogger.getDebugInfo(),
+                        text = debugInfo,
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

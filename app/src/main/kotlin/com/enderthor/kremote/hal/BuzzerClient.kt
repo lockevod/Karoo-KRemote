@@ -48,9 +48,41 @@ class BuzzerClient(private val context: Context) {
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) { binder = service }
+        // El binder murió pero la conexión sigue registrada: limpiar binder, sin tocar `bound`.
         override fun onServiceDisconnected(name: ComponentName) { binder = null }
-        override fun onBindingDied(name: ComponentName) { binder = null }
-        override fun onNullBinding(name: ComponentName) { binder = null }
+
+        // El binding murió definitivamente (p.ej. el HAL crasheó o un OTA lo capó). Si dejábamos
+        // `bound = true`, connect() devolvía "already bound" para siempre y el canal HAL quedaba
+        // muerto hasta reiniciar el proceso. Liberamos la conexión, reseteamos estado e intentamos
+        // UN rebind automático (bind es idempotente y barato). Si vuelve a fallar, el llamante
+        // (KarooAction) seguirá cayendo al beep del SDK — nunca silencio.
+        override fun onBindingDied(name: ComponentName) {
+            binder = null
+            resetBinding()
+            reconnect()
+        }
+
+        // El servicio devolvió un binder null en el bind: el bind quedó registrado pero inútil.
+        // Reseteamos `bound` para que un connect() posterior pueda reintentar.
+        override fun onNullBinding(name: ComponentName) {
+            binder = null
+            resetBinding()
+        }
+    }
+
+    /** Libera la conexión actual y deja el estado como "no vinculado", de forma idempotente. */
+    @Synchronized
+    private fun resetBinding() {
+        if (bound) {
+            try { context.applicationContext.unbindService(connection) } catch (_: Exception) {}
+            bound = false
+        }
+    }
+
+    /** Reintento único de bind tras una muerte del binding. */
+    private fun reconnect() {
+        val status = connect()
+        Timber.d("[KRemote] BuzzerClient auto-rebind after binding death: $status")
     }
 
     fun isReady(): Boolean = binder != null
@@ -61,6 +93,7 @@ class BuzzerClient(private val context: Context) {
      * visible" (falta <queries>) de "servicio no resuelve" (capado/renombrado) de
      * "bindService devolvió false".
      */
+    @Synchronized
     fun connect(): String {
         if (bound) return "already bound"
         val pm = context.packageManager
@@ -81,6 +114,7 @@ class BuzzerClient(private val context: Context) {
         return if (bound) "bind dispatched" else "bindService returned false"
     }
 
+    @Synchronized
     fun disconnect() {
         if (!bound) return
         try { context.applicationContext.unbindService(connection) } catch (_: Exception) {}

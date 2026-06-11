@@ -3,9 +3,9 @@ package com.enderthor.kremote
 import android.app.Application
 import android.content.Intent
 import android.util.Log
-import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.DEBUG_LOGGING_ENABLED
 import com.enderthor.kremote.utils.DebugLogger
+import com.enderthor.kremote.utils.NotificationHelper
 import com.enderthor.kremote.receiver.ConnectionServiceReceiver
 import timber.log.Timber
 import timber.log.Timber.DebugTree
@@ -13,7 +13,7 @@ import timber.log.Timber.Forest.plant
 import timber.log.Timber.Tree
 
 class KremoteApplication : Application() {
-    private lateinit var repository: RemoteRepository
+    // Fix: campo `repository` eliminado — no se usaba en ningún lugar de la clase.
 
     override fun onCreate() {
         super.onCreate()
@@ -54,7 +54,9 @@ class KremoteApplication : Application() {
         // Initialize DebugLogger in the main application
         DebugLogger.initialize(applicationContext, DEBUG_LOGGING_ENABLED)
 
-        repository = RemoteRepository(applicationContext)
+        // Fix: crear los canales de notificación una única vez en Application.onCreate.
+        // NotificationHelper.createServiceNotification los recreaba en cada llamada.
+        NotificationHelper.createNotificationChannels(applicationContext)
 
         startConnectionService()
 

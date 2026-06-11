@@ -91,13 +91,17 @@ class KarooAction(
         }
 
         if (!isConnected) {
-            Timber.w("❌ [KRemote] BLOCKED: Karoo service not connected")
+            if (DebugLogger.isEnabled()) {
+                Timber.w("❌ [KRemote] BLOCKED: Karoo service not connected")
+            }
             DebugLogger.logError("EXECUTION_BLOCKED", "Karoo service not connected - command blocked", source = "KarooAction")
             return
         }
 
         if (!currentlyRiding && onlyDuringRide) {
-            Timber.w("❌ [KRemote] BLOCKED: Not in ride and configured for 'only while riding'")
+            if (DebugLogger.isEnabled()) {
+                Timber.w("❌ [KRemote] BLOCKED: Not in ride and configured for 'only while riding'")
+            }
             DebugLogger.logConnectionEvent(
                 deviceNumber = activeDeviceInfo?.antDeviceId ?: 0,
                 event = "EXECUTION_BLOCKED_NOT_RIDING",
@@ -120,7 +124,9 @@ class KarooAction(
         try {
             val antRemoteKey = AntRemoteKey.byCommand[commandNumber]
             if (antRemoteKey == null) {
-                Timber.w("❌ [KRemote] Unrecognized ANT+ command: $commandNumber")
+                if (DebugLogger.isEnabled()) {
+                    Timber.w("❌ [KRemote] Unrecognized ANT+ command: $commandNumber")
+                }
                 DebugLogger.logError("MAPPING", "Unrecognized ANT+ command: $commandNumber", source = "KarooAction")
                 return
             }
@@ -172,8 +178,8 @@ class KarooAction(
                         )
                     }
                 } else {
-                    Timber.w("❌ [KRemote] NOT MAPPED: No action assigned for ${antRemoteKey.getLabelString(context)} (${if (pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
                     if (DebugLogger.isEnabled()) {
+                        Timber.w("❌ [KRemote] NOT MAPPED: No action assigned for ${antRemoteKey.getLabelString(context)} (${if (pressType == PressType.DOUBLE) "DOUBLE" else "SINGLE"})")
                         DebugLogger.logConnectionEvent(
                             deviceNumber = device.antDeviceId ?: 0,
                             event = "COMMAND_NOT_MAPPED",
@@ -186,7 +192,9 @@ class KarooAction(
                     }
                 }
             } ?: run {
-                Timber.w("❌ [KRemote] MISSING DEVICE: No active device configured")
+                if (DebugLogger.isEnabled()) {
+                    Timber.w("❌ [KRemote] MISSING DEVICE: No active device configured")
+                }
                 DebugLogger.logError("MAPPING", "No active device configured for command mapping", source = "KarooAction")
             }
         } catch (e: Exception) {
@@ -206,7 +214,9 @@ class KarooAction(
         }
 
         if (!isServiceConnected()) {
-            Timber.w("Cannot execute action: Karoo service not connected")
+            if (DebugLogger.isEnabled()) {
+                Timber.w("Cannot execute action: Karoo service not connected")
+            }
             DebugLogger.logError("KAROO_EXECUTION", "Cannot execute action - Karoo service not connected", source = "KarooAction")
             return
         }

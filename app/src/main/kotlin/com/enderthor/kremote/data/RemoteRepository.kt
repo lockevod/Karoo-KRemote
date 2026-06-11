@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.enderthor.kremote.utils.DebugLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import timber.log.Timber
@@ -33,6 +34,15 @@ class RemoteRepository(private val context: Context) {
         isLenient = true
     }
 
+    // Cache del último (raw JSON -> GlobalConfig decodificado). currentConfig es un cold flow:
+    // cada uno de los ~6 colectores de la app re-ejecutaba json.decodeFromString por cada
+    // emisión de DataStore. Como el raw string es idéntico para todos los colectores tras un
+    // mismo write, comparamos por igualdad de string ANTES de decodificar y reutilizamos el
+    // objeto ya parseado. Volatile: lo leen/escriben colectores en hilos distintos; la
+    // condición de carrera benigna (dos decodes simultáneos del mismo string) sólo desperdicia
+    // un parse puntual, nunca devuelve datos incorrectos.
+    @Volatile private var configCache: Pair<String, GlobalConfig>? = null
+
     val currentConfig: Flow<GlobalConfig> = context.dataStore.data
         .catch { exception ->
             Timber.e(exception, "Error loading config")
@@ -42,7 +52,14 @@ class RemoteRepository(private val context: Context) {
             try {
                 val jsonString = preferences[settingsKey]
                 if (jsonString != null) {
-                    json.decodeFromString<GlobalConfig>(jsonString)
+                    val cached = configCache
+                    if (cached != null && cached.first == jsonString) {
+                        cached.second
+                    } else {
+                        json.decodeFromString<GlobalConfig>(jsonString).also {
+                            configCache = jsonString to it
+                        }
+                    }
                 } else {
                     GlobalConfig()
                 }
@@ -52,11 +69,12 @@ class RemoteRepository(private val context: Context) {
             }
         }
 
-    fun getDevices(): Flow<List<RemoteDevice>> = currentConfig.map { it.devices }
+    fun getDevices(): Flow<List<RemoteDevice>> =
+        currentConfig.map { it.devices }.distinctUntilChanged()
 
     fun getActiveDevice(): Flow<RemoteDevice?> = currentConfig.map { config ->
         config.devices.find { it.isActive }
-    }
+    }.distinctUntilChanged()
 
     /**
      * Lee GlobalConfig directamente de las preferencias ya disponibles en el transform de edit{}.
@@ -82,7 +100,7 @@ class RemoteRepository(private val context: Context) {
                 val updatedDevices = currentConfig.devices + device
                 val updatedConfig = currentConfig.copy(devices = updatedDevices)
 
-                preferences[settingsKey] = Json.encodeToString(
+                preferences[settingsKey] = json.encodeToString(
                     GlobalConfig.serializer(),
                     updatedConfig
                 )
@@ -109,7 +127,7 @@ class RemoteRepository(private val context: Context) {
                     updatedDevices
                 }
 
-                preferences[settingsKey] = Json.encodeToString(
+                preferences[settingsKey] = json.encodeToString(
                     GlobalConfig.serializer(),
                     current.copy(devices = finalDevices)
                 )
@@ -124,7 +142,7 @@ class RemoteRepository(private val context: Context) {
         try {
             context.dataStore.edit { preferences ->
                 val current = preferences.getCurrentConfig()
-                preferences[settingsKey] = Json.encodeToString(
+                preferences[settingsKey] = json.encodeToString(
                     GlobalConfig.serializer(),
                     current.copy(
                         devices = current.devices.map { device ->
@@ -151,7 +169,7 @@ class RemoteRepository(private val context: Context) {
                     }
                 }
                 
-                preferences[settingsKey] = Json.encodeToString(
+                preferences[settingsKey] = json.encodeToString(
                     GlobalConfig.serializer(),
                     current.copy(devices = updatedDevices)
                 )
@@ -220,7 +238,7 @@ class RemoteRepository(private val context: Context) {
                 }
 
                 val updatedConfig = current.copy(devices = updatedDevices)
-                preferences[settingsKey] = Json.encodeToString(
+                preferences[settingsKey] = json.encodeToString(
                     GlobalConfig.serializer(),
                     updatedConfig
                 )
@@ -304,7 +322,7 @@ class RemoteRepository(private val context: Context) {
                     }
                 )
 
-                preferences[settingsKey] = Json.encodeToString(
+                preferences[settingsKey] = json.encodeToString(
                     GlobalConfig.serializer(),
                     updatedConfig
                 )
@@ -323,6 +341,95 @@ class RemoteRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Variante por lotes de [assignKeyCodeToCommand]: aplica varios mappings en UN solo
+     * dataStore.edit (un único read-modify-write y un único parse/encode), en vez de una
+     * edición por cada asignación. Replica exactamente la semántica de merge del método
+     * individual (actualizar si existe (command, pressType); si no, añadir). Cada
+     * [LearnedCommand] aporta su propio pressType.
+     */
+    suspend fun assignKeyCodesToCommands(
+        deviceId: String,
+        assignments: List<LearnedCommand>
+    ) {
+        if (assignments.isEmpty()) return
+        try {
+            DebugLogger.logConnectionEvent(
+                deviceNumber = 0,
+                event = "DB_MAPPING_BATCH_START",
+                details = "Assigning ${assignments.size} mappings for device $deviceId",
+                source = "RemoteRepository"
+            )
+
+            context.dataStore.edit { preferences ->
+                val current = preferences.getCurrentConfig()
+                val updatedConfig = current.copy(
+                    devices = current.devices.map { device ->
+                        if (device.id == deviceId) {
+                            val updatedCommands = device.learnedCommands.toMutableList()
+
+                            for ((command, pressType, karooKey) in assignments) {
+                                val existingCommandIndex = updatedCommands.indexOfFirst {
+                                    it.command == command && it.pressType == pressType
+                                }
+
+                                if (existingCommandIndex >= 0) {
+                                    val oldMapping = updatedCommands[existingCommandIndex].karooKey?.action?.let { it::class.simpleName } ?: "UNASSIGNED"
+                                    updatedCommands[existingCommandIndex] = updatedCommands[existingCommandIndex].copy(karooKey = karooKey)
+
+                                    DebugLogger.logConnectionEvent(
+                                        deviceNumber = device.antDeviceId ?: 0,
+                                        event = "DB_MAPPING_UPDATED",
+                                        details = "Updated mapping for ${device.name}: $command ($pressType) changed from $oldMapping to ${karooKey?.action?.let { it::class.simpleName } ?: "UNASSIGNED"}",
+                                        source = "RemoteRepository"
+                                    )
+                                } else {
+                                    updatedCommands.add(LearnedCommand(command = command, pressType = pressType, karooKey = karooKey))
+
+                                    DebugLogger.logConnectionEvent(
+                                        deviceNumber = device.antDeviceId ?: 0,
+                                        event = "DB_MAPPING_ADDED",
+                                        details = "Added new mapping for ${device.name}: $command ($pressType) -> ${karooKey?.action?.let { it::class.simpleName } ?: "UNASSIGNED"}",
+                                        source = "RemoteRepository"
+                                    )
+                                }
+                            }
+
+                            DebugLogger.logConnectionEvent(
+                                deviceNumber = device.antDeviceId ?: 0,
+                                event = "DB_DEVICE_MAPPINGS",
+                                details = "All mappings for ${device.name}: ${
+                                    updatedCommands.joinToString(
+                                        ", "
+                                    ) { "${it.command.name}(${it.pressType}) -> ${it.karooKey?.action?.let { action -> action::class.simpleName } ?: "UNASSIGNED"}" }
+                                }",
+                                source = "RemoteRepository"
+                            )
+
+                            device.copy(learnedCommands = updatedCommands)
+                        } else device
+                    }
+                )
+
+                preferences[settingsKey] = json.encodeToString(
+                    GlobalConfig.serializer(),
+                    updatedConfig
+                )
+
+                DebugLogger.logConnectionEvent(
+                    deviceNumber = 0,
+                    event = "DB_MAPPING_CONFIG_SAVED",
+                    details = "Batch mapping configuration saved to DataStore successfully (${assignments.size} mappings)",
+                    source = "RemoteRepository"
+                )
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error assigning KeyCodes to commands (batch)")
+            DebugLogger.logError("DB_MAPPING", "Error assigning batch mappings for device $deviceId", e, "RemoteRepository")
+            throw e
+        }
+    }
+
     suspend fun updateDeviceProperty(deviceId: String, update: (RemoteDevice) -> RemoteDevice) {
         try {
             context.dataStore.edit { preferences ->
@@ -334,7 +441,7 @@ class RemoteRepository(private val context: Context) {
                         device
                     }
                 }
-                preferences[settingsKey] = Json.encodeToString(
+                preferences[settingsKey] = json.encodeToString(
                     GlobalConfig.serializer(),
                     current.copy(devices = updatedDevices)
                 )
@@ -351,7 +458,7 @@ class RemoteRepository(private val context: Context) {
             context.dataStore.edit { preferences ->
                 val current = preferences.getCurrentConfig()
                 val updatedSettings = update(current.globalSettings)
-                preferences[settingsKey] = Json.encodeToString(
+                preferences[settingsKey] = json.encodeToString(
                     GlobalConfig.serializer(),
                     current.copy(globalSettings = updatedSettings)
                 )

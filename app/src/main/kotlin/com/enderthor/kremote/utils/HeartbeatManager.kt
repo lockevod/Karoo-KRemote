@@ -2,6 +2,7 @@ package com.enderthor.kremote.utils
 
 import com.enderthor.kremote.ant.AntManager
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -111,10 +112,12 @@ object HeartbeatManager {
     }
 
     /**
-     * Sets up periodic cleanup in a specific scope
+     * Sets up periodic cleanup in a specific scope.
+     * Devuelve el Job para que el dueño pueda cancelarlo al descartar su instancia
+     * (si no, cada reinicialización del ReconnectionManager apila un bucle más).
      */
-    fun setupPeriodicCleanup(scope: CoroutineScope) {
-        scope.launch {
+    fun setupPeriodicCleanup(scope: CoroutineScope): Job {
+        return scope.launch {
             while (isActive) {
                 kotlinx.coroutines.delay(300_000L) // 5 minutes
                 try {

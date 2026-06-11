@@ -17,7 +17,11 @@ object NotificationHelper {
     private const val CHANNEL_DESCRIPTION = "Notificaciones del servicio de conexión KRemote"
     private const val CHANNEL_DESCRIPTION_WARNING = "Avisos y problemas de KRemote"
 
+    // Fix: evitar registrar los canales en cada llamada a createServiceNotification
+    @Volatile private var channelsCreated = false
+
     fun createNotificationChannels(context: Context) {
+        if (channelsCreated) return
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // Canal normal
@@ -42,6 +46,7 @@ object NotificationHelper {
         }
 
         notificationManager.createNotificationChannels(listOf(normalChannel, warningChannel))
+        channelsCreated = true
     }
 
     fun createServiceNotification(

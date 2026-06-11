@@ -36,14 +36,18 @@ fun TabLayout(
         stringResource(R.string.tab_debug)
     )
 
-    // ViewModels
-    val deviceViewModel: DeviceViewModel = viewModel(
-        factory = DeviceViewModelFactory(antManager, repository, LocalContext.current)
-    )
+    // Fix: las factories se crean una única vez (no en cada recomposición)
+    val context = LocalContext.current
+    val deviceViewModelFactory = remember(antManager, repository) {
+        DeviceViewModelFactory(antManager, repository, context)
+    }
+    val configViewModelFactory = remember(repository) {
+        ConfigViewModelFactory(repository, context.applicationContext)
+    }
 
-    val configViewModel: ConfigurationViewModel = viewModel(
-        factory = ConfigViewModelFactory(repository, LocalContext.current.applicationContext)
-    )
+    // ViewModels
+    val deviceViewModel: DeviceViewModel = viewModel(factory = deviceViewModelFactory)
+    val configViewModel: ConfigurationViewModel = viewModel(factory = configViewModelFactory)
 
     // Collect states from ViewModels
     val devices by deviceViewModel.devices.collectAsState()
@@ -52,8 +56,9 @@ fun TabLayout(
     val message by deviceViewModel.message.collectAsState()
     val selectedDevice by deviceViewModel.selectedDevice.collectAsState()
 
-    // NUEVO: Verificar estado de la extensión para mostrar banner
-    val isExtensionAvailable = remember { KremoteExtension.getInstance() != null }
+    // Fix: re-evaluar en cada composición (la llamada es trivial y el resultado puede cambiar
+    // si el servicio se inicia/destruye mientras la UI está visible)
+    val isExtensionAvailable = KremoteExtension.getInstance() != null
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTab) {
@@ -79,7 +84,8 @@ fun TabLayout(
                         devices = devices,
                         activeDevice = devices.firstOrNull { it.isActive },
                         errorMessage = (message as? com.enderthor.kremote.data.DeviceMessage.Error)?.message,
-                        configViewModel = configViewModel
+                        configViewModel = configViewModel,
+                        repository = repository
                     )
                 }
                 1 -> {
