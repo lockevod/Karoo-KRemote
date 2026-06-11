@@ -4,11 +4,11 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.enderthor.kremote.data.KarooKey
-import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.AntRemoteKey
 import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.hal.BuzzerClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,11 +22,8 @@ class ConfigurationViewModel(
     private val appContext: Context
 ) : ViewModel() {
 
-    private val _devices = MutableStateFlow<List<RemoteDevice>>(emptyList())
-
-    val devices: StateFlow<List<RemoteDevice>> = _devices.asStateFlow()
-
-    private val _activeDevice = MutableStateFlow<RemoteDevice?>(null)
+    // Fix: _devices / devices / _activeDevice eliminados — nada los consumía fuera del ViewModel.
+    // La UI recibe los dispositivos directamente de DeviceViewModel (TabLayout → ConfigurationScreen).
 
     private val _errorMessage = MutableStateFlow<String?>(null)
 
@@ -48,18 +45,6 @@ class ConfigurationViewModel(
 
 
     init {
-        viewModelScope.launch {
-            repository.getDevices().collect {
-                _devices.value = it
-            }
-        }
-
-        viewModelScope.launch {
-            repository.getActiveDevice().collect {
-                _activeDevice.value = it
-            }
-        }
-
         viewModelScope.launch {
             repository.currentConfig.collect { config ->
                 _onlyWhileRiding.value = config.globalSettings.onlyWhileRiding
@@ -169,6 +154,9 @@ class ConfigurationViewModel(
                 client.beep(BuzzerClient.TEST_TONES)
                 _buzzerTestResult.value = client.lastResult.name
                 delay(600) // deja sonar el tono antes de soltar el bind
+            } catch (e: CancellationException) {
+                // Fix: no atrapar CancellationException — relanzar para que el scope se cancele limpiamente
+                throw e
             } catch (e: Exception) {
                 Timber.e(e, "Error testing buzzer")
                 _buzzerTestResult.value = "ERROR: ${e.message}"

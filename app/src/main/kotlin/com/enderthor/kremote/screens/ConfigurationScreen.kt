@@ -30,9 +30,16 @@ fun ConfigurationScreen(
     devices: List<RemoteDevice>,
     activeDevice: RemoteDevice?,
     errorMessage: String?,
-    configViewModel: ConfigurationViewModel
+    configViewModel: ConfigurationViewModel,
+    repository: RemoteRepository
 ) {
     var selectedDeviceId by remember { mutableStateOf(activeDevice?.id) }
+    // Fix: re-sincronizar selectedDeviceId cuando activeDevice llega de forma asíncrona
+    LaunchedEffect(activeDevice?.id) {
+        if (selectedDeviceId == null && activeDevice != null) {
+            selectedDeviceId = activeDevice.id
+        }
+    }
     val selectedDevice = devices.find { it.id == selectedDeviceId }
     val onlyWhileRiding by configViewModel.onlyWhileRiding.collectAsState()
     val forcedScreenOn by configViewModel.forcedScreenOn.collectAsState()
@@ -41,9 +48,6 @@ fun ConfigurationScreen(
     val buzzerTesting by configViewModel.buzzerTesting.collectAsState()
     var showDoubleTapDisclaimer by remember { mutableStateOf(false) }
     var tempDeviceId by remember { mutableStateOf("") }
-
-    val context = LocalContext.current
-    val repository = remember { RemoteRepository(context) }
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -118,18 +122,28 @@ fun ConfigurationScreen(
                         if (device.enabledDoubleTap) {
                             Spacer(modifier = Modifier.height(16.dp))
 
+                            // Fix: estado local para el slider; sólo persiste en DataStore al soltar
+                            var sliderValue by remember(device.id) {
+                                mutableStateOf(device.doubleTapTimeout.toFloat())
+                            }
+
                             Text(
                                 text = stringResource(
                                     R.string.double_tap_timeout,
-                                    device.doubleTapTimeout.toInt()
+                                    sliderValue.toInt()
                                 ),
                                 style = MaterialTheme.typography.bodyMedium
                             )
 
                             Slider(
-                                value = device.doubleTapTimeout.toFloat(),
+                                value = sliderValue,
                                 onValueChange = { value ->
-                                    configViewModel.updateDoubleTapTimeout(device.id, value.toLong())
+                                    // Actualiza sólo la vista — sin escritura en DataStore
+                                    sliderValue = value
+                                },
+                                onValueChangeFinished = {
+                                    // Persiste una única vez al soltar el dedo
+                                    configViewModel.updateDoubleTapTimeout(device.id, sliderValue.toLong())
                                 },
                                 valueRange = 1000f..2200f,
                                 // 11 intermediate stops + 2 endpoints = 13 stops spaced at exactly 100ms.
@@ -150,7 +164,7 @@ fun ConfigurationScreen(
                             Text(
                                 text = stringResource(
                                     R.string.double_tap_delay_warning,
-                                    device.doubleTapTimeout.toInt()
+                                    sliderValue.toInt()
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
@@ -333,16 +347,10 @@ fun LearnedCommandsSection(
 
     LaunchedEffect(device.id) {
         if (device.learnedCommands.isEmpty()) {
-
-            val defaultCommands = RemoteDevice.getDefaultLearnedCommands()
-            defaultCommands.forEach { command ->
-                repository.assignKeyCodeToCommand(
-                    deviceId = device.id,
-                    command = command.command,
-                    karooKey = command.karooKey,
-                    pressType = command.pressType
-                )
-            }
+            repository.assignKeyCodesToCommands(
+                deviceId = device.id,
+                assignments = RemoteDevice.getDefaultLearnedCommands()
+            )
         }
     }
 

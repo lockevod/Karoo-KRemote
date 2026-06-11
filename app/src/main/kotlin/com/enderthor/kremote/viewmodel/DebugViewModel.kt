@@ -10,10 +10,11 @@ import com.enderthor.kremote.utils.ConnectionState
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.utils.HeartbeatManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -25,23 +26,15 @@ class DebugViewModel(
     private val _isDebugEnabled = MutableStateFlow(DebugLogger.isEnabled())
     val isDebugEnabled: StateFlow<Boolean> = _isDebugEnabled.asStateFlow()
 
-    private val _logContent = MutableStateFlow("")
-
-
-    // Estados de conexión del ReconnectionManager
-    private val reconnectionManagerStates = ReconnectionManagerSingleton.getInstance()?.connectionStates
-        ?: MutableStateFlow<Map<Int, ConnectionState>>(emptyMap()).asStateFlow()
-
-    // Dispositivos registrados desde el repositorio
+    // Fix: resolver el singleton de forma diferida dentro del flow para que no quede
+    // fijo a null si el servicio no había arrancado aún en el momento de construcción.
     private val _registeredDevices = MutableStateFlow<List<RemoteDevice>>(emptyList())
 
-
     // Combinar ambos estados para mostrar información completa
-    val connectionStates = combine(
-        reconnectionManagerStates,
-        _registeredDevices
-    ) { managerStates, devices ->
-        // Si tenemos estados del ReconnectionManager, usarlos
+    val connectionStates = _registeredDevices.map { devices ->
+        // Resolver el singleton en cada emisión para capturarlo si ya está disponible
+        val managerStates = ReconnectionManagerSingleton.getInstance()?.connectionStates?.value
+            ?: emptyMap()
         managerStates.ifEmpty {
             // Si no hay estados del manager, crear estados simulados basados en dispositivos registrados
             devices.associate { device ->
@@ -58,45 +51,42 @@ class DebugViewModel(
         }
     }
 
+    // Job de la verificación periódica — controlado desde la pantalla de debug
+    private var periodicCheckJob: Job? = null
+
     init {
         // Cargar dispositivos registrados
         viewModelScope.launch {
             repository.getDevices().collect { devices ->
                 _registeredDevices.value = devices
-                DebugLogger.logConnectionEvent(0, "DEVICES_LOADED", "Loaded ${devices.size} registered devices: ${devices.map { "${it.name}(#${it.antDeviceId})" }}", "DebugViewModel")
+                if (DebugLogger.isEnabled()) {
+                    DebugLogger.logConnectionEvent(0, "DEVICES_LOADED", "Loaded ${devices.size} registered devices: ${devices.map { "${it.name}(#${it.antDeviceId})" }}", "DebugViewModel")
+                }
             }
         }
-
-        refreshLog()
 
         // DIAGNÓSTICO EXTENDIDO: Verificar estado completo del singleton
         val reconnectionManager = ReconnectionManagerSingleton.getInstance()
         if (reconnectionManager != null) {
-            DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton found", "DebugViewModel")
-            Timber.d("[DebugViewModel] ReconnectionManager singleton encontrado")
-
-            // Verificar si hay estados de conexión activos
-            viewModelScope.launch {
-                reconnectionManager.connectionStates.collect { states ->
-                    DebugLogger.logConnectionEvent(0, "CONNECTION_STATES_UPDATE", "States count: ${states.size}, devices: ${states.keys.toList()}", "DebugViewModel")
-                    Timber.d("[DebugViewModel] Estados de conexión actualizados: ${states.size} dispositivos monitoreados")
-                }
+            if (DebugLogger.isEnabled()) {
+                DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton found", "DebugViewModel")
             }
+            Timber.d("[DebugViewModel] ReconnectionManager singleton encontrado")
         } else {
-            DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton is NULL - usando datos del repositorio", "DebugViewModel")
+            if (DebugLogger.isEnabled()) {
+                DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton is NULL - usando datos del repositorio", "DebugViewModel")
+            }
             Timber.w("[DebugViewModel] ReconnectionManager singleton es NULL - mostrando dispositivos registrados en su lugar")
         }
-
-        //  Verificación activa puntual cuando se accede a la pantalla de debug
-        performPeriodicActiveCheck()
     }
 
     /**
-     * Realiza verificaciones activas puntuales de conexión
-     * Solo se ejecuta cuando se accede a la pantalla de debug y cada 10 minutos
+     * Inicia las verificaciones activas periódicas.
+     * Llamar desde DebugScreen al entrar (LaunchedEffect / DisposableEffect).
      */
-    private fun performPeriodicActiveCheck() {
-        viewModelScope.launch {
+    fun startPeriodicActiveCheck() {
+        if (periodicCheckJob?.isActive == true) return
+        periodicCheckJob = viewModelScope.launch {
             // Verificación inmediata al acceder a la pantalla
             performActiveConnectionChecks("debug_screen_access")
 
@@ -108,6 +98,15 @@ class DebugViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * Detiene las verificaciones periódicas.
+     * Llamar desde DebugScreen al salir.
+     */
+    fun stopPeriodicActiveCheck() {
+        periodicCheckJob?.cancel()
+        periodicCheckJob = null
     }
 
     /**
@@ -156,28 +155,16 @@ class DebugViewModel(
             if (enabled) {
                 DebugLogger.logConnectionEvent(0, "DEBUG_ENABLED", "Debug logging activated by user")
             }
-
-            refreshLog()
-        }
-    }
-
-    fun refreshLog() {
-        viewModelScope.launch {
-            try {
-                val content = DebugLogger.getLogContent()
-                _logContent.value = content
-            } catch (e: Exception) {
-                Timber.e(e, "Error refreshing log content")
-                _logContent.value = "Error cargando logs: ${e.message}"
-            }
         }
     }
 
     fun clearLog() {
         viewModelScope.launch {
             try {
-                DebugLogger.clearLog()
-                _logContent.value = ""
+                // Fix: DebugLogger.clearLog() escribe en disco → mover a IO
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    DebugLogger.clearLog()
+                }
                 DebugLogger.logConnectionEvent(0, "LOG_CLEARED", "Debug log cleared by user")
             } catch (e: Exception) {
                 Timber.e(e, "Error clearing log")

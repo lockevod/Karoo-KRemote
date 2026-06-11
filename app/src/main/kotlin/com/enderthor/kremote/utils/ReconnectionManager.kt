@@ -49,10 +49,9 @@ class ReconnectionManager(
     private val connectionCheckInterval = 10000L
     private val connectionTimeout = 15000L
 
-    init {
-        // Inicializar limpieza periódica usando HeartbeatManager
-        HeartbeatManager.setupPeriodicCleanup(scope)
-    }
+    // Limpieza periódica vía HeartbeatManager; se guarda el Job para cancelarlo en
+    // stopAllMonitoring (solo se llama al descartar esta instancia desde el singleton).
+    private val periodicCleanupJob = HeartbeatManager.setupPeriodicCleanup(scope)
 
     fun startMonitoring(deviceNumber: Int) {
         DebugLogger.logConnectionEvent(deviceNumber, "START_MONITORING", "Iniciando monitoreo para dispositivo #$deviceNumber", "ReconnectionManager")
@@ -108,16 +107,13 @@ class ReconnectionManager(
         HeartbeatManager.unregisterConnectionListeners(deviceNumber)
         HeartbeatManager.registerConnectionListener(deviceNumber, antEventListener)
 
-        // Inicializar estado usando caché del PerformanceOptimizer
-        val initialState = PerformanceOptimizer.getCachedOrCreate("connection_state_$deviceNumber") {
-            ConnectionState(
-                deviceNumber = deviceNumber,
-                isConnected = false,
-                isReconnecting = false,
-                lastConnectionAttempt = 0L,
-                reconnectAttempts = 0
-            )
-        }
+        val initialState = ConnectionState(
+            deviceNumber = deviceNumber,
+            isConnected = false,
+            isReconnecting = false,
+            lastConnectionAttempt = 0L,
+            reconnectAttempts = 0
+        )
 
         updateConnectionState(deviceNumber) { initialState }
         DebugLogger.logConnectionEvent(deviceNumber, "INITIAL_STATE_SET", "Estado inicial establecido: $initialState", "ReconnectionManager")
@@ -331,6 +327,7 @@ class ReconnectionManager(
     }
 
     fun stopAllMonitoring() {
+        periodicCleanupJob.cancel()
         monitoringJobs.values.forEach { it.cancel() }
         reconnectionJobs.values.forEach { it.cancel() }
         monitoringJobs.clear()
