@@ -53,10 +53,12 @@
 }
 
 
-# Mantener las clases de tu aplicación
-# La regla raíz ya cubre todos los subpaquetes; las líneas individuales son redundantes.
--keep class com.enderthor.kremote.** { *; }
-
+# NO hay regla keep-all del paquete de la app: anularía shrinking/inlining de todo
+# nuestro código. Lo que necesita sobrevivir a R8 ya está cubierto por reglas finas:
+# serialización (arriba), enums values/valueOf, Services/Receivers (manifest + regla
+# abajo), @Composable, callbacks onCommand/onStateChange y el stack ANT completo.
+# Si una release crashea por ClassNotFound/NoSuchMethod tras este cambio, añadir la
+# regla fina correspondiente — no restaurar el keep-all.
 
 # Reglas para Timber
 -dontwarn org.jetbrains.annotations.**
