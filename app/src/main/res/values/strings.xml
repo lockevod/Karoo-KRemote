@@ -105,6 +105,7 @@
     <string name="ant_key_start">Start</string>
     <string name="ant_key_stop">Stop</string>
     <string name="ant_key_unrecognized">Up</string>
+    <string name="ant_raw_prefix">ANT: %1$s</string>
 
     <!-- Karoo Keys -->
     <string name="karoo_key_bottomright">Accept/Navigate In</string>

@@ -428,6 +428,12 @@ fun CommandAssignmentRow(
             style = MaterialTheme.typography.titleSmall
         )
 
+        Text(
+            text = stringResource(R.string.ant_raw_prefix, command.gCommand.name),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
         Spacer(modifier = Modifier.height(8.dp))
 
 
