@@ -235,7 +235,9 @@ class AntManager(
 
                 if (DebugLogger.isEnabled()) {
                     val antCommand = AntRemoteKey.byCommand[commandNumber]
-                    val commandName = antCommand?.getLabelString(context) ?: "UNKNOWN_$commandNumber"
+                    val commandName = antCommand
+                        ?.let { "${it.getLabelString(context)} [${it.gCommand.name}]" }
+                        ?: "UNKNOWN_$commandNumber"
                     DebugLogger.logKeyEvent(deviceNumber, commandName, "RAW", true)
                     Timber.d("[ANT] Command received: $commandNumber (Learning mode: $learningMode)")
                 }

@@ -106,6 +106,7 @@
     <string name="ant_key_start">Iniciar</string>
     <string name="ant_key_stop">Detener</string>
     <string name="ant_key_unrecognized">Arriba</string>
+    <string name="ant_raw_prefix">ANT: %1$s</string>
 
     <!-- Karoo Keys -->
     <string name="karoo_key_bottomright">Aceptar/Navegar</string>
