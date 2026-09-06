@@ -59,6 +59,12 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
         private var instance: KremoteExtension? = null
 
         fun getInstance(): KremoteExtension? = instance
+
+        private const val LEARNING_PREFS = "kremote_state"
+        private const val LEARNING_KEY = "learning_mode"
+        private const val LEARNING_TS_KEY = "learning_mode_ts"
+        // La UI se auto-para a los 30 s; damos margen de sobra antes de considerarlo huérfano.
+        private const val LEARNING_MODE_MAX_MS = 120_000L
     }
 
     init {
@@ -76,6 +82,9 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     val antManager: AntManager get() = _antManager
 
     private var rideReceiver: KarooRideReceiver? = null
+    private var learningPrefs: android.content.SharedPreferences? = null
+    private var learningPrefsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
+    private var learningResetJob: kotlinx.coroutines.Job? = null
     private var isRiding = false
     private var isServiceConnected = false
     private val extensionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -110,12 +119,14 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                         val sharedPrefsCommands = applicationContext.getSharedPreferences(
                             "kremote_learned_commands", MODE_PRIVATE
                         )
+                        // Sólo el botón: el aprendizaje descubre botones, no pulsaciones.
+                        // (En modo aprendizaje AntManager ni siquiera pasa por el detector
+                        // de doble toque, así que el pressType aquí era siempre SINGLE.)
                         sharedPrefsCommands.edit {
                             putString("last_command", command.name)
-                            putString("last_press_type", pressType.name)
                             putLong("timestamp", System.currentTimeMillis())
                         }
-                        Timber.d("📤 [KRemote] Comando enviado a app: ${command.name} (${pressType.name})")
+                        Timber.d("📤 [KRemote] Botón enviado a app: ${command.name}")
                     } catch (e: Exception) {
                         Timber.e(e, "[KRemote] Error guardando comando aprendido")
                     }
@@ -158,10 +169,69 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             }
         }
 
+        observeLearningMode()
         monitorActiveDeviceChanges()
         startConnectionService()
         initializeRideReceiver()
         initializeEvents()
+    }
+
+    /**
+     * Puente del modo aprendizaje entre la pantalla de ajustes y la extensión.
+     *
+     * `DeviceViewModel` escribía `kremote_state/learning_mode` "para sincronizar con la
+     * extensión", pero nadie lo leía: la pantalla activa el modo aprendizaje sobre SU
+     * propia instancia de AntManager (la de MainActivity), y la de la extensión seguía en
+     * modo normal. Resultado: mientras el rider enseñaba un botón, la extensión ejecutaba
+     * el mapeo ya existente — pausar la ruta, marcar vuelta, apagar la pantalla.
+     *
+     * Todo corre en el mismo proceso (no hay android:process en el manifiesto), así que un
+     * listener de SharedPreferences es suficiente y no cuesta nada en el hot path: el
+     * callback ANT sigue leyendo un simple @Volatile de AntManager.
+     */
+    private fun observeLearningMode() {
+        val prefs = applicationContext.getSharedPreferences(LEARNING_PREFS, MODE_PRIVATE)
+        learningPrefs = prefs
+
+        // Estado inicial: sólo honramos un flag reciente. Uno viejo significa que la app
+        // murió a mitad del aprendizaje y no debe dejar el mando inerte tras un reinicio.
+        val stale = System.currentTimeMillis() - prefs.getLong(LEARNING_TS_KEY, 0L) >= LEARNING_MODE_MAX_MS
+        applyLearningMode(prefs.getBoolean(LEARNING_KEY, false) && !stale)
+
+        // Reaccionar TAMBIÉN al timestamp, no sólo al booleano. SharedPreferences no notifica
+        // una escritura cuyo valor no cambia (commitToMemory descarta esas claves), y hay dos
+        // caminos que dejan el flag a `true` en disco mientras en runtime ya volvimos a modo
+        // normal: el job de reset de 120 s y la comprobación de caducidad del arranque. Con el
+        // flag atascado en `true`, el siguiente startLearning() escribe true sobre true → sin
+        // callback → la extensión nunca entra en modo aprendizaje y volvemos al defecto
+        // original. startLearning() siempre escribe un timestamp NUEVO, así que esa clave sí
+        // cambia y nos rearma. (Que salten las dos es inocuo: applyLearningMode es idempotente.)
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+            if (key == LEARNING_KEY || key == LEARNING_TS_KEY) {
+                val enabled = p.getBoolean(LEARNING_KEY, false)
+                Timber.d("[KRemote] Learning mode desde ajustes: $enabled")
+                applyLearningMode(enabled)
+            }
+        }
+        learningPrefsListener = listener
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    private fun applyLearningMode(enabled: Boolean) {
+        learningResetJob?.cancel()
+        learningResetJob = null
+        _antManager.setLearningMode(enabled)
+
+        if (enabled) {
+            // Red de seguridad simétrica a la de arriba, para el caso de que la pantalla de
+            // ajustes muera SIN escribir el false (su auto-stop es de 30 s). Sin esto el
+            // mando se quedaría sin ejecutar acciones hasta reiniciar la extensión.
+            learningResetJob = extensionScope.launch {
+                delay(LEARNING_MODE_MAX_MS)
+                Timber.w("[KRemote] Learning mode expirado — volviendo a modo normal")
+                _antManager.setLearningMode(false)
+            }
+        }
     }
 
     private fun initializeEvents() {
@@ -352,6 +422,18 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                 }
             }
             rideReceiver = null
+
+            learningResetJob?.cancel()
+            learningResetJob = null
+            learningPrefsListener?.let { listener ->
+                try {
+                    learningPrefs?.unregisterOnSharedPreferenceChangeListener(listener)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error unregistering learning mode listener")
+                }
+            }
+            learningPrefsListener = null
+            learningPrefs = null
 
             antManager.disconnect()
             antManager.cleanup()

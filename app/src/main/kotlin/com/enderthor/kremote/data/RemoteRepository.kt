@@ -2,6 +2,7 @@ package com.enderthor.kremote.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
@@ -16,7 +17,20 @@ import kotlinx.serialization.json.Json
 import timber.log.Timber
 
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+// corruptionHandler obligatorio: el SO mata el proceso de la extensión al terminar la ruta.
+// Si lo pilla a mitad de un edit{}, settings.preferences_pb queda ilegible y DataStore lanza
+// CorruptionException en CADA lectura, para siempre. Sin manejador eso es un crash-loop que
+// el rider sólo puede romper borrando los datos de la app. Con él, el fichero corrupto se
+// reemplaza por uno vacío y la app arranca (con la config por defecto).
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "settings",
+    corruptionHandler = ReplaceFileCorruptionHandler {
+        // Deja rastro: el rider ve su configuración entera reiniciada a valores por defecto
+        // sin ninguna señal, y sin esto la pregunta de soporte no tiene respuesta.
+        Timber.e(it, "DataStore corrupto — configuración reiniciada a valores por defecto")
+        emptyPreferences()
+    }
+)
 
 class RemoteRepository(private val context: Context) {
     private val settingsKey = stringPreferencesKey("remote_config")
@@ -182,12 +196,23 @@ class RemoteRepository(private val context: Context) {
         }
     }
 
-   suspend fun updateLearnedCommand(deviceId: String, command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
+   /**
+    * Registra un BOTÓN descubierto durante el aprendizaje.
+    *
+    * No lleva pressType a propósito: no se "aprende un doble". El aprendizaje sólo
+    * descubre qué botones tiene el mando; SINGLE y DOUBLE son dos filas que la pantalla
+    * de configuración ofrece para CADA botón descubierto (ver LearnedCommandsSection, que
+    * lista `learnedCommands.map { it.command }.distinct()` y sintetiza la fila DOUBLE).
+    * Por eso aquí se siembra únicamente la fila SINGLE, sin mapeo; el DOUBLE lo crea
+    * assignKeyCodeToCommand cuando el rider le asigna una acción.
+    */
+   suspend fun updateLearnedCommand(deviceId: String, command: AntRemoteKey) {
+        val pressType = PressType.SINGLE
         try {
             DebugLogger.logConnectionEvent(
                 deviceNumber = 0,
                 event = "DB_UPDATE_START",
-                details = "Updating learned command: $command ($pressType) for device $deviceId",
+                details = "Registering learned button: $command for device $deviceId",
                 source = "RemoteRepository"
             )
 

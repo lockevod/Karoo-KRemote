@@ -99,12 +99,24 @@ class ConnectionService : Service() {
         Timber.d("[ConnectionService] 🚀 ReconnectionManager singleton initialized correctly")
         Timber.d("[ConnectionService] 📱 Service started with intent: ${intent?.action}")
 
+        // Cancelar el job anterior antes de relanzar. Al quitar el throttle, los dos
+        // onStartCommand del arranque en frío ejecutan el bloque ENTERO de forma concurrente:
+        // dos lecturas de DataStore, dos connect() compitiendo por el guard no atómico de
+        // AntManager, y dos startMonitoring() que pueden intercalar unregister/register de
+        // listeners (unregister A → unregister B → register A → register B) dejando dos.
+        // Todo el bloque es idempotente, así que cancelar y relanzar es correcto.
+        job?.cancel()
         job = serviceScope.launch {
             try {
                 DebugLogger.logConnectionEvent(0, "SERVICE_JOB_STARTED", "Main service job started", "ConnectionService")
 
-                // Use throttling to load configuration
-                PerformanceOptimizer.throttledExecution("load_config", 1000L) {
+                // Sin throttle: esto es inicialización obligatoria, no trabajo repetitivo.
+                // El throttle anterior (1 s) descartaba el bloque ENTERO cuando llegaba el
+                // segundo broadcast de arranque, dejando al ReconnectionManager recién
+                // creado sin ningún startMonitoring. Es idempotente: startMonitoring cancela
+                // y reemplaza sus propios jobs, y antManager.connect() ya se auto-limita con
+                // minReconnectInterval.
+                run {
                     DebugLogger.logConnectionEvent(0, "LOADING_CONFIG", "Loading device configuration", "ConnectionService")
                     val config = repository.currentConfig.first()
                     val activeDevices = config.devices.filter { it.isActive }
@@ -118,7 +130,7 @@ class ConnectionService : Service() {
                     if (activeDevices.isEmpty()) {
                         DebugLogger.logConnectionEvent(0, "NO_ACTIVE_DEVICES", "No active devices found - monitoring will not start", "ConnectionService")
                         Timber.w("[ConnectionService] ⚠️ No active devices - monitoring will not start")
-                        return@throttledExecution
+                        return@run
                     }
 
                     // NEW: Check automatic reconnection configuration
@@ -132,24 +144,23 @@ class ConnectionService : Service() {
                                 DebugLogger.logConnectionEvent(deviceId, "CONNECTING", "Initial connection attempt")
                                 Timber.d("[ConnectionService] Connecting to ANT+ device #$deviceId")
 
-                                // Usar throttling to secuential connection attempts
-                                PerformanceOptimizer.throttledExecution(
-                                    key = "connect_$deviceId",
-                                    minIntervalMs = 2000L
-                                ) {
-                                    DebugLogger.logConnectionEvent(deviceId, "ANT_CONNECT_START", "Calling antManager.connect($deviceId)", "ConnectionService")
-                                    kremoteExtension.antManager.connect(deviceId)
-                                    DebugLogger.logConnectionEvent(deviceId, "ANT_CONNECT_COMPLETE", "antManager.connect() completed", "ConnectionService")
+                                // Sin throttle: descartaba también el startMonitoring de abajo,
+                                // que es lo único que arma la reconexión automática. La conexión
+                                // ANT+ ya se auto-limita dentro de AntManager.connect()
+                                // (minReconnectInterval = 2 s), así que el throttle externo sólo
+                                // aportaba el modo de fallo.
+                                DebugLogger.logConnectionEvent(deviceId, "ANT_CONNECT_START", "Calling antManager.connect($deviceId)", "ConnectionService")
+                                kremoteExtension.antManager.connect(deviceId)
+                                DebugLogger.logConnectionEvent(deviceId, "ANT_CONNECT_COMPLETE", "antManager.connect() completed", "ConnectionService")
 
-                                    if (autoReconnect) {
-                                        // Use the new improved reconnection system
-                                        DebugLogger.logConnectionEvent(deviceId, "STARTING_MONITORING", "Initiating device monitoring with ReconnectionManager", "ConnectionService")
-                                        reconnectionManager.startMonitoring(deviceId)
-                                        DebugLogger.logConnectionEvent(deviceId, "MONITORING_ACTIVE", "Device monitoring started successfully", "ConnectionService")
-                                        Timber.d("[ConnectionService] Monitoring started for device #$deviceId")
-                                    } else {
-                                        DebugLogger.logConnectionEvent(deviceId, "MONITORING_DISABLED", "autoReconnect is false - monitoring skipped", "ConnectionService")
-                                    }
+                                if (autoReconnect) {
+                                    // Use the new improved reconnection system
+                                    DebugLogger.logConnectionEvent(deviceId, "STARTING_MONITORING", "Initiating device monitoring with ReconnectionManager", "ConnectionService")
+                                    reconnectionManager.startMonitoring(deviceId)
+                                    DebugLogger.logConnectionEvent(deviceId, "MONITORING_ACTIVE", "Device monitoring started successfully", "ConnectionService")
+                                    Timber.d("[ConnectionService] Monitoring started for device #$deviceId")
+                                } else {
+                                    DebugLogger.logConnectionEvent(deviceId, "MONITORING_DISABLED", "autoReconnect is false - monitoring skipped", "ConnectionService")
                                 }
                             } catch (e: Exception) {
                                 DebugLogger.logError("CONNECTION", "Error connecting to ANT+ #$deviceId", e)

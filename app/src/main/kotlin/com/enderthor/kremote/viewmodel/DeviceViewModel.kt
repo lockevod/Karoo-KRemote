@@ -10,7 +10,6 @@ import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteType
 import com.enderthor.kremote.data.DeviceMessage
 import com.enderthor.kremote.data.AntRemoteKey
-import com.enderthor.kremote.data.PressType
 import com.enderthor.kremote.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -68,9 +67,10 @@ class DeviceViewModel(
             }
         }
 
-        antManager.setupCommandCallback { command, pressType ->
+        antManager.setupCommandCallback { command, _ ->
+            // pressType descartado a propósito: aprendemos botones, no pulsaciones.
             if (scanning.value) {
-                onCommandDetected(command, pressType)
+                onCommandDetected(command)
             }
         }
     }
@@ -238,6 +238,10 @@ class DeviceViewModel(
         val sharedPrefs = appContext.getSharedPreferences("kremote_state", Context.MODE_PRIVATE)
         sharedPrefs.edit {
             putBoolean("learning_mode", true)
+            // Marca de tiempo: si el proceso muere a mitad del aprendizaje, el flag quedaría
+            // a true y la extensión dejaría de ejecutar acciones para siempre. La extensión
+            // ignora un flag más viejo que LEARNING_MODE_MAX_MS.
+            putLong("learning_mode_ts", System.currentTimeMillis())
         }
 
         Timber.d("🎓 [DeviceViewModel] Learning mode ACTIVATED and synced with extension")
@@ -305,13 +309,11 @@ class DeviceViewModel(
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
             if (key == "timestamp" && _scanning.value) {
                 val commandName = prefs.getString("last_command", null)
-                val pressTypeName = prefs.getString("last_press_type", "SINGLE")
-                if (!commandName.isNullOrEmpty() && !pressTypeName.isNullOrEmpty()) {
+                if (!commandName.isNullOrEmpty()) {
                     try {
                         val command = AntRemoteKey.valueOf(commandName)
-                        val pressType = PressType.valueOf(pressTypeName)
-                        Timber.d("📥 [DeviceViewModel] Command received from extension: $commandName ($pressTypeName)")
-                        onCommandDetected(command, pressType)
+                        Timber.d("📥 [DeviceViewModel] Button received from extension: $commandName")
+                        onCommandDetected(command)
                     } catch (e: Exception) {
                         Timber.e(e, "Error procesando comando recibido: $commandName")
                     }
@@ -323,12 +325,9 @@ class DeviceViewModel(
 
         // Lectura inicial para no perder un comando ya escrito antes de registrar el listener
         val commandName = sharedPrefsCommands.getString("last_command", null)
-        val pressTypeName = sharedPrefsCommands.getString("last_press_type", "SINGLE")
-        if (!commandName.isNullOrEmpty() && !pressTypeName.isNullOrEmpty()) {
+        if (!commandName.isNullOrEmpty()) {
             try {
-                val command = AntRemoteKey.valueOf(commandName)
-                val pressType = PressType.valueOf(pressTypeName)
-                onCommandDetected(command, pressType)
+                onCommandDetected(AntRemoteKey.valueOf(commandName))
             } catch (e: Exception) {
                 Timber.e(e, "Error procesando comando inicial: $commandName")
             }
@@ -343,11 +342,48 @@ class DeviceViewModel(
         commandPrefsListener = null
     }
 
-    private fun onCommandDetected(command: AntRemoteKey, pressType: PressType = PressType.SINGLE) {
+    /**
+     * La pantalla puede morir sin pasar por [stopLearning] (botón atrás, cambio de tab, muerte
+     * de la Activity). La limpieza no puede depender de que la UI lo pida.
+     *
+     * Importa más desde que la extensión respeta el modo aprendizaje: ahora SÍ escribe botones
+     * en `kremote_learned_commands` durante su ventana de 120 s. Sin esto, el listener sobrevive
+     * hasta que lo recoja el GC sobre un ViewModel ya muerto con `_scanning` a true y el
+     * `viewModelScope` cancelado — comandos procesados contra el `selectedDevice` anterior con
+     * resultado dependiente del timing. Publicar `learning_mode=false` corta además la ventana
+     * de la extensión de inmediato, sin esperar a que expire su red de seguridad.
+     */
+    override fun onCleared() {
+        stopCommandListener()
+        learningTimeoutJob?.cancel()
+        _scanning.value = false
+        antManager.setLearningMode(false)
+        try {
+            appContext.getSharedPreferences("kremote_state", Context.MODE_PRIVATE).edit {
+                putBoolean("learning_mode", false)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error clearing learning mode on ViewModel clear")
+        }
+        super.onCleared()
+    }
+
+    /**
+     * Un botón del mando acaba de emitir. El aprendizaje descubre BOTONES: la pulsación
+     * simple o doble no se aprende, se configura después (cada botón descubierto muestra
+     * su fila SINGLE y su fila DOUBLE en la pantalla de configuración). Por eso aquí no
+     * entra ningún pressType — deduplicar por botón es la semántica correcta, no un
+     * descuido.
+     *
+     * Descartarlo también evita una fila DOUBLE espuria: durante un ESCANEO el AntManager
+     * no está en modo aprendizaje, así que un doble toque real llegaba como DOUBLE y se
+     * persistía contra el `selectedDevice` que hubiera quedado de una configuración previa.
+     */
+    private fun onCommandDetected(command: AntRemoteKey) {
         DebugLogger.logKeyEvent(
             deviceNumber = selectedDevice.value?.antDeviceId ?: 0,
             command = command.name,
-            pressType = pressType.name,
+            pressType = "LEARN",
             processed = true,
             source = "DeviceViewModel"
         )
@@ -357,18 +393,18 @@ class DeviceViewModel(
             DebugLogger.logConnectionEvent(
                 deviceNumber = selectedDevice.value?.antDeviceId ?: 0,
                 event = "COMMAND_LEARNED",
-                details = "New command learned: ${command.name} (${pressType.name}). Total commands: ${_learnedCommands.value.size}",
+                details = "New button learned: ${command.name}. Total buttons: ${_learnedCommands.value.size}",
                 source = "DeviceViewModel"
             )
 
             selectedDevice.value?.let { device ->
                 viewModelScope.launch {
                     try {
-                        repository.updateLearnedCommand(device.id, command, pressType)
+                        repository.updateLearnedCommand(device.id, command)
                         _message.value = DeviceMessage.Success(
                             getString(R.string.command_learned, command.getLabelString(appContext))
                         )
-                        Timber.d("✅ [DeviceViewModel] Comando aprendido guardado: %s (%s)", command.name, pressType.name)
+                        Timber.d("✅ [DeviceViewModel] Botón aprendido guardado: %s", command.name)
                         DebugLogger.logConnectionEvent(
                             deviceNumber = device.antDeviceId ?: 0,
                             event = "COMMAND_SAVED_TO_DB",
@@ -385,7 +421,7 @@ class DeviceViewModel(
             DebugLogger.logKeyEvent(
                 deviceNumber = selectedDevice.value?.antDeviceId ?: 0,
                 command = command.name,
-                pressType = pressType.name,
+                pressType = "LEARN",
                 processed = false,
                 source = "DeviceViewModel"
             )

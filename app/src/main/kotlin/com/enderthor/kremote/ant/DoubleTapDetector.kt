@@ -39,8 +39,9 @@ class DoubleTapDetector(
                 Timber.d("[DoubleTap] Command: $commandNumber timeSince=${timeSinceLastCommand}ms")
             }
 
-            if (timeSinceLastCommand <= doubleTapTimeout && timeSinceLastCommand > 50) {
-                // Double tap detectado
+            val (isDouble, newLastTime) = decideDouble(lastTime, currentTime, doubleTapTimeout)
+
+            if (isDouble) {
                 if (DebugLogger.isEnabled()) {
                     DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "DOUBLE", true)
                     Timber.d("[DoubleTap] DOUBLE detected: $commandNumber")
@@ -66,7 +67,7 @@ class DoubleTapDetector(
                 mainHandler.postDelayed(callback, doubleTapTimeout)
             }
 
-            lastCommandTime[commandNumber] = currentTime
+            lastCommandTime[commandNumber] = newLastTime
         }
     }
 
@@ -109,4 +110,29 @@ class DoubleTapDetector(
         pendingCommands.clear()
     }
 
+    companion object {
+        /** Dos eventos ANT más juntos que esto son rebote de la misma pulsación, no un doble. */
+        internal const val MIN_TAP_GAP_MS = 50L
+
+        /**
+         * Decide si una pulsación cierra un doble toque, y con qué marca de tiempo queda el
+         * botón para la siguiente.
+         *
+         * La clave es el segundo valor: al emitir DOUBLE el par se **consume** (`0L`). Antes
+         * se guardaba siempre `now`, así que una 3ª pulsación dentro del timeout formaba otro
+         * doble con la 2ª: un mando repitiendo a ~4 Hz contra un timeout de 1200 ms escupía
+         * DOUBLE tras DOUBLE — pausar/reanudar la ruta, marcar vueltas o apagar la pantalla
+         * en cadena. Consumir el par lo reduce a uno cada dos pulsaciones, que es el techo de
+         * un detector sin estado; separar "mantener pulsado" de "pulsar rápido" pediría
+         * semántica de hold. (El rebote de la propia radio ya lo filtra MIN_TAP_GAP_MS.)
+         *
+         * Pura y sin dependencias de Android a propósito: es la única parte de este detector
+         * que se puede probar en la JVM (el resto vive sobre un Handler del looper principal).
+         */
+        internal fun decideDouble(lastTime: Long, now: Long, timeout: Long): Pair<Boolean, Long> {
+            val elapsed = now - lastTime
+            val isDouble = lastTime > 0L && elapsed <= timeout && elapsed > MIN_TAP_GAP_MS
+            return isDouble to if (isDouble) 0L else now
+        }
+    }
 }

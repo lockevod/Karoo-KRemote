@@ -10,10 +10,14 @@ import com.enderthor.kremote.utils.ConnectionState
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.utils.HeartbeatManager
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -30,26 +34,35 @@ class DebugViewModel(
     // fijo a null si el servicio no había arrancado aún en el momento de construcción.
     private val _registeredDevices = MutableStateFlow<List<RemoteDevice>>(emptyList())
 
-    // Combinar ambos estados para mostrar información completa
-    val connectionStates = _registeredDevices.map { devices ->
-        // Resolver el singleton en cada emisión para capturarlo si ya está disponible
-        val managerStates = ReconnectionManagerSingleton.getInstance()?.connectionStates?.value
-            ?: emptyMap()
-        managerStates.ifEmpty {
-            // Si no hay estados del manager, crear estados simulados basados en dispositivos registrados
-            devices.associate { device ->
-                val deviceId = device.antDeviceId ?: 0
-                deviceId to ConnectionState(
-                    deviceNumber = deviceId,
-                    isConnected = true, // Asumimos conectado si el dispositivo está registrado
-                    isReconnecting = false,
-                    lastConnectionAttempt = System.currentTimeMillis(),
-                    reconnectAttempts = 0,
-                    lastError = null
-                )
+    // Estado real de conexión, siguiendo en vivo al ReconnectionManager.
+    //
+    // Antes, si el mapa del manager venía vacío se fabricaba `isConnected = true` para cada
+    // dispositivo registrado. Pero "mapa vacío" es precisamente el síntoma de que el
+    // monitoreo no arrancó: la pantalla de diagnóstico pintaba verde justo en el fallo que
+    // existe para revelar. Ahora un dispositivo sin estado se muestra como desconectado.
+    //
+    // Además se observa el singleton como flujo (no un `.value` puntual), así que la
+    // pantalla se actualiza cuando el servicio arranca después de abrirla y cuando el
+    // manager cambia de estado, sin depender de que se re-emita la lista de dispositivos.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val connectionStates: Flow<Map<Int, ConnectionState>> =
+        combine(_registeredDevices, ReconnectionManagerSingleton.instance, ::Pair)
+            .flatMapLatest { (devices, manager) ->
+                val statesFlow = manager?.connectionStates ?: MutableStateFlow(emptyMap())
+                statesFlow.map { managerStates ->
+                    devices.associate { device ->
+                        val deviceId = device.antDeviceId ?: 0
+                        deviceId to (managerStates[deviceId] ?: ConnectionState(
+                            deviceNumber = deviceId,
+                            isConnected = false,
+                            isReconnecting = false,
+                            lastConnectionAttempt = 0L,
+                            reconnectAttempts = 0,
+                            lastError = null
+                        ))
+                    }
+                }
             }
-        }
-    }
 
     // Job de la verificación periódica — controlado desde la pantalla de debug
     private var periodicCheckJob: Job? = null
@@ -65,19 +78,9 @@ class DebugViewModel(
             }
         }
 
-        // DIAGNÓSTICO EXTENDIDO: Verificar estado completo del singleton
-        val reconnectionManager = ReconnectionManagerSingleton.getInstance()
-        if (reconnectionManager != null) {
-            if (DebugLogger.isEnabled()) {
-                DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton found", "DebugViewModel")
-            }
-            Timber.d("[DebugViewModel] ReconnectionManager singleton encontrado")
-        } else {
-            if (DebugLogger.isEnabled()) {
-                DebugLogger.logConnectionEvent(0, "DEBUG_VIEWMODEL_INIT", "ReconnectionManager singleton is NULL - usando datos del repositorio", "DebugViewModel")
-            }
-            Timber.w("[DebugViewModel] ReconnectionManager singleton es NULL - mostrando dispositivos registrados en su lugar")
-        }
+        // (Se eliminó el diagnóstico que registraba si el singleton era null en construcción:
+        // desde que connectionStates lo observa como StateFlow, esa foto puntual no significa
+        // nada — la llegada tardía del servicio ya se maneja sola.)
     }
 
     /**

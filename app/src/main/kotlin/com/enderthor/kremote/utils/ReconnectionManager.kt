@@ -46,6 +46,13 @@ class ReconnectionManager(
     // reiniciar la app. 60s es suficientemente espaciado para no spamear el stack
     // ANT+ y suficientemente frecuente para recuperarse cuando vuelva la señal.
     private val longBackoffDelay = 60000L
+    // Fuera de ruta el mando no se está usando: el Karoo puede estar en la mochila o cargando.
+    // Un mando apagado o sin pila mantenía requestAccess() cada 60 s indefinidamente (~1440
+    // despertares de radio ANT+ al día). x10 menos, sin dejar la conexión muerta.
+    private val offRideLongBackoffDelay = 600000L
+    // La espera larga se duerme a tramos para poder reaccionar si arranca una ruta a mitad:
+    // si no, el rider podía esperar hasta 10 min a que su mando volviera.
+    private val backoffSliceMs = 60000L
     private val connectionCheckInterval = 10000L
     private val connectionTimeout = 15000L
 
@@ -229,9 +236,11 @@ class ReconnectionManager(
                 attempts++
                 val isLongBackoff = attempts > maxReconnectAttempts
 
-                // Usar PerformanceOptimizer para calcular delay optimizado
+                // La fase 2 es indefinida, así que es la que decide el coste en batería:
+                // fuera de ruta la relajamos x10. La fase 1 (backoff exponencial corto) NO se
+                // toca — si estás configurando en casa quieres que conecte ya.
                 val delay = if (isLongBackoff) {
-                    longBackoffDelay
+                    if (PerformanceOptimizer.isRiding) longBackoffDelay else offRideLongBackoffDelay
                 } else {
                     PerformanceOptimizer.getOptimizedDelay(
                         calculateBackoffDelay(attempts),
@@ -257,7 +266,7 @@ class ReconnectionManager(
                     )
                 }
 
-                delay(delay)
+                awaitBackoff(delay)
 
                 try {
                     // Intentar reconexión con timeout optimizado
@@ -297,6 +306,23 @@ class ReconnectionManager(
             }
         }
         reconnectionJobs.put(deviceNumber, newJob)?.cancel()
+    }
+
+    /**
+     * Duerme [totalMs] en tramos de [backoffSliceMs], cortando en cuanto arranca una ruta.
+     *
+     * Sin esto, relajar el backoff fuera de ruta tendría un efecto secundario malo: el rider
+     * empieza a rodar en mitad de una espera de 10 minutos y se queda sin mando hasta que
+     * se agota. Cortando en el primer tramo, el peor caso al empezar la ruta es ~60 s.
+     */
+    private suspend fun awaitBackoff(totalMs: Long) {
+        var waited = 0L
+        while (waited < totalMs) {
+            val slice = min(backoffSliceMs, totalMs - waited)
+            delay(slice)
+            waited += slice
+            if (PerformanceOptimizer.isRiding) return
+        }
     }
 
     private fun calculateBackoffDelay(attempt: Int): Long {

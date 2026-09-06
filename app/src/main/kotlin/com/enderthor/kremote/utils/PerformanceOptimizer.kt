@@ -38,6 +38,9 @@ object PerformanceOptimizer {
     // no necesite cambios.
     @Volatile private var _isRiding = false
 
+    /** Estado de ruta actual. Lo consulta ReconnectionManager para relajar el backoff largo. */
+    val isRiding: Boolean get() = _isRiding
+
 
     // Simple punctual heartbeat configuration
     private const val NO_ACTIVITY_THRESHOLD_MS = 120000L // 2 minutes without activity
