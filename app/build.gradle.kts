@@ -13,8 +13,8 @@ android {
         applicationId = "com.enderthor.kremote"
         minSdk = 26
         targetSdk = 34
-        versionCode = 202605121
-        versionName = "3.6"
+        versionCode = 202609011
+        versionName = "4.0"
     }
 
     buildTypes {
