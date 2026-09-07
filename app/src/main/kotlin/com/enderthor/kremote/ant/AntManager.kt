@@ -238,7 +238,11 @@ class AntManager(
                     val commandName = antCommand
                         ?.let { "${it.getLabelString(context)} [${it.gCommand.name}]" }
                         ?: "UNKNOWN_$commandNumber"
-                    DebugLogger.logKeyEvent(deviceNumber, commandName, "RAW", true)
+                    // `source` explícito: sin él, DebugLogger.getCallerInfo() captura un
+                    // Thread.currentThread().stackTrace COMPLETO por entrada. Sólo aplica
+                    // con el logging de debug encendido (esta rama ya está gateada), pero
+                    // entonces es una captura por pulsación.
+                    DebugLogger.logKeyEvent(deviceNumber, commandName, "RAW", true, "AntManager")
                     Timber.d("[ANT] Command received: $commandNumber (Learning mode: $learningMode)")
                 }
 
@@ -398,14 +402,25 @@ class AntManager(
         }
     }
 
-    fun stopScan(disconnect: Boolean = false) {
-        Timber.d("Stopping ANT+ device search (disconnect=$disconnect)")
+    /**
+     * Cierra la búsqueda ANT+.
+     *
+     * Antes sólo vaciaba `_detectedDevices` y dejaba abierto el handle de
+     * `requestAccess(deviceNumber = 0)` que abrió [startDeviceSearch] — un canal de
+     * BÚSQUEDA, lo más caro que hace la radio ANT+, vivo hasta que moría la Activity
+     * (MainActivity.onDestroy es quien acaba llamando a disconnect/cleanup). Y peor: el
+     * siguiente `connect()` reasignaba `remoteReleaseHandle` encima sin cerrarlo, así que
+     * el canal quedaba además sin referencia para poder liberarlo.
+     *
+     * El cierre lo pedía el parámetro `disconnect`, que NINGÚN llamador pasaba nunca
+     * (único call site: DeviceViewModel.startDeviceScan). Parar la búsqueda es soltar el
+     * canal, así que ahora es incondicional y el parámetro desaparece.
+     */
+    fun stopScan() {
+        Timber.d("Stopping ANT+ device search")
         try {
             _detectedDevices.value = emptyList()
-            if (disconnect) {
-                disconnect()
-                _isConnected = false
-            }
+            disconnect()
         } catch (e: Exception) {
             Timber.e(e, "Error stopping ANT+ device search")
             throw e

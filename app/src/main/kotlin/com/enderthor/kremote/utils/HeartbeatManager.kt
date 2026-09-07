@@ -1,10 +1,6 @@
 package com.enderthor.kremote.utils
 
 import com.enderthor.kremote.ant.AntManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
@@ -111,24 +107,9 @@ object HeartbeatManager {
         Timber.i("HeartbeatManager: Cleaned up all caches and listeners")
     }
 
-    /**
-     * Sets up periodic cleanup in a specific scope.
-     * Devuelve el Job para que el dueño pueda cancelarlo al descartar su instancia
-     * (si no, cada reinicialización del ReconnectionManager apila un bucle más).
-     */
-    fun setupPeriodicCleanup(scope: CoroutineScope): Job {
-        return scope.launch {
-            while (isActive) {
-                kotlinx.coroutines.delay(300_000L) // 5 minutes
-                try {
-                    PerformanceOptimizer.cleanUIVerificationCache()
-                    DebugLogger.logConnectionEvent(0, "PERIODIC_CLEANUP", "Periodic heartbeat cleanup completed")
-                    Timber.v("HeartbeatManager: Periodic cleanup completed")
-                } catch (e: Exception) {
-                    DebugLogger.logError("PERIODIC_CLEANUP", "Error during periodic cleanup", e)
-                    Timber.e(e, "HeartbeatManager: Error during periodic cleanup")
-                }
-            }
-        }
-    }
+    // setupPeriodicCleanup() eliminado: despertaba cada 5 min (288 veces al día) para podar
+    // `uiVerificationRequests`, un mapa acotado por nº de dispositivos — en la práctica UNA
+    // entrada ("<id>_reconnection_manager") que se reescribe sola en cada verificación y
+    // nunca crece. Coste sin beneficio. La poda que sí sirve (fin de ruta) sigue viva en
+    // PerformanceOptimizer.setRidingState, y stopAllMonitoring limpia todas las cachés.
 }

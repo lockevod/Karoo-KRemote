@@ -18,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -118,11 +119,19 @@ class DeviceViewModel(
     }
 
     fun onDeviceConfigureClick(device: RemoteDevice) {
+        // El botón "Configurar" de la lista sigue activo mientras hay un escaneo en curso.
+        // Ese escaneo ya no sirve —vamos a un dispositivo concreto— y su `finally` llama a
+        // stopScan(), que cierra el canal ANT. Hay que cancelarlo Y ESPERARLO antes de
+        // conectar: si no, el finally del escaneo caducado se ejecuta DESPUÉS de nuestro
+        // connect() y cierra el canal recién abierto. Como startLearning() no reconecta,
+        // el aprendizaje se queda muerto hasta salir y volver a entrar en configuración.
+        val previousScan = scanJob
+        scanJob = null
         _selectedDevice.value = device
-
 
         viewModelScope.launch {
             try {
+                previousScan?.cancelAndJoin()
                 device.antDeviceId?.let { deviceId ->
                     withContext(Dispatchers.IO) {
                         antManager.connect(deviceId)

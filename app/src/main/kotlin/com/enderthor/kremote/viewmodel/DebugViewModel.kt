@@ -151,9 +151,15 @@ class DebugViewModel(
     }
 
     fun setDebugEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            DebugLogger.setEnabled(enabled)
+        // IO, no Main: al desactivar, setEnabled() → stopWriter() hace
+        // `runBlocking { writerJob.join() }` para drenar la cola (hasta 512 entradas) antes
+        // de cerrar el fichero. En Main eso congela la UI mientras se vacía a disco.
+        // clearLog() ya estaba en IO por la misma razón.
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            // El StateFlow primero: setEnabled(false) bloquea drenando la cola, y con el
+            // orden inverso el interruptor de la UI se quedaba "encendido" durante el drenaje.
             _isDebugEnabled.value = enabled
+            DebugLogger.setEnabled(enabled)
 
             if (enabled) {
                 DebugLogger.logConnectionEvent(0, "DEBUG_ENABLED", "Debug logging activated by user")

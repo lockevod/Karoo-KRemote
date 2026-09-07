@@ -56,9 +56,8 @@ class ReconnectionManager(
     private val connectionCheckInterval = 10000L
     private val connectionTimeout = 15000L
 
-    // Limpieza periódica vía HeartbeatManager; se guarda el Job para cancelarlo en
-    // stopAllMonitoring (solo se llama al descartar esta instancia desde el singleton).
-    private val periodicCleanupJob = HeartbeatManager.setupPeriodicCleanup(scope)
+    // (La limpieza periódica de 5 min se eliminó: ver HeartbeatManager. Podaba un mapa de
+    // una entrada que nunca crece; stopAllMonitoring sigue limpiando todas las cachés.)
 
     fun startMonitoring(deviceNumber: Int) {
         DebugLogger.logConnectionEvent(deviceNumber, "START_MONITORING", "Iniciando monitoreo para dispositivo #$deviceNumber", "ReconnectionManager")
@@ -353,7 +352,6 @@ class ReconnectionManager(
     }
 
     fun stopAllMonitoring() {
-        periodicCleanupJob.cancel()
         monitoringJobs.values.forEach { it.cancel() }
         reconnectionJobs.values.forEach { it.cancel() }
         monitoringJobs.clear()

@@ -43,7 +43,10 @@ class DoubleTapDetector(
 
             if (isDouble) {
                 if (DebugLogger.isEnabled()) {
-                    DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "DOUBLE", true)
+                    // `source` explícito: sin él DebugLogger captura un stack trace completo
+                    // por entrada. Sólo con el logging de debug encendido (esta rama ya
+                    // está gateada), pero entonces cae en el camino de cada pulsación.
+                    DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "DOUBLE", true, "DoubleTapDetector")
                     Timber.d("[DoubleTap] DOUBLE detected: $commandNumber")
                 }
                 clearPendingCommand(commandNumber)
@@ -58,7 +61,7 @@ class DoubleTapDetector(
                         pendingCommands.remove(commandNumber)
                         pendingCallbacks.remove(commandNumber)
                         if (DebugLogger.isEnabled()) {
-                            DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "SINGLE", true)
+                            DebugLogger.logKeyEvent(0, "CMD_$commandNumber", "SINGLE", true, "DoubleTapDetector")
                         }
                         onCommand(commandNumber, PressType.SINGLE)
                     }

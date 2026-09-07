@@ -74,7 +74,9 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
     internal lateinit var karooSystem: KarooSystemService
     private lateinit var _antManager: AntManager
     private lateinit var repository: RemoteRepository
-    private lateinit var karooAction: KarooAction
+    // @Volatile como sus vecinos (activeDevice, globalSettings, activeKeyLookup): se escribe
+    // desde el callback de karooSystem.connect y se lee desde el camino de la pulsación.
+    @Volatile private lateinit var karooAction: KarooAction
     // Cliente HAL para el bypass del mute; el bind es asíncrono y se reutiliza durante toda
     // la vida de la extensión. Nullable: si el bind falla, KarooAction cae al beep del SDK.
     private var buzzerClient: BuzzerClient? = null
@@ -147,6 +149,17 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
 
             if (connected) {
 
+                // Este callback se dispara en CADA reconexión del servicio Karoo, no sólo
+                // en el arranque. El KarooAction anterior queda obsoleto: su actionScope
+                // puede tener un zoom rápido en vuelo despachando contra la conexión que
+                // acaba de reciclarse. No es una fuga acumulativa —un scope ocioso sin
+                // hijos es basura recolectable, y el zoom se agota solo en ~300 ms—; es
+                // cancelación de trabajo obsoleto. Se construye el nuevo PRIMERO y se
+                // limpia el viejo DESPUÉS, para que el campo nunca apunte a un scope ya
+                // cancelado. Contrapartida aceptada: una reconexión a mitad de zoom rápido
+                // trunca las repeticiones que falten.
+                val previousKarooAction = if (::karooAction.isInitialized) karooAction else null
+
                 karooAction = KarooAction(
                     karooSystem,
                     applicationContext,
@@ -159,6 +172,7 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
                     { globalSettings?.bypassMute == true },
                     buzzerClient
                 )
+                previousKarooAction?.cleanup()
 
 
                 karooSystem.dispatch(RequestAnt(EXTENSION_NAME))
