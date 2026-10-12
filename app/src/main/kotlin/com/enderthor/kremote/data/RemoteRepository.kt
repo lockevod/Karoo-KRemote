@@ -17,8 +17,11 @@ import kotlinx.serialization.json.Json
 import timber.log.Timber
 
 
-// corruptionHandler obligatorio: el SO mata el proceso de la extensión al terminar la ruta.
-// Si lo pilla a mitad de un edit{}, settings.preferences_pb queda ilegible y DataStore lanza
+// corruptionHandler obligatorio: si el Karoo se apaga (o se queda sin batería) justo después
+// de un edit{}, settings.preferences_pb puede quedar lleno de ceros. datastore ≥ 1.1.5 hace
+// fsync real antes del rename y cierra casi toda esa ventana (≤ 1.1.4 no: OkioStorage
+// sincronizaba antes de vaciar el buffer), pero ninguna versión sobrevive a un eMMC que
+// muere. Si pasa, el fichero queda ilegible y DataStore lanza
 // CorruptionException en CADA lectura, para siempre. Sin manejador eso es un crash-loop que
 // el rider sólo puede romper borrando los datos de la app. Con él, el fichero corrupto se
 // reemplaza por uno vacío y la app arranca (con la config por defecto).
