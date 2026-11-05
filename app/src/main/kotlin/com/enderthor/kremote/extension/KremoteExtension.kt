@@ -6,6 +6,7 @@ import android.content.Intent
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
+import io.hammerhead.karooext.models.ReleaseAnt
 import io.hammerhead.karooext.models.RequestAnt
 
 
@@ -454,6 +455,8 @@ class KremoteExtension : KarooExtension(EXTENSION_NAME, BuildConfig.VERSION_NAME
             if (::karooAction.isInitialized) karooAction.cleanup()
             buzzerClient?.disconnect()
             buzzerClient = null
+            // Pairs with the RequestAnt sent on connect; without it the radio stays claimed.
+            if (isServiceConnected) karooSystem.dispatch(ReleaseAnt(EXTENSION_NAME))
             karooSystem.disconnect()
             extensionScope.cancel()
 
