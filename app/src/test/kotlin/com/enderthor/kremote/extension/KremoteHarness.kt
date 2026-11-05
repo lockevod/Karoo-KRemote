@@ -4,6 +4,7 @@ import android.content.Intent
 import com.dsi.ant.plugins.antplus.pcc.controls.AntPlusGenericControllableDevicePcc.IGenericCommandReceiver
 import com.dsi.ant.plugins.antplus.pcc.controls.defines.GenericCommandNumber
 import com.enderthor.kremote.data.GlobalSettings
+import com.enderthor.kremote.data.LearnedCommand
 import com.enderthor.kremote.data.RemoteDevice
 import com.enderthor.kremote.data.RemoteRepository
 import com.enderthor.kremote.data.RemoteType
@@ -11,7 +12,11 @@ import fi.nikosavola.karooext.testing.robolectric.FakeKarooRule
 import fi.nikosavola.karooext.testing.robolectric.RobolectricPump
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 private const val RIDE_APP_OPENED = "io.hammerhead.intent.action.RIDE_APP_OPENED"
@@ -38,6 +43,42 @@ internal class KremoteHarness(private val karoo: FakeKarooRule) {
         repository.addDevice(device)
         repository.updateGlobalSetting { settings }
     }
+
+    // DataStore edits must not run on the Robolectric test thread once the extension is up, so
+    // config changes go through a background dispatcher and the caller waits on the extension.
+    private val configScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** Applies a config change on a background thread and returns once the edit has landed. */
+    fun change(block: suspend RemoteRepository.() -> Unit) {
+        val job = configScope.launch { block(repository) }
+        runBlocking { job.join() }
+    }
+
+    fun updateDevice(deviceId: String = "garmin-remote", update: (RemoteDevice) -> RemoteDevice) =
+        change { updateDeviceProperty(deviceId, update) }
+
+    fun assign(assignments: List<LearnedCommand>, deviceId: String = "garmin-remote") =
+        change { assignKeyCodesToCommands(deviceId, assignments) }
+
+    fun add(device: RemoteDevice) = change { addDevice(device) }
+
+    fun remove(deviceId: String) = change { removeDevice(deviceId) }
+
+    fun activate(deviceId: String) = change { setActiveDevice(deviceId) }
+
+    /** The active device as the extension currently sees it, straight off the key press path. */
+    fun activeDevice(): RemoteDevice? = extension.read("activeDevice")
+
+    fun awaitActiveDevice(predicate: (RemoteDevice?) -> Boolean) =
+        karoo.awaitValue { true.takeIf { predicate(activeDevice()) } }
+
+    fun awaitDoubleTapEnabled(enabled: Boolean) =
+        karoo.awaitValue { true.takeIf { detector().read<Boolean>("doubleTapEnabled") == enabled } }
+
+    fun awaitDoubleTapTimeout(timeout: Long) =
+        karoo.awaitValue { true.takeIf { detector().read<Long>("doubleTapTimeout") == timeout } }
+
+    private fun detector(): Any = extension.antManager.read<Any>("doubleTapDetector")!!
 
     private lateinit var extension: KremoteExtension
 
